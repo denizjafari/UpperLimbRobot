@@ -6,6 +6,8 @@ from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices, \
 from PySide6.QtCore import Qt, Signal, Slot, QRunnable, QObject, QThreadPool
 from PySide6.QtGui import QPixmap, QImage
 
+import numpy as np
+
 from pose_estimation.Models import PoseModel, DisplayOptions
 
 
@@ -117,7 +119,7 @@ class VideoFrameProcessor(QRunnable, QObject):
 
         self.displayOptions = displayOptions
         self.videoFrame = videoFrame
-        self.movenet = model
+        self.model = model
 
     @Slot()
     def run(self) -> None:
@@ -130,8 +132,10 @@ class VideoFrameProcessor(QRunnable, QObject):
         if self.displayOptions.mirror:
             image = image.mirrored(horizontally=True, vertically=False)
         image = image.convertToFormat(QImage.Format.Format_RGB32)
+        image = np.array(image.bits()).reshape(1, image.height(), image.width(), 4)
+        image = np.delete(image, np.s_[-1:], axis=3)
         
-        result = self.movenet.detect(image)
+        result = self.model.detect(image)
         image = result.toImage(displayOptions=self.displayOptions)
         self.frameReady.emit(image)
 

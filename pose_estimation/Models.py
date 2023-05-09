@@ -48,20 +48,17 @@ class DetectionResult:
                 Each entry has the format (y, x, confidence)
                 TODO: Change to (x, y, ...)
     """
-    input_image: QImage
-    image_arr: np.ndarray
+    image: np.ndarray
     keypoints: np.ndarray
 
     def __init__(self,
-                 image: QImage,
-                 image_arr: np.ndarray,
+                 image: np.ndarray,
                  keypoints: np.ndarray) -> None:
         """
         Intialize the detection result by creating shallow copies of all
         outputs.
         """
-        self.input_image = image
-        self.image_arr = image_arr
+        self.image = image
         self.keypoints = keypoints
     
     def draw_keypoints(self,
@@ -97,8 +94,8 @@ class DetectionResult:
         Transform the internal representation image_arr into a QImage sucb that
         both dimenstions are as big as the bigger one of the original image.
         """
-        image_size = max(self.input_image.width(), self.input_image.height())
-        image = tf.image.resize(self.image_arr, tf.constant([image_size, image_size]))
+        image_size = 640
+        image = tf.image.resize(self.image, tf.constant([image_size, image_size]))
         image = tf.squeeze(image)
         padding = [[0, 0], [0, 0], [0, 1]]
         image = tf.pad(image, padding, constant_values=255)
@@ -148,14 +145,12 @@ class MoveNetLightning(PoseModel):
 
         image - the image that should be analyzed for a human pose.
         """
-        image_arr = np.array(image.bits()).reshape(1, image.height(), image.width(), 4)
-        image_arr = np.delete(image_arr, np.s_[-1:], axis=3)
-        image_arr = tf.image.resize_with_pad(image_arr, self.inputSize, self.inputSize)
-        image_arr = tf.cast(image_arr, dtype=np.int32)
+        image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
+        image = tf.cast(image, dtype=np.int32)
 
-        output = self.movenet(image_arr)["output_0"].numpy()[0][0]
+        output = self.movenet(image)["output_0"].numpy()[0][0]
 
-        return DetectionResult(image, image_arr.numpy(), output)
+        return DetectionResult(image.numpy(), output)
     
 
 class MoveNetThunder(PoseModel):
@@ -171,20 +166,18 @@ class MoveNetThunder(PoseModel):
         self.movenet = module.signatures['serving_default']
             
 
-    def detect(self, image: QImage) -> None:
+    def detect(self, image: np.ndarray) -> None:
         """
-        Detect the pose in the given QImage.
+        Detect the pose in the given image.
 
         image - the image that should be analyzed for a human pose.
         """
-        image_arr = np.array(image.bits()).reshape(1, image.height(), image.width(), 4)
-        image_arr = np.delete(image_arr, np.s_[-1:], axis=3)
-        image_arr = tf.image.resize_with_pad(image_arr, self.inputSize, self.inputSize)
-        image_arr = tf.cast(image_arr, dtype=np.int32)
+        image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
+        image = tf.cast(image, dtype=np.int32)
 
-        output = self.movenet(image_arr)["output_0"].numpy()[0][0]
+        output = self.movenet(image)["output_0"].numpy()[0][0]
 
-        return DetectionResult(image, image_arr.numpy(), output)
+        return DetectionResult(image.numpy(), output)
     
 
 class BlazePose(PoseModel):
@@ -198,19 +191,17 @@ class BlazePose(PoseModel):
                      static_image_mode=False)
         self.inputSize = 256
     
-    def detect(self, image: QImage) -> DetectionResult:
+    def detect(self, image: np.ndarray) -> DetectionResult:
         """
         Detect the pose in the given QImage.
 
         image - the image that should be analyzed for a human pose.
         """
-        image_arr = np.array(image.bits()).reshape(1, image.height(), image.width(), 4)
-        image_arr = np.delete(image_arr, np.s_[-1:], axis=3)
-        image_arr = tf.image.resize_with_pad(image_arr, self.inputSize, self.inputSize)
-        image_arr = tf.squeeze(image_arr)
-        image_arr = tf.cast(image_arr, dtype=np.uint8).numpy()
+        image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
+        image = tf.squeeze(image)
+        image = tf.cast(image, dtype=np.uint8).numpy()
 
-        output = self.blazePose.process(image_arr).pose_landmarks
+        output = self.blazePose.process(image).pose_landmarks
 
         if output is not None:
             output = output.landmark
@@ -218,4 +209,4 @@ class BlazePose(PoseModel):
         else:
             result = []
 
-        return DetectionResult(image, image_arr, result)
+        return DetectionResult(image, result)
