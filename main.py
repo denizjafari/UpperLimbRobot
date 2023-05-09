@@ -1,7 +1,7 @@
 import sys
 from PySide6.QtWidgets import QApplication, QTabWidget
 from PySide6.QtCore import Qt
-from pose_estimation.Models import BlazePose, MoveNetLightning
+from pose_estimation.Models import BlazePose, MoveNetLightning, MoveNetThunder
 from pose_estimation.PoseWindow import PoseTrackerWidget, PoseTracker
 
 

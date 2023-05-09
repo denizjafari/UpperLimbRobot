@@ -18,7 +18,7 @@ TARGET_FRAME_RATE = 25
 
 # The number of frames that should be allowed to processed at each point in time.
 # Higher numbers allow for a smoother display, while additional lag is induced.
-MAX_FRAMES_IN_PROCESSING = 5
+MAX_FRAMES_IN_PROCESSING = 1
 
 
 class CameraSelectorButton(QRadioButton):
@@ -121,6 +121,26 @@ class VideoFrameProcessor(QRunnable, QObject):
         self.videoFrame = videoFrame
         self.model = model
 
+    def qImageToNpArray(self, image: QImage) -> np.ndarray:
+        """
+        Convert a QImage to an ndarray with dimensions (height, width, channels)
+        """
+        image = image.convertToFormat(QImage.Format.Format_RGB32)
+        image = np.array(image.bits()).reshape(image.height(), image.width(), 4)
+        image = np.delete(image, np.s_[-1:], axis=2)
+
+        return image
+    
+    def npArrayToQImage(self, image: np.ndarray) -> QImage:
+        """
+        Convert an ndarray with dimensions (height, width, channels) back
+        into a QImage.
+        """
+        buffer = image.astype(np.uint8).tobytes()
+        image = QImage(buffer, image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
+
+        return image
+
     @Slot()
     def run(self) -> None:
         """
@@ -131,13 +151,11 @@ class VideoFrameProcessor(QRunnable, QObject):
 
         if self.displayOptions.mirror:
             image = image.mirrored(horizontally=True, vertically=False)
-        image = image.convertToFormat(QImage.Format.Format_RGB32)
-        image = np.array(image.bits()).reshape(1, image.height(), image.width(), 4)
-        image = np.delete(image, np.s_[-1:], axis=3)
         
-        result = self.model.detect(image)
+        result = self.model.detect(self.qImageToNpArray(image))
         image = result.toImage(displayOptions=self.displayOptions)
-        self.frameReady.emit(image)
+
+        self.frameReady.emit(self.npArrayToQImage(image))
 
 
 class PoseTracker(QObject):
