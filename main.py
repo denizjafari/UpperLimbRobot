@@ -2,14 +2,14 @@ import sys
 from PySide6.QtWidgets import QApplication, QTabWidget
 from PySide6.QtCore import Qt
 from pose_estimation.Models import BlazePose, MoveNetLightning
-from pose_estimation.PoseWindow import PoseEstimationWindow, PoseTracker
+from pose_estimation.PoseWindow import PoseTrackerWidget, PoseTracker
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     window = QTabWidget()
-    poseWindow = PoseEstimationWindow()
+    poseWindow = PoseTrackerWidget()
     poseTracker = PoseTracker()
     model = BlazePose()
     poseTracker.setModel(model)
