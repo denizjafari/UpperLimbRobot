@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, \
     QCheckBox, QRadioButton, QLabel, QSlider
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices, \
     QMediaCaptureSession, QVideoSink, QVideoFrame
-from PySide6.QtCore import Qt, Signal, Slot, QRunnable, QObject, QThreadPool
+from PySide6.QtCore import Qt, Signal, Slot, QRunnable, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
 
 import numpy as np
@@ -174,6 +174,7 @@ class PoseTracker(QObject):
     framesInProcessing - the number of frames that are currently processed.
     """
     frameReady = Signal(QImage)
+    frameRateUpdate = Signal(int)
 
     displayOptions: DisplayOptions
     model: PoseModel
@@ -182,6 +183,9 @@ class PoseTracker(QObject):
     cameraSession: QMediaCaptureSession
     videoSink: QVideoSink
     framesInProcessing: int
+
+    frameRateTimer: QTimer
+    frameCount: int
 
 
     def __init__(self) -> None:
@@ -198,6 +202,13 @@ class PoseTracker(QObject):
         self.videoSink.videoFrameChanged.connect(self.processVideoFrame)
         self.cameraSession.setVideoSink(self.videoSink)
         self.camera = None
+
+        self.frameRateTimer = QTimer()
+        self.frameRateTimer.setInterval(1000)
+        self.frameRateTimer.timeout.connect(self.onFrameRateUpdate)
+        self.frameRateTimer.start()
+
+        self.frameCount = 0
 
 
     @Slot(QVideoFrame)
@@ -256,7 +267,13 @@ class PoseTracker(QObject):
         Funnel through the image once it is reaady.
         """
         self.framesInProcessing -= 1
+        self.frameCount += 1
         self.frameReady.emit(image)
+
+    @Slot()
+    def onFrameRateUpdate(self) -> None:
+        self.frameRateUpdate.emit(self.frameCount)
+        self.frameCount = 0
 
     def setModel(self, model: PoseModel) -> None:
         """
@@ -293,6 +310,9 @@ class PoseTrackerWidget(QWidget):
         self.displayLabel = QLabel()
         layout.addWidget(self.displayLabel, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        self.frameRateLabel = QLabel()
+        layout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.cameraSelector = CameraSelector()
         layout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
 
@@ -324,6 +344,10 @@ class PoseTrackerWidget(QWidget):
         pixmap = QPixmap.fromImage(image)
         self.displayLabel.setPixmap(pixmap)
 
+    @Slot(int)
+    def updateFrameRate(self, frameRate: int):
+        self.frameRateLabel.setText(f"FPS: {frameRate}")
+
     def setPoseTracker(self, poseTracker: PoseTracker) -> None:
         """
         Set the pose tracker by connectin all slots and signals between the
@@ -335,3 +359,4 @@ class PoseTrackerWidget(QWidget):
         self.markerRadiusSlider.valueChanged.connect(poseTracker.onMarkerRadiusChanged)
         self.confidenceSlider.valueChanged.connect(poseTracker.onConfidenceChanged)
         poseTracker.frameReady.connect(self.setVideoFrame)
+        poseTracker.frameRateUpdate.connect(self.updateFrameRate)
