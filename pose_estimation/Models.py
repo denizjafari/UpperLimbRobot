@@ -112,7 +112,8 @@ class PoseModel:
     """
     def detect(self, image: QImage) -> DetectionResult:
         """
-        Detect a human pose in the given image.
+        Detect the pose in the given image. The image has to have dimensions
+        (height, width, channels).
 
         image - the image to analyze.
         """
@@ -132,11 +133,12 @@ class MoveNetLightning(PoseModel):
         self.movenet = module.signatures['serving_default']
             
 
-    def detect(self, image: QImage) -> DetectionResult:
+    def detect(self, image: np.ndarray) -> DetectionResult:
         """
-        Detect the pose in the given QImage.
+        Detect the pose in the given image. The image has to have dimensions
+        (height, width, channels).
 
-        image - the image that should be analyzed for a human pose.
+        image - the image to analyze.
         """
         image = tf.expand_dims(image, axis=0)
         image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
@@ -164,9 +166,10 @@ class MoveNetThunder(PoseModel):
 
     def detect(self, image: np.ndarray) -> None:
         """
-        Detect the pose in the given image.
+        Detect the pose in the given image. The image has to have dimensions
+        (height, width, channels).
 
-        image - the image that should be analyzed for a human pose.
+        image - the image to analyze.
         """
         image = tf.expand_dims(image, axis=0)
         image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
@@ -192,9 +195,10 @@ class BlazePose(PoseModel):
     
     def detect(self, image: np.ndarray) -> DetectionResult:
         """
-        Detect the pose in the given QImage.
+        Detect the pose in the given image. The image has to have dimensions
+        (height, width, channels).
 
-        image - the image that should be analyzed for a human pose.
+        image - the image to analyze.
         """
         image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
         image = tf.cast(image, dtype=np.uint8).numpy()
