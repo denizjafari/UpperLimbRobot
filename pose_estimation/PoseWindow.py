@@ -5,8 +5,7 @@ from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices, \
     QMediaCaptureSession, QVideoSink, QVideoFrame
 from PySide6.QtCore import Qt, Signal, Slot, QRunnable, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-import tensorflow as tf
-from pose_estimation.video import CVVideoRecorder, VideoRecorder
+from pose_estimation.video import CVVideoRecorder, QVideoSource, VideoFrameProcessor, VideoRecorder, VideoSource
 
 import numpy as np
 
@@ -94,80 +93,6 @@ class CameraSelector(QWidget):
             layout.addWidget(button)
 
 
-class VideoFrameProcessor(QRunnable, QObject):
-    """
-    One task that processes one video frame and signals the completion
-    of that frame.
-
-    frameReady - the signal that is emitted with the processed image.
-    model - the model to use to detect the pose.
-    displayOptions - the display options to use.
-    videoFrame - the video frame from the video sink.
-    """
-    frameReady = Signal(QImage)
-    model: PoseModel
-    displayOptions: DisplayOptions
-    videoFrame: QVideoFrame
-    recorder: VideoRecorder
-
-    def __init__(self,
-                 model: PoseModel,
-                 displayOptions: DisplayOptions,
-                 videoFrame: QVideoFrame,
-                 recorder: Optional[VideoRecorder] = None) -> None:
-        """
-        Initialize the runner.
-        """
-        QRunnable.__init__(self)
-        QObject.__init__(self)
-
-        self.displayOptions = displayOptions
-        self.videoFrame = videoFrame
-        self.model = model
-        self.recorder = recorder
-
-    def qImageToNpArray(self, image: QImage) -> np.ndarray:
-        """
-        Convert a QImage to an ndarray with dimensions (height, width, channels)
-        """
-        image = image.convertToFormat(QImage.Format.Format_RGB32)
-        image = np.array(image.bits()).reshape(image.height(), image.width(), 4)
-        image = np.delete(image, np.s_[-1:], axis=2)
-
-        return image
-    
-    def npArrayToQImage(self, image: np.ndarray) -> QImage:
-        """
-        Convert an ndarray with dimensions (height, width, channels) back
-        into a QImage.
-        """
-        padding = [[0, 0], [0, 0], [0, 1]]
-        image = tf.pad(image, padding, constant_values=255).numpy()
-        buffer = image.astype(np.uint8).tobytes()
-        image = QImage(buffer, image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
-
-        return image
-
-    @Slot()
-    def run(self) -> None:
-        """
-        Convert the video frame to an image, analyze it and emit a signal with
-        the processed image.
-        """
-        image = self.videoFrame.toImage()
-
-        if self.displayOptions.mirror:
-            image = image.mirrored(horizontally=True, vertically=False)
-        
-        result = self.model.detect(self.qImageToNpArray(image))
-        image = result.toImage(displayOptions=self.displayOptions)
-
-        if self.recorder is not None:
-            self.recorder.addFrame(image)
-
-        self.frameReady.emit(self.npArrayToQImage(image))
-
-
 class PoseTracker(QObject):
     """
     The Tracker that sets up the camera and analyzes frames as they come.
@@ -190,12 +115,8 @@ class PoseTracker(QObject):
     displayOptions: DisplayOptions
     model: PoseModel
 
-    camera: Optional[QCamera]
-    cameraSession: QMediaCaptureSession
-    videoSink: QVideoSink
-    framesInProcessing: int
-
     recorder: Optional[VideoRecorder]
+    videoSource: Optional[VideoSource]
 
     frameRateTimer: QTimer
     frameCount: int
@@ -211,12 +132,6 @@ class PoseTracker(QObject):
         self.threadpool = QThreadPool()
         self.framesInProcessing = 0
 
-        self.cameraSession = QMediaCaptureSession()
-        self.videoSink = QVideoSink()
-        self.videoSink.videoFrameChanged.connect(self.processVideoFrame)
-        self.cameraSession.setVideoSink(self.videoSink)
-        self.camera = None
-
         self.frameRateTimer = QTimer()
         self.frameRateTimer.setInterval(1000)
         self.frameRateTimer.timeout.connect(self.onFrameRateUpdate)
@@ -225,29 +140,9 @@ class PoseTracker(QObject):
         self.frameCount = 0
         self.lastFrameRate = 0
         self.recorder = None
+        self.videoSource = None
 
-
-    @Slot(QVideoFrame)
-    def processVideoFrame(self, videoFrame: QVideoFrame) -> None:
-        """
-        Process a video frame if there are less than the maximum number of
-        frames in processing. Otherwise, drop it.
-        """
-        if self.framesInProcessing >= MAX_FRAMES_IN_PROCESSING: return
-        self.framesInProcessing += 1
-        processor = VideoFrameProcessor(self.model, self.displayOptions, videoFrame, self.recorder)
-        processor.frameReady.connect(self.onFrameReady)
-        self.threadpool.start(processor)
-
-    @Slot(QCamera)
-    def setCamera(self, camera: QCamera) -> None:
-        """
-        Change the camera to the given camera
-        """
-        camera.start()
-        self.cameraSession.setCamera(camera)
-        if self.camera is not None: self.camera.stop()
-        self.camera = camera
+        self.pollNextFrame()
 
     @Slot()
     def onSkeletonToggled(self) -> None:
@@ -277,14 +172,33 @@ class PoseTracker(QObject):
         """
         self.displayOptions.confidenceThreshold = v / 100
 
+    def processNextFrame(self) -> None:
+        if self.videoSource is None:
+            self.pollNextFrame()
+        
+        nextFrame = self.videoSource.nextFrame()
+        if nextFrame is not None:
+            processor = VideoFrameProcessor(self.model,
+                                            self.displayOptions, 
+                                            nextFrame,
+                                            self.recorder)
+            processor.frameReady.connect(self.onFrameReady)
+            self.threadpool.start(processor)
+        else:
+            self.pollNextFrame()
+
+    def pollNextFrame(self) -> None:
+        QTimer.singleShot(30, self.processNextFrame)
+
     @Slot(QImage)
-    def onFrameReady(self, image: QImage) -> None:
+    def onFrameReady(self, image: Optional[QImage]) -> None:
         """
         Funnel through the image once it is reaady.
         """
-        self.framesInProcessing -= 1
-        self.frameCount += 1
-        self.frameReady.emit(image)
+        if image is not None:
+            self.frameCount += 1
+            self.frameReady.emit(image)
+        self.processNextFrame()
 
     @Slot()
     def onFrameRateUpdate(self) -> None:
@@ -315,6 +229,9 @@ class PoseTracker(QObject):
         self.recorder.close()
         self.recorder = None
         self.recordingToggle.emit()
+
+    def setVideoSource(self, videoSource: VideoSource):
+        self.videoSource = videoSource
 
 
 class PoseTrackerWidget(QWidget):
@@ -411,13 +328,14 @@ class PoseTrackerWidget(QWidget):
         else:
             self.recorderToggleButton.setText("Start Recording")
 
+    def setQVideoSource(self, videoSource: QVideoSource) -> None:
+        self.cameraSelector.selected.connect(videoSource.setCamera)
 
     def setPoseTracker(self, poseTracker: PoseTracker) -> None:
         """
         Set the pose tracker by connectin all slots and signals between the
         pose tracker and this widget.
         """
-        self.cameraSelector.selected.connect(poseTracker.setCamera)
         self.skeletonButton.toggled.connect(poseTracker.onSkeletonToggled)
         self.mirrorButton.toggled.connect(poseTracker.onMirrorToggled)
         self.markerRadiusSlider.valueChanged.connect(poseTracker.onMarkerRadiusChanged)
