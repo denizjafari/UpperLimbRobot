@@ -1,13 +1,11 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, \
     QCheckBox, QRadioButton, QLabel, QSlider, QPushButton
-from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices, \
-    QMediaCaptureSession, QVideoSink, QVideoFrame
-from PySide6.QtCore import Qt, Signal, Slot, QRunnable, QObject, QThreadPool, QTimer
+from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
+from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-from pose_estimation.video import CVVideoRecorder, QVideoSource, VideoFrameProcessor, VideoRecorder, VideoSource
-
-import numpy as np
+from pose_estimation.video import CVVideoRecorder, QVideoSource, \
+    VideoFrameProcessor, VideoRecorder, VideoSource
 
 from pose_estimation.Models import PoseModel, DisplayOptions
 
