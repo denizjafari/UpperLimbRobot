@@ -1,3 +1,4 @@
+from PySide6.QtCore import QRunnable, QObject, Signal, Slot
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -119,7 +120,7 @@ class PoseModel:
         image - the image to analyze.
         """
         raise NotImplementedError
-
+    
 
 class MoveNetLightning(PoseModel):
     """
@@ -150,6 +151,9 @@ class MoveNetLightning(PoseModel):
         image = tf.squeeze(image).numpy()
 
         return DetectionResult(image, output)
+    
+    def __str__(self) -> str:
+        return "MoveNet (Lightning)"
     
 
 class MoveNetThunder(PoseModel):
@@ -182,6 +186,9 @@ class MoveNetThunder(PoseModel):
 
         return DetectionResult(image, output)
     
+    def __str__(self) -> str:
+        return "MoveNet (Thunder)"
+    
 
 class BlazePose(PoseModel):
     """
@@ -213,3 +220,43 @@ class BlazePose(PoseModel):
             result = []
 
         return DetectionResult(image, result)
+    
+    def __str__(self) -> str:
+        return "BlazePose"
+    
+class FeedThroughModel(PoseModel):
+    def detect(self, image: np.ndarray) -> DetectionResult:
+        """
+        Do nothing and return the input as the result
+        """
+        return DetectionResult(image, [])
+    
+    def __str__(self) -> str:
+        return "None"
+    
+
+class ModelLoader(QRunnable, QObject):
+    """
+    A class that can instantiate a single model.
+
+    modelReady - signal that is sent when the model is ready
+    modelClass - the class of the model that should be instantiated
+    """
+    modelReady = Signal(PoseModel)
+    modelClass: type
+
+    def __init__(self, modelClass: type) -> None:
+        """
+        Initialize the loader with the model class to load.
+        """
+        QRunnable.__init__(self)
+        QObject.__init__(self)
+
+        self.modelClass = modelClass
+
+    @Slot()
+    def run(self) -> None:
+        """
+        Instantiate the model and emit the result.
+        """
+        self.modelReady.emit(self.modelClass())

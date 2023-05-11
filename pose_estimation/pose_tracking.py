@@ -7,7 +7,8 @@ from PySide6.QtGui import QPixmap, QImage
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource
 
-from pose_estimation.Models import PoseModel, DisplayOptions
+from pose_estimation.Models import BlazePose, FeedThroughModel, ModelLoader, \
+    MoveNetLightning, MoveNetThunder, PoseModel, DisplayOptions
 
 
 # The frame dimensions and rate for which a suitable format is selected.
@@ -90,6 +91,61 @@ class CameraSelector(QWidget):
             button.selected.connect(self.selected)
             layout.addWidget(button)
 
+class ModelSelectorButton(QRadioButton):
+    """
+    A Radio button that allows selection of one model.
+    """
+    model: PoseModel
+    selected = Signal(PoseModel)
+
+    def __init__(self, model: PoseModel) -> None:
+        """
+        Initialize the selector for a given pose model.
+        """
+        QRadioButton.__init__(self, str(model))
+
+        self.model = model
+        self.toggled.connect(self.slotSelected)
+
+    @Slot()
+    def slotSelected(self) -> None:
+        """
+        Propagate the signal if the model has been selected.
+        """
+        if self.isChecked():
+            self.selected.emit(self.model)
+
+class ModelSelector(QWidget):
+    """
+    A selector that can select all available models.
+    """
+    modelSelected = Signal(PoseModel)
+    threadPool: QThreadPool
+
+    def __init__(self) -> None:
+        """
+        Initialize the selector
+        """
+        QWidget.__init__(self)
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.threadPool = QThreadPool()
+
+        models = [FeedThroughModel, MoveNetLightning, MoveNetThunder, BlazePose]
+
+        for modelClass in models:
+            @Slot(PoseModel)
+            def slot(model: PoseModel):
+                button = ModelSelectorButton(model)
+                button.selected.connect(self.modelSelected)
+                layout.addWidget(button)
+
+            loader = ModelLoader(modelClass)
+            loader.modelReady.connect(slot)
+            self.threadPool.start(loader)
+
 
 class PoseTracker(QObject):
     """
@@ -140,6 +196,8 @@ class PoseTracker(QObject):
         self.recorder = None
         self.videoSource = None
 
+        self.model = FeedThroughModel()
+
         self.pollNextFrame()
 
     @Slot()
@@ -171,6 +229,9 @@ class PoseTracker(QObject):
         self.displayOptions.confidenceThreshold = v / 100
 
     def processNextFrame(self) -> None:
+        """
+        Process the next available frame.
+        """
         if self.videoSource is None:
             self.pollNextFrame()
         
@@ -186,6 +247,10 @@ class PoseTracker(QObject):
             self.pollNextFrame()
 
     def pollNextFrame(self) -> None:
+        """
+        Wait 30ms and try again to see whether the next frame is available.
+        TODO: Switch back from ugly polling to proper signal handling.
+        """
         QTimer.singleShot(30, self.processNextFrame)
 
     @Slot(QImage)
@@ -200,6 +265,10 @@ class PoseTracker(QObject):
 
     @Slot()
     def onFrameRateUpdate(self) -> None:
+        """
+        Signal the new frame rate after a frame rate determination frame (1s)
+        has passed.
+        """
         self.frameRateUpdate.emit(self.frameCount)
         self.lastFrameRate = self.frameCount
         self.frameCount = 0
@@ -211,9 +280,16 @@ class PoseTracker(QObject):
         self.model = model
 
     def isRecording(self) -> bool:
+        """
+        Check whether a recording is in process.
+        """
         return self.recorder is not None
 
     def startRecording(self) -> None:
+        """
+        Start a recording. If there is already a recording in process,
+        do nothing.
+        """
         if self.isRecording():
             return
         
@@ -221,6 +297,9 @@ class PoseTracker(QObject):
         self.recordingToggle.emit()
 
     def endRecording(self) -> None:
+        """
+        End a recording. If there is no recording in process, do nothing.
+        """
         if not self.isRecording():
             return
         
@@ -229,6 +308,9 @@ class PoseTracker(QObject):
         self.recordingToggle.emit()
 
     def setVideoSource(self, videoSource: VideoSource):
+        """
+        Set the source of the video stream.
+        """
         self.videoSource = videoSource
 
 
@@ -266,6 +348,9 @@ class PoseTrackerWidget(QWidget):
 
         self.cameraSelector = CameraSelector()
         layout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.modelSelector = ModelSelector()
+        layout.addWidget(self.modelSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.skeletonButton = QCheckBox("Show Skeleton")
         layout.addWidget(self.skeletonButton, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -305,12 +390,18 @@ class PoseTrackerWidget(QWidget):
 
     @Slot(int)
     def updateFrameRate(self, frameRate: int):
+        """
+        Updat the frame rate that is displayed in the UI.
+        """
         self.frameRate = frameRate
         self.frameRateLabel.setText(f"FPS: {frameRate}")
 
     
     @Slot()
     def toggleRecording(self) -> None:
+        """
+        Start or stop the recording.
+        """
         if self.poseTracker is None: return
         
         if self.poseTracker.isRecording():
@@ -320,6 +411,10 @@ class PoseTrackerWidget(QWidget):
 
     @Slot()
     def onRecordingToggled(self) -> None:
+        """
+        Update the UI after the recording has been toggled from start to stop
+        or vice versa.
+        """
         if self.poseTracker is None: return
         if self.poseTracker.isRecording():
             self.recorderToggleButton.setText("Stop Recording")
@@ -327,6 +422,10 @@ class PoseTrackerWidget(QWidget):
             self.recorderToggleButton.setText("Start Recording")
 
     def setQVideoSource(self, videoSource: QVideoSource) -> None:
+        """
+        Set the Qt video source if there is one, since this window
+        has controls to select the camera.
+        """
         self.cameraSelector.selected.connect(videoSource.setCamera)
 
     def setPoseTracker(self, poseTracker: PoseTracker) -> None:
@@ -338,6 +437,7 @@ class PoseTrackerWidget(QWidget):
         self.mirrorButton.toggled.connect(poseTracker.onMirrorToggled)
         self.markerRadiusSlider.valueChanged.connect(poseTracker.onMarkerRadiusChanged)
         self.confidenceSlider.valueChanged.connect(poseTracker.onConfidenceChanged)
+        self.modelSelector.modelSelected.connect(poseTracker.setModel)
 
         poseTracker.recordingToggle.connect(self.onRecordingToggled)
         poseTracker.recordingToggle.connect(self.onRecordingToggled)
