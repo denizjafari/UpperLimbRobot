@@ -1,10 +1,12 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, \
-    QCheckBox, QRadioButton, QLabel, QSlider
+    QCheckBox, QRadioButton, QLabel, QSlider, QPushButton
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices, \
     QMediaCaptureSession, QVideoSink, QVideoFrame
 from PySide6.QtCore import Qt, Signal, Slot, QRunnable, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
+import tensorflow as tf
+from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 import numpy as np
 
@@ -106,11 +108,13 @@ class VideoFrameProcessor(QRunnable, QObject):
     model: PoseModel
     displayOptions: DisplayOptions
     videoFrame: QVideoFrame
+    recorder: VideoRecorder
 
     def __init__(self,
                  model: PoseModel,
                  displayOptions: DisplayOptions,
-                 videoFrame: QVideoFrame) -> None:
+                 videoFrame: QVideoFrame,
+                 recorder: Optional[VideoRecorder] = None) -> None:
         """
         Initialize the runner.
         """
@@ -120,6 +124,7 @@ class VideoFrameProcessor(QRunnable, QObject):
         self.displayOptions = displayOptions
         self.videoFrame = videoFrame
         self.model = model
+        self.recorder = recorder
 
     def qImageToNpArray(self, image: QImage) -> np.ndarray:
         """
@@ -136,6 +141,8 @@ class VideoFrameProcessor(QRunnable, QObject):
         Convert an ndarray with dimensions (height, width, channels) back
         into a QImage.
         """
+        padding = [[0, 0], [0, 0], [0, 1]]
+        image = tf.pad(image, padding, constant_values=255).numpy()
         buffer = image.astype(np.uint8).tobytes()
         image = QImage(buffer, image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
 
@@ -154,6 +161,9 @@ class VideoFrameProcessor(QRunnable, QObject):
         
         result = self.model.detect(self.qImageToNpArray(image))
         image = result.toImage(displayOptions=self.displayOptions)
+
+        if self.recorder is not None:
+            self.recorder.addFrame(image)
 
         self.frameReady.emit(self.npArrayToQImage(image))
 
@@ -175,6 +185,7 @@ class PoseTracker(QObject):
     """
     frameReady = Signal(QImage)
     frameRateUpdate = Signal(int)
+    recordingToggle = Signal()
 
     displayOptions: DisplayOptions
     model: PoseModel
@@ -184,8 +195,11 @@ class PoseTracker(QObject):
     videoSink: QVideoSink
     framesInProcessing: int
 
+    recorder: Optional[VideoRecorder]
+
     frameRateTimer: QTimer
     frameCount: int
+    lastFrameRate: int
 
 
     def __init__(self) -> None:
@@ -209,6 +223,8 @@ class PoseTracker(QObject):
         self.frameRateTimer.start()
 
         self.frameCount = 0
+        self.lastFrameRate = 0
+        self.recorder = None
 
 
     @Slot(QVideoFrame)
@@ -219,7 +235,7 @@ class PoseTracker(QObject):
         """
         if self.framesInProcessing >= MAX_FRAMES_IN_PROCESSING: return
         self.framesInProcessing += 1
-        processor = VideoFrameProcessor(self.model, self.displayOptions, videoFrame)
+        processor = VideoFrameProcessor(self.model, self.displayOptions, videoFrame, self.recorder)
         processor.frameReady.connect(self.onFrameReady)
         self.threadpool.start(processor)
 
@@ -273,6 +289,7 @@ class PoseTracker(QObject):
     @Slot()
     def onFrameRateUpdate(self) -> None:
         self.frameRateUpdate.emit(self.frameCount)
+        self.lastFrameRate = self.frameCount
         self.frameCount = 0
 
     def setModel(self, model: PoseModel) -> None:
@@ -280,6 +297,24 @@ class PoseTracker(QObject):
         Set the model to use for detection.
         """
         self.model = model
+
+    def isRecording(self) -> bool:
+        return self.recorder is not None
+
+    def startRecording(self) -> None:
+        if self.isRecording():
+            return
+        
+        self.recorder = CVVideoRecorder(self.lastFrameRate, 640, 640)
+        self.recordingToggle.emit()
+
+    def endRecording(self) -> None:
+        if not self.isRecording():
+            return
+        
+        self.recorder.close()
+        self.recorder = None
+        self.recordingToggle.emit()
 
 
 class PoseTrackerWidget(QWidget):
@@ -292,11 +327,12 @@ class PoseTrackerWidget(QWidget):
     displayLabel - the label on which to draw the frames.
     cameraSelector - the camera selector.
     """
-    poseTracker: PoseTracker
+    poseTracker: Optional[PoseTracker]
     skeletonButton: QCheckBox
     mirrorButton: QCheckBox
     displayLabel: QLabel    
     cameraSelector: CameraSelector
+    frameRate: int
 
     def __init__(self) -> None:
         """
@@ -336,6 +372,14 @@ class PoseTrackerWidget(QWidget):
         self.confidenceSlider.setTickInterval(5)
         layout.addWidget(self.confidenceSlider, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        self.recorder = None
+        self.recorderToggleButton = QPushButton("Start Recording")
+        self.recorderToggleButton.clicked.connect(self.toggleRecording)
+        layout.addWidget(self.recorderToggleButton, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.poseTracker = None
+
+
     @Slot(QImage)
     def setVideoFrame(self, image: QImage) -> None:
         """
@@ -346,7 +390,27 @@ class PoseTrackerWidget(QWidget):
 
     @Slot(int)
     def updateFrameRate(self, frameRate: int):
+        self.frameRate = frameRate
         self.frameRateLabel.setText(f"FPS: {frameRate}")
+
+    
+    @Slot()
+    def toggleRecording(self) -> None:
+        if self.poseTracker is None: return
+        
+        if self.poseTracker.isRecording():
+            self.poseTracker.endRecording()
+        else:
+            self.poseTracker.startRecording()
+
+    @Slot()
+    def onRecordingToggled(self) -> None:
+        if self.poseTracker is None: return
+        if self.poseTracker.isRecording():
+            self.recorderToggleButton.setText("Stop Recording")
+        else:
+            self.recorderToggleButton.setText("Start Recording")
+
 
     def setPoseTracker(self, poseTracker: PoseTracker) -> None:
         """
@@ -358,5 +422,10 @@ class PoseTrackerWidget(QWidget):
         self.mirrorButton.toggled.connect(poseTracker.onMirrorToggled)
         self.markerRadiusSlider.valueChanged.connect(poseTracker.onMarkerRadiusChanged)
         self.confidenceSlider.valueChanged.connect(poseTracker.onConfidenceChanged)
+
+        poseTracker.recordingToggle.connect(self.onRecordingToggled)
+        poseTracker.recordingToggle.connect(self.onRecordingToggled)
         poseTracker.frameReady.connect(self.setVideoFrame)
         poseTracker.frameRateUpdate.connect(self.updateFrameRate)
+
+        self.poseTracker = poseTracker

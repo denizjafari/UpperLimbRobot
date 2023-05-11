@@ -95,9 +95,7 @@ class DetectionResult:
         both dimenstions are as big as the bigger one of the original image.
         """
         image_size = 640
-        image = tf.image.resize(self.image, tf.constant([image_size, image_size]))
-        padding = [[0, 0], [0, 0], [0, 1]]
-        image = tf.pad(image, padding, constant_values=255).numpy()
+        image = tf.image.resize(self.image, tf.constant([image_size, image_size])).numpy()
 
         if displayOptions.showSkeleton:
             self.draw_keypoints(image,
