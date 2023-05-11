@@ -94,13 +94,16 @@ class DetectionResult:
         Transform the internal representation image_arr into a QImage sucb that
         both dimenstions are as big as the bigger one of the original image.
         """
-        image_size = 640
+        image_size = 640 # TODO adjust this dynamically
         image = tf.image.resize(self.image, tf.constant([image_size, image_size])).numpy()
 
         if displayOptions.showSkeleton:
             self.draw_keypoints(image,
                                 markerRadius=displayOptions.markerRadius,
                                 confidenceThreshold=displayOptions.confidenceThreshold)
+        if displayOptions.mirror:
+            image = tf.image.flip_left_right(image)
+
         return image
 
 
