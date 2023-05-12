@@ -4,6 +4,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import mediapipe.python.solutions.pose as mp_pose
 from PySide6.QtGui import QImage
+import cv2
 
 # The default radius used to draw a marker
 MARKER_RADIUS = 3
@@ -82,13 +83,7 @@ class DetectionResult:
                 continue # Don't draw markers with low confidence values
             x = round(keypoint[0] * width)
             y = round(keypoint[1] * height)
-            for xdiff in range(-markerRadius, markerRadius):
-                for ydiff in range(-markerRadius, markerRadius):
-                    if 0 <= x+xdiff < width and 0 <= y+ydiff < height:
-                        arr[x+xdiff, y+ydiff, 0] = 255
-                        arr[x+xdiff, y+ydiff, 1] = 255
-                        arr[x+xdiff, y+ydiff, 2] = 255
-
+            cv2.circle(arr, (y, x), markerRadius, color=(255, 255, 255), thickness=-1)
 
     def toImage(self, displayOptions=DisplayOptions()) -> np.ndarray:
         """
@@ -112,7 +107,7 @@ class PoseModel:
     """
     Abstract class to allow models to be exchanged easily.
     """
-    def detect(self, image: QImage) -> DetectionResult:
+    def detect(self, image: np.ndarray) -> DetectionResult:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
