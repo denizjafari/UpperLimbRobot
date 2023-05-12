@@ -4,11 +4,12 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, \
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
+from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, ImageMirror
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
-    VideoFrameProcessor, VideoRecorder, VideoSource
+    VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
 from pose_estimation.Models import BlazePose, FeedThroughModel, ModelLoader, \
-    MoveNetLightning, MoveNetThunder, PoseModel, DisplayOptions
+    MoveNetLightning, MoveNetThunder, PoseModel
 
 
 # The frame dimensions and rate for which a suitable format is selected.
@@ -166,8 +167,11 @@ class PoseTracker(QObject):
     frameRateUpdate = Signal(int)
     recordingToggle = Signal()
 
-    displayOptions: DisplayOptions
     model: PoseModel
+
+    keypointFilter: LandmarkConfidenceFilter
+    keypointTransformer: LandmarkDrawer
+    mirrorTransformer: ImageMirror
 
     recorder: Optional[VideoRecorder]
     videoSource: Optional[VideoSource]
@@ -182,7 +186,10 @@ class PoseTracker(QObject):
         Initialize the pose tracker.
         """
         QObject.__init__(self)
-        self.displayOptions = DisplayOptions()
+        self.keypointFilter = LandmarkConfidenceFilter()
+        self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
+        self.mirrorTransformer = ImageMirror(self.keypointTransformer)
+
         self.threadpool = QThreadPool()
         self.framesInProcessing = 0
 
@@ -205,28 +212,28 @@ class PoseTracker(QObject):
         """
         Toggle viewing the landmarks.
         """
-        self.displayOptions.showSkeleton = not self.displayOptions.showSkeleton
+        self.keypointTransformer.isActive = not self.keypointTransformer.isActive
 
     @Slot()
     def onMirrorToggled(self) -> None:
         """
         Toggle mirroring the frame.
         """
-        self.displayOptions.mirror = not self.displayOptions.mirror
+        self.mirrorTransformer.isActive = not self.mirrorTransformer.isActive
 
     @Slot(int)
     def onMarkerRadiusChanged(self, v) -> None:
         """
         Update the marker radius for the landmarks.
         """
-        self.displayOptions.markerRadius = v
+        self.keypointTransformer.markerRadius = v
 
     @Slot(int)
     def onConfidenceChanged(self, v) -> None:
         """
         Update the confidence threshold for landmarks.
         """
-        self.displayOptions.confidenceThreshold = v / 100
+        self.keypointFilter.confidenceThreshold = v / 100
 
     def processNextFrame(self) -> None:
         """
@@ -238,10 +245,14 @@ class PoseTracker(QObject):
         nextFrame = self.videoSource.nextFrame()
         if nextFrame is not None:
             processor = VideoFrameProcessor(self.model,
-                                            self.displayOptions, 
-                                            nextFrame,
-                                            self.recorder)
-            processor.frameReady.connect(self.onFrameReady)
+                                            self.keypointFilter, 
+                                            nextFrame)
+            processor.frameReady.connect(lambda image, _:
+                                         self.onFrameReady(npArrayToQImage(image)))
+            if self.recorder is not None:
+                processor.frameReady.connect(lambda image, _:
+                                             self.recorder.addFrame(image))
+
             self.threadpool.start(processor)
         else:
             self.pollNextFrame()
@@ -254,7 +265,7 @@ class PoseTracker(QObject):
         QTimer.singleShot(30, self.processNextFrame)
 
     @Slot(QImage)
-    def onFrameReady(self, image: Optional[QImage]) -> None:
+    def onFrameReady(self, image: QImage) -> None:
         """
         Funnel through the image once it is reaady.
         """

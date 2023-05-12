@@ -9,7 +9,8 @@ from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QVideoSink, QVid
 from PySide6.QtGui import QImage
 from PySide6.QtCore import Signal, Slot, QRunnable, QObject
 
-from pose_estimation.Models import DisplayOptions, PoseModel
+from pose_estimation.Models import PoseModel
+from pose_estimation.transforms import Transformer
 
 
 def qImageToNpArray(image: QImage) -> np.ndarray:
@@ -45,27 +46,25 @@ class VideoFrameProcessor(QRunnable, QObject):
     displayOptions - the display options to use.
     videoFrame - the video frame from the video sink.
     """
-    frameReady = Signal(QImage)
+    frameReady = Signal(np.ndarray, np.ndarray)
     model: PoseModel
-    displayOptions: DisplayOptions
+    transformer: Transformer
     videoFrame: np.ndarray
     recorder: VideoRecorder
 
     def __init__(self,
                  model: PoseModel,
-                 displayOptions: DisplayOptions,
-                 videoFrame: np.ndarray,
-                 recorder: Optional[VideoRecorder] = None) -> None:
+                 transformer: Transformer,
+                 videoFrame: np.ndarray) -> None:
         """
         Initialize the runner.
         """
         QRunnable.__init__(self)
         QObject.__init__(self)
 
-        self.displayOptions = displayOptions
+        self.transformer = transformer
         self.videoFrame = videoFrame
         self.model = model
-        self.recorder = recorder
 
     @Slot()
     def run(self) -> None:
@@ -73,14 +72,10 @@ class VideoFrameProcessor(QRunnable, QObject):
         Convert the video frame to an image, analyze it and emit a signal with
         the processed image.
         """
-        result = self.model.detect(self.videoFrame)
-        image = result.toImage(displayOptions=self.displayOptions)
+        image, keypoints = self.model.detect(self.videoFrame)
+        image, keypoints = self.transformer.transform(image, keypoints)
 
-        if self.recorder is not None:
-            self.recorder.addFrame(image)
-
-        self.frameReady.emit(npArrayToQImage(image))
-
+        self.frameReady.emit(image, keypoints)
 
 class VideoSource:
     """
