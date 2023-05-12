@@ -119,3 +119,29 @@ class LandmarkDrawer(Transformer):
 
         return self.next(image, keypoints)
     
+class Scaler(Transformer):
+    """
+    Scales the image up.
+    """
+    isActive: bool
+    targetWidth: int
+    targetHeight: int
+
+    def __init__(self,
+                 width: int,
+                 height: int,
+                 previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, True, previous)
+
+        self.targetWidth = width
+        self.targetHeight = height
+
+    def transform(self, image: np.ndarray, keypoints: list[list[float]]) -> tuple[np.ndarray, list[list[float]]]:
+        """
+        Transform the image by scaling it up to the target dimensions.
+        """
+        if self.isActive:
+            image = cv2.resize(image, (self.targetWidth, self.targetHeight), interpolation=cv2.INTER_NEAREST)
+
+        return self.next(image, keypoints)
+    

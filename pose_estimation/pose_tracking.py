@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, \
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, ImageMirror
+from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, ImageMirror, Scaler
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
@@ -169,6 +169,7 @@ class PoseTracker(QObject):
 
     model: PoseModel
 
+    scaleTransformer: Scaler
     keypointFilter: LandmarkConfidenceFilter
     keypointTransformer: LandmarkDrawer
     mirrorTransformer: ImageMirror
@@ -186,7 +187,8 @@ class PoseTracker(QObject):
         Initialize the pose tracker.
         """
         QObject.__init__(self)
-        self.mirrorTransformer = ImageMirror()
+        self.scaleTransformer = Scaler(640, 640)
+        self.mirrorTransformer = ImageMirror(self.scaleTransformer)
         self.keypointFilter = LandmarkConfidenceFilter(self.mirrorTransformer)
         self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
 
@@ -245,7 +247,7 @@ class PoseTracker(QObject):
         nextFrame = self.videoSource.nextFrame()
         if nextFrame is not None:
             processor = VideoFrameProcessor(self.model,
-                                            self.mirrorTransformer, 
+                                            self.scaleTransformer, 
                                             nextFrame)
             processor.frameReady.connect(lambda image, _:
                                          self.onFrameReady(npArrayToQImage(image)))
