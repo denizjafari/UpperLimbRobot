@@ -113,7 +113,7 @@ class BlazePose(PoseModel):
 
         if output is not None:
             output = output.landmark
-            result = [(output[i].y, output[i].x, output[i].visibility) for i in range(33)]
+            result = [[output[i].y, output[i].x, output[i].visibility] for i in range(33)]
         else:
             result = []
 

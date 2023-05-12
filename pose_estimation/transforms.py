@@ -58,7 +58,10 @@ class ImageMirror(Transformer):
         """
         Transform the image by flipping it.
         """
-        if self.isActive: image = cv2.flip(image, 1)
+        if self.isActive:
+            image = cv2.flip(image, 1)
+            for keypoint in keypoints:
+                keypoint[1] = 1.0 - keypoint[1]
         return self.next(image, keypoints)
     
 class LandmarkConfidenceFilter(Transformer):

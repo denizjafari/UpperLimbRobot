@@ -186,9 +186,9 @@ class PoseTracker(QObject):
         Initialize the pose tracker.
         """
         QObject.__init__(self)
-        self.keypointFilter = LandmarkConfidenceFilter()
+        self.mirrorTransformer = ImageMirror()
+        self.keypointFilter = LandmarkConfidenceFilter(self.mirrorTransformer)
         self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
-        self.mirrorTransformer = ImageMirror(self.keypointTransformer)
 
         self.threadpool = QThreadPool()
         self.framesInProcessing = 0
@@ -245,7 +245,7 @@ class PoseTracker(QObject):
         nextFrame = self.videoSource.nextFrame()
         if nextFrame is not None:
             processor = VideoFrameProcessor(self.model,
-                                            self.keypointFilter, 
+                                            self.mirrorTransformer, 
                                             nextFrame)
             processor.frameReady.connect(lambda image, _:
                                          self.onFrameReady(npArrayToQImage(image)))
