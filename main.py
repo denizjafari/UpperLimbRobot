@@ -1,9 +1,9 @@
 import sys
 from PySide6.QtWidgets import QApplication, QTabWidget
 from PySide6.QtCore import Qt
-from pose_estimation.Models import BlazePose, FeedThroughModel, MoveNetLightning, MoveNetThunder
+from pose_estimation.pose_reprocessing import PoseReprocessingWidget
 from pose_estimation.pose_tracking import PoseTrackerWidget, PoseTracker
-from pose_estimation.video import CVVideoSource, QVideoSource
+from pose_estimation.video import QVideoSource
 
 
 if __name__ == "__main__":
@@ -17,7 +17,10 @@ if __name__ == "__main__":
     poseWindow.setQVideoSource(videoSource)
     poseTracker.setVideoSource(videoSource)
     poseWindow.setPoseTracker(poseTracker)
-    window.addTab(poseWindow, "Pose Estimation")
+    window.addTab(poseWindow, "Pose Tracking")
+
+    reprocessWindow = PoseReprocessingWidget()
+    window.addTab(reprocessWindow, "Pose Reprocessing")
 
     window.setWindowState(Qt.WindowState.WindowMaximized)
     window.show()

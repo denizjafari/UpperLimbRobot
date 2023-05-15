@@ -1,151 +1,14 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, \
-    QCheckBox, QRadioButton, QLabel, QSlider, QPushButton
-from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
+    QCheckBox, QLabel, QSlider, QPushButton
 from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
 from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, ImageMirror, Scaler
+from pose_estimation.ui_utils import CameraSelector, ModelSelector
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
-from pose_estimation.Models import BlazePose, FeedThroughModel, ModelLoader, \
-    MoveNetLightning, MoveNetThunder, PoseModel
-
-
-# The frame dimensions and rate for which a suitable format is selected.
-TARGET_FRAME_WIDTH = 296
-TARGET_FRAME_HEIGHT = 296
-TARGET_FRAME_RATE = 25
-
-# The number of frames that should be allowed to processed at each point in time.
-# Higher numbers allow for a smoother display, while additional lag is induced.
-MAX_FRAMES_IN_PROCESSING = 1
-
-
-class CameraSelectorButton(QRadioButton):
-    """
-    A Radio button that allows selection of one camera.
-    """
-    cameraDevice: QCameraDevice
-    selected = Signal(QCamera)
-
-    def __init__(self, device: QCameraDevice) -> None:
-        """
-        Initialize the selector for a given camera device.
-        """
-        QRadioButton.__init__(self, device.description())
-        self.cameraDevice = device
-
-        self.toggled.connect(self.slotSelected)
-        
-    @Slot(bool)
-    def slotSelected(self, isChecked) -> None:
-        """
-        Pepare the camera for recording by selecting an appropriate
-        format and issue a 'selected' signal.
-        """
-        if isChecked:
-            camera = QCamera(self.cameraDevice)
-            formats = self.cameraDevice.videoFormats()
-            formats.sort(key=lambda f: f.resolution().height())
-            formats.sort(key=lambda f: f.resolution().width())
-            formats.sort(key=lambda f: f.maxFrameRate())
-
-            usable_formats = [f for f in formats
-                              if f.resolution().width() >= TARGET_FRAME_WIDTH
-                              and f.resolution().height() >= TARGET_FRAME_HEIGHT
-                              and f.maxFrameRate() >= TARGET_FRAME_RATE]
-            if len(usable_formats) == 0:
-                print("No suitable video format exists")
-            else:
-                format = usable_formats[0]
-                print(f"Recording in {format.resolution().width()}x{format.resolution().height()}@{format.maxFrameRate()}")
-                camera.setCameraFormat(format)
-
-            self.selected.emit(camera)
-
-
-class CameraSelector(QWidget):
-    """
-    A group of radio buttons to select a camera from the inputs.
-    """
-    selected = Signal(QCamera)
-
-    def __init__(self) -> None:
-        """
-        Intitialize the selector and update the list of cameras.
-        """
-        QWidget.__init__(self)
-        self.updateCameraDevices()
-
-
-    def updateCameraDevices(self) -> None:
-        """
-        Update the list of available cameras and add radio buttons.
-        """
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-
-        cameraDevices = QMediaDevices.videoInputs()
-        for camera in cameraDevices:
-            button = CameraSelectorButton(camera)
-            button.selected.connect(self.selected)
-            layout.addWidget(button)
-
-class ModelSelectorButton(QRadioButton):
-    """
-    A Radio button that allows selection of one model.
-    """
-    model: PoseModel
-    selected = Signal(PoseModel)
-
-    def __init__(self, model: PoseModel) -> None:
-        """
-        Initialize the selector for a given pose model.
-        """
-        QRadioButton.__init__(self, str(model))
-
-        self.model = model
-        self.toggled.connect(self.slotSelected)
-
-    @Slot()
-    def slotSelected(self) -> None:
-        """
-        Propagate the signal if the model has been selected.
-        """
-        if self.isChecked():
-            self.selected.emit(self.model)
-
-class ModelSelector(QWidget):
-    """
-    A selector that can select all available models.
-    """
-    modelSelected = Signal(PoseModel)
-    threadPool: QThreadPool
-
-    def __init__(self) -> None:
-        """
-        Initialize the selector
-        """
-        QWidget.__init__(self)
-
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-
-        self.threadPool = QThreadPool()
-
-        models = [FeedThroughModel, MoveNetLightning, MoveNetThunder, BlazePose]
-
-        for modelClass in models:
-            @Slot(PoseModel)
-            def slot(model: PoseModel):
-                button = ModelSelectorButton(model)
-                button.selected.connect(self.modelSelected)
-                layout.addWidget(button)
-
-            loader = ModelLoader(modelClass)
-            loader.modelReady.connect(slot)
-            self.threadPool.start(loader)
+from pose_estimation.Models import FeedThroughModel, PoseModel
 
 
 class PoseTracker(QObject):
@@ -251,9 +114,9 @@ class PoseTracker(QObject):
                                             nextFrame)
             processor.frameReady.connect(lambda image, _:
                                          self.onFrameReady(npArrayToQImage(image)))
-            if self.recorder is not None:
-                processor.frameReady.connect(lambda image, _:
-                                             self.recorder.addFrame(image))
+            processor.frameReady.connect(lambda image, _:
+                                         self.recorder.addFrame(image)
+                                         if self.recorder is not None else None)
 
             self.threadpool.start(processor)
         else:

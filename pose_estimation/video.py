@@ -102,11 +102,32 @@ class CVVideoSource(VideoSource):
         """
         self.videoCapture = cv2.VideoCapture(0)
 
-    def nextFrame(self) -> None:
+    def nextFrame(self) -> np.ndarray:
         """
         Grab the next frame from the video capture.
         """
         ret, frame = self.videoCapture.read()
+        if ret:
+            return frame
+        else:
+            return None
+        
+class CVVideoFileSource(VideoSource):
+    """
+    Video source that loads from a file.
+    TODO: Closing/Releasing
+    """
+    videoCapture: cv2.VideoCapture
+
+    def __init__(self, filename: str) -> None:
+        self.videoCapture = cv2.VideoCapture(filename)
+
+    def frameRate(self) -> float:
+        return self.videoCapture.get(cv2.CAP_PROP_FPS)
+
+    def nextFrame(self) -> np.ndarray:
+        ret, frame = self.videoCapture.read()
+
         if ret:
             return frame
         else:
@@ -200,7 +221,11 @@ class CVVideoRecorder(VideoRecorder):
     """
     recorder: cv2.VideoWriter
 
-    def __init__(self, frameRate: int, width: int, height: int) -> None:
+    def __init__(self,
+                 frameRate: int,
+                 width: int,
+                 height: int,
+                 outputFile: str = "output.mp4",) -> None:
         """
         Create the VideoWriter accepting frames with dimensions width x height
         and stitching to a frame rate of frameRate.
@@ -209,7 +234,7 @@ class CVVideoRecorder(VideoRecorder):
         width - the width of each frame in pixels
         height - the height of each fram in pixels
         """
-        self.recorder = cv2.VideoWriter("output.mp4", -1, frameRate, (width, height))
+        self.recorder = cv2.VideoWriter(outputFile, -1, frameRate, (width, height))
 
     def addFrame(self, image: np.ndarray) -> None:
         self.recorder.write(image.astype(np.uint8))
