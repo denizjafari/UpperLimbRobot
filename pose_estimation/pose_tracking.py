@@ -8,7 +8,7 @@ from pose_estimation.ui_utils import CameraSelector, ModelSelector
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
-from pose_estimation.Models import FeedThroughModel, PoseModel
+from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
 
 
 class PoseTracker(QObject):
@@ -45,7 +45,7 @@ class PoseTracker(QObject):
     lastFrameRate: int
 
 
-    def __init__(self) -> None:
+    def __init__(self, threadpool=QThreadPool()) -> None:
         """
         Initialize the pose tracker.
         """
@@ -55,7 +55,7 @@ class PoseTracker(QObject):
         self.keypointFilter = LandmarkConfidenceFilter(self.mirrorTransformer)
         self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
 
-        self.threadpool = QThreadPool()
+        self.threadpool = threadpool
         self.framesInProcessing = 0
 
         self.frameRateTimer = QTimer()
@@ -207,7 +207,7 @@ class PoseTrackerWidget(QWidget):
     cameraSelector: CameraSelector
     frameRate: int
 
-    def __init__(self) -> None:
+    def __init__(self, modelManager: ModelManager) -> None:
         """
         Initialize the pose tracking settings and preview.
         """
@@ -225,7 +225,7 @@ class PoseTrackerWidget(QWidget):
         self.cameraSelector = CameraSelector()
         layout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.modelSelector = ModelSelector()
+        self.modelSelector = ModelSelector(modelManager)
         layout.addWidget(self.modelSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.skeletonButton = QCheckBox("Show Skeleton")

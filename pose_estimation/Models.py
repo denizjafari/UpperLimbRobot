@@ -1,4 +1,4 @@
-from PySide6.QtCore import QRunnable, QObject, Signal, Slot
+from PySide6.QtCore import QRunnable, QObject, Signal, Slot, QThreadPool
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -158,3 +158,28 @@ class ModelLoader(QRunnable, QObject):
         Instantiate the model and emit the result.
         """
         self.modelReady.emit(self.modelClass())
+
+class ModelManager(QObject):
+    """
+    A class to instantiate a predefined set of models.
+    """
+    modelAdded = Signal(PoseModel)
+
+    models: list[PoseModel]
+    threadpool: QThreadPool
+
+    def __init__(self, models: list[type], threadpool=QThreadPool()) -> None:
+        QObject.__init__(self)
+
+        self.threadPool = threadpool
+        self.models = []
+
+        for modelClass in models:
+            loader = ModelLoader(modelClass)
+            loader.modelReady.connect(self.modelReadySlot)
+            self.threadPool.start(loader)
+
+    @Slot(PoseModel)
+    def modelReadySlot(self, model: PoseModel) -> None:
+        self.models.append(model)
+        self.modelAdded.emit(model)

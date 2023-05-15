@@ -4,7 +4,7 @@ from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QThreadPool
 from typing import Optional
 
-from pose_estimation.Models import BlazePose, FeedThroughModel, ModelLoader, \
+from pose_estimation.Models import BlazePose, FeedThroughModel, ModelLoader, ModelManager, \
     MoveNetLightning, MoveNetThunder, PoseModel
 
 
@@ -117,9 +117,8 @@ class ModelSelector(QWidget):
     A selector that can select all available models.
     """
     modelSelected = Signal(PoseModel)
-    threadPool: QThreadPool
 
-    def __init__(self) -> None:
+    def __init__(self, modelManager: ModelManager) -> None:
         """
         Initialize the selector
         """
@@ -128,22 +127,17 @@ class ModelSelector(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self.threadPool = QThreadPool()
+        modelManager.modelAdded.connect(self.addModel)
+        for model in modelManager.models:
+            self.addModel(model)
 
-        models = [FeedThroughModel, MoveNetLightning, MoveNetThunder, BlazePose]
-
-        for modelClass in models:
-            @Slot(PoseModel)
-            def slot(model: PoseModel):
-                button = ModelSelectorButton(model)
-                if isinstance(model, FeedThroughModel):
-                    button.setChecked(True)
-                button.selected.connect(self.modelSelected)
-                layout.addWidget(button)
-
-            loader = ModelLoader(modelClass)
-            loader.modelReady.connect(slot)
-            self.threadPool.start(loader)
+    @Slot(PoseModel)
+    def addModel(self, model: PoseModel) -> None:
+        button = ModelSelectorButton(model)
+        if isinstance(model, FeedThroughModel):
+            button.setChecked(True)
+        button.selected.connect(self.modelSelected)
+        self.layout().addWidget(button)
 
 
 class FileSelector(QWidget):

@@ -2,8 +2,8 @@ from typing import Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Slot, QRunnable, Signal, QThreadPool, QObject
 
-from pose_estimation.Models import FeedThroughModel, PoseModel
-from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer
+from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
+from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, Scaler
 from pose_estimation.ui_utils import FileSelector, ModelSelector
 from pose_estimation.video import CVVideoFileSource, CVVideoRecorder
 
@@ -32,6 +32,7 @@ class PoseReprocessor(QRunnable, QObject):
         self.transformer = LandmarkConfidenceFilter()
         self.transformer.confidenceThreshold = 0.5
         self.transformer = LandmarkDrawer(self.transformer)
+        self.transformer = Scaler(1280, 1280, self.transformer)
 
         self.inputFileName = ""
     
@@ -55,14 +56,17 @@ class PoseReprocessor(QRunnable, QObject):
         Run the processing. Load the video from the source, process
         it and save it as after_processing.mp4.
         """
+        self.statusUpdate.emit("Loading Video...")
+
         source = CVVideoFileSource(self.inputFileName)
         frameRate = source.frameRate()
         
-        sink = CVVideoRecorder(frameRate, 640, 640, outputFile="after_processing.mp4")
+        sink = CVVideoRecorder(frameRate, 1280, 1280, outputFile="after_processing.mp4")
 
-        self.statusUpdate.emit("Processing Video...")
+        frameIndex = 0
 
         while 1:
+            frameIndex += 1
             frame = source.nextFrame()
             if frame is None: break
 
@@ -70,11 +74,10 @@ class PoseReprocessor(QRunnable, QObject):
             image, keypoints = self.transformer.transform(image, keypoints)
 
             sink.addFrame(image)
+            self.statusUpdate.emit(f"Processed frame #{frameIndex}")
 
         sink.close()
-
         self.statusUpdate.emit("Done")
-
 
 class PoseReprocessingWidget(QWidget):
     """
@@ -88,7 +91,7 @@ class PoseReprocessingWidget(QWidget):
     inputFilename: str
     model: Optional[PoseModel]
 
-    def __init__(self) -> None:
+    def __init__(self, modelManager: ModelManager, threadpool=QThreadPool()) -> None:
         """
         Initialize the widget.
         """
@@ -101,7 +104,7 @@ class PoseReprocessingWidget(QWidget):
         self.fileSelector.fileSelected.connect(self.setInputFilename)
         layout.addWidget(self.fileSelector)
 
-        self.modelSelector = ModelSelector()
+        self.modelSelector = ModelSelector(modelManager)
         self.modelSelector.modelSelected.connect(self.setModel)
         layout.addWidget(self.modelSelector)
 
@@ -111,10 +114,10 @@ class PoseReprocessingWidget(QWidget):
 
         self.statusLabel = QLabel(self)
         layout.addWidget(self.statusLabel)
-        self.threadpool = QThreadPool()
+        self.threadpool = threadpool
 
         self.inputFilename = ""
-        self.model = None
+        self.model = FeedThroughModel()
 
     @Slot(PoseModel)
     def setModel(self, model: PoseModel) -> None:
