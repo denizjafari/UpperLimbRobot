@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
-    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox
+    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QCheckBox, QSlider
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
-from PySide6.QtCore import Signal, Slot
+from PySide6.QtCore import Signal, Slot, Qt
 from typing import Optional
 
 from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
@@ -196,3 +196,57 @@ class FileSelector(QWidget):
         Get the selected filename.
         """
         return self.textInput.text()
+    
+
+class OverlaySettingsWidget(QGroupBox):
+    confidenceChanged = Signal(int)
+    markerRadiusChanged = Signal(int)
+    skeletonToggled = Signal()
+    mirrorToggled = Signal()
+    modelSelected = Signal(PoseModel)
+
+    mirrorButton: QCheckBox
+    skeletonButton: QCheckBox
+    markerRadiusSlider: QSlider
+    confidenceSlider: QSlider
+
+    def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
+        QGroupBox.__init__(self, parent)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.modelSelector = ModelSelector(modelManager, self)
+        self.modelSelector.modelSelected.connect(self.modelSelected)
+        self.layout().addWidget(self.modelSelector)
+
+        self.skeletonButton = QCheckBox("Show Skeleton", self)
+        self.skeletonButton.toggled.connect(self.skeletonToggled)
+        self.layout().addWidget(self.skeletonButton)
+
+        self.mirrorButton = QCheckBox("Mirror Image", self)
+        self.mirrorButton.toggled.connect(self.mirrorToggled)
+        self.layout().addWidget(self.mirrorButton)
+
+        layout.addWidget(QLabel("Marker Radius"))
+
+        self.markerRadiusSlider = QSlider(self,
+                                          orientation=Qt.Orientation.Horizontal)
+        self.markerRadiusSlider.setMinimum(1)
+        self.markerRadiusSlider.setMaximum(10)
+        self.markerRadiusSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.markerRadiusSlider.setTickInterval(1)
+        self.markerRadiusSlider.valueChanged.connect(self.markerRadiusChanged)
+        self.layout().addWidget(self.markerRadiusSlider)
+
+        layout.addWidget(QLabel("Confidence Threshold"))
+
+        self.confidenceSlider = QSlider(self,
+                                        orientation=Qt.Orientation.Horizontal)
+        self.confidenceSlider.setMinimum(1)
+        self.confidenceSlider.setMaximum(100)
+        self.confidenceSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.confidenceSlider.setTickInterval(5)
+        self.confidenceSlider.valueChanged.connect(self.confidenceChanged)
+        self.layout().addWidget(self.confidenceSlider)
+
+        layout.addStretch()

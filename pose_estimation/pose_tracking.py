@@ -1,10 +1,11 @@
 from typing import Optional
-from PySide6.QtWidgets import QWidget, QVBoxLayout, \
-    QCheckBox, QLabel, QSlider, QPushButton
+from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton
 from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, ImageMirror, Scaler
-from pose_estimation.ui_utils import CameraSelector, FileSelector, ModelSelector
+from pose_estimation.transforms import LandmarkConfidenceFilter, \
+    LandmarkDrawer, ImageMirror, Scaler
+from pose_estimation.ui_utils import CameraSelector, FileSelector, \
+    OverlaySettingsWidget
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
@@ -201,8 +202,6 @@ class PoseTrackerWidget(QWidget):
     cameraSelector - the camera selector.
     """
     poseTracker: Optional[PoseTracker]
-    skeletonButton: QCheckBox
-    mirrorButton: QCheckBox
     displayLabel: QLabel    
     cameraSelector: CameraSelector
     frameRate: int
@@ -212,50 +211,29 @@ class PoseTrackerWidget(QWidget):
         Initialize the pose tracking settings and preview.
         """
         QWidget.__init__(self)
-
-        layout = QVBoxLayout()
+        layout = QGridLayout()
         self.setLayout(layout)
 
         self.displayLabel = QLabel()
-        layout.addWidget(self.displayLabel, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.frameRateLabel = QLabel()
-        layout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.displayLabel, 0, 0, 8, 8)
 
         self.cameraSelector = CameraSelector(self)
-        layout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.layout().addWidget(self.cameraSelector, 8, 0, 2, 6)
 
-        self.modelSelector = ModelSelector(modelManager, self)
-        layout.addWidget(self.modelSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.frameRateLabel = QLabel()
+        self.layout().addWidget(self.frameRateLabel, 8, 6, 1, 2)
 
-        self.skeletonButton = QCheckBox("Show Skeleton")
-        layout.addWidget(self.skeletonButton, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-        self.mirrorButton = QCheckBox("Mirror Image")
-        layout.addWidget(self.mirrorButton, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-        self.markerRadiusSlider = QSlider(orientation=Qt.Orientation.Horizontal)
-        self.markerRadiusSlider.setMinimum(1)
-        self.markerRadiusSlider.setMaximum(10)
-        self.markerRadiusSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.markerRadiusSlider.setTickInterval(1)
-        layout.addWidget(self.markerRadiusSlider, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-        self.confidenceSlider = QSlider(orientation=Qt.Orientation.Horizontal)
-        self.confidenceSlider.setMinimum(1)
-        self.confidenceSlider.setMaximum(100)
-        self.confidenceSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.confidenceSlider.setTickInterval(5)
-        layout.addWidget(self.confidenceSlider, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.overlaySettings = OverlaySettingsWidget(modelManager, self)
+        self.layout().addWidget(self.overlaySettings, 0, 8, 9, 8)
 
         self.outFileSelector = FileSelector(self, title="Recording Output File",
                                             mode=FileSelector.MODE_SAVE)
-        self.layout().addWidget(self.outFileSelector)
+        self.layout().addWidget(self.outFileSelector, 9, 8, 2, 6)
 
         self.recorder = None
         self.recorderToggleButton = QPushButton("Start Recording")
         self.recorderToggleButton.clicked.connect(self.toggleRecording)
-        layout.addWidget(self.recorderToggleButton, alignment=Qt.AlignmentFlag.AlignHCenter)
+        self.layout().addWidget(self.recorderToggleButton, 9, 14, 2, 1)
 
         self.poseTracker = None
 
@@ -313,11 +291,11 @@ class PoseTrackerWidget(QWidget):
         Set the pose tracker by connectin all slots and signals between the
         pose tracker and this widget.
         """
-        self.skeletonButton.toggled.connect(poseTracker.onSkeletonToggled)
-        self.mirrorButton.toggled.connect(poseTracker.onMirrorToggled)
-        self.markerRadiusSlider.valueChanged.connect(poseTracker.onMarkerRadiusChanged)
-        self.confidenceSlider.valueChanged.connect(poseTracker.onConfidenceChanged)
-        self.modelSelector.modelSelected.connect(poseTracker.setModel)
+        self.overlaySettings.skeletonToggled.connect(poseTracker.onSkeletonToggled)
+        self.overlaySettings.mirrorToggled.connect(poseTracker.onMirrorToggled)
+        self.overlaySettings.markerRadiusChanged.connect(poseTracker.onMarkerRadiusChanged)
+        self.overlaySettings.confidenceChanged.connect(poseTracker.onConfidenceChanged)
+        self.overlaySettings.modelSelected.connect(poseTracker.setModel)
 
         poseTracker.recordingToggle.connect(self.onRecordingToggled)
         poseTracker.recordingToggle.connect(self.onRecordingToggled)

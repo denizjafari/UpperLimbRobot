@@ -10,7 +10,7 @@ from pose_estimation.video import QVideoSource
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    threadpool = QThreadPool()
+    threadpool = QThreadPool.globalInstance()
     modelManager = ModelManager([FeedThroughModel, BlazePose], threadpool)
 
     window = QTabWidget()
