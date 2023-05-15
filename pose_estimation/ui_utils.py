@@ -1,11 +1,10 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
-    QPushButton, QFileDialog, QLineEdit
+    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
-from PySide6.QtCore import Signal, Slot, QThreadPool
+from PySide6.QtCore import Signal, Slot
 from typing import Optional
 
-from pose_estimation.Models import BlazePose, FeedThroughModel, ModelLoader, ModelManager, \
-    MoveNetLightning, MoveNetThunder, PoseModel
+from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
 
 
 # The frame dimensions and rate for which a suitable format is selected.
@@ -61,17 +60,17 @@ class CameraSelectorButton(QRadioButton):
             self.selected.emit(camera)
 
 
-class CameraSelector(QWidget):
+class CameraSelector(QGroupBox):
     """
     A group of radio buttons to select a camera from the inputs.
     """
     selected = Signal(QCamera)
 
-    def __init__(self) -> None:
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Intitialize the selector and update the list of cameras.
         """
-        QWidget.__init__(self)
+        QGroupBox.__init__(self, "Camera", parent)
         self.updateCameraDevices()
 
 
@@ -112,17 +111,17 @@ class ModelSelectorButton(QRadioButton):
         if self.isChecked():
             self.selected.emit(self.model)
 
-class ModelSelector(QWidget):
+class ModelSelector(QGroupBox):
     """
     A selector that can select all available models.
     """
     modelSelected = Signal(PoseModel)
 
-    def __init__(self, modelManager: ModelManager) -> None:
+    def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
         """
         Initialize the selector
         """
-        QWidget.__init__(self)
+        QGroupBox.__init__(self, "Model", parent)
 
         layout = QVBoxLayout()
         self.setLayout(layout)
@@ -149,30 +148,47 @@ class FileSelector(QWidget):
     fileSelected - the path to the file that has been selected.
     """
     fileSelected = Signal(str)
+    MODE_LOAD = 0
+    MODE_SAVE = 1
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    fileSelectButton: QPushButton
+    textInput: QLineEdit
+    label: QLabel
+
+    def __init__(self, parent: Optional[QWidget] = None, mode=MODE_LOAD, title="File") -> None:
         """
         Initialize the file selector widget.
         """
         QWidget.__init__(self, parent)
 
-        layout = QHBoxLayout()
-        self.setLayout(layout)
+        self.setLayout(QVBoxLayout())
 
-        self.fileSelectButton = QPushButton("Select file")
-        self.fileSelectButton.clicked.connect(self.selectFile)
-        layout.addWidget(self.fileSelectButton)
-        
-        self.textInput = QLineEdit(self)
+        self.label = QLabel(title, self)
+        self.layout().addWidget(self.label)
+
+        hContainer = QWidget(self)
+        hContainer.setLayout(QHBoxLayout())
+        self.layout().addWidget(hContainer)
+
+        self.textInput = QLineEdit(hContainer)
         self.textInput.textChanged.connect(self.fileSelected)
-        layout.addWidget(self.textInput)
+        hContainer.layout().addWidget(self.textInput)
+
+        self.fileSelectButton = QPushButton("Select file", hContainer)
+        self.fileSelectButton.clicked.connect(self.selectFile)
+        hContainer.layout().addWidget(self.fileSelectButton)
+        
+        self.option = mode
 
     @Slot()
     def selectFile(self) -> None:
         """
         Open the default file dialog to determine the file to be loaded.
         """
-        path, _ = QFileDialog.getOpenFileName(self, "Select Video")
+        if self.option == self.MODE_LOAD:
+            path, _ = QFileDialog.getOpenFileName(self, "Select Input")
+        else:
+            path, _ = QFileDialog.getSaveFileName(self, "Select Output")
         self.textInput.setText(path)
 
     def selectedFile(self) -> str:
@@ -180,4 +196,3 @@ class FileSelector(QWidget):
         Get the selected filename.
         """
         return self.textInput.text()
-

@@ -19,7 +19,7 @@ class PoseReprocessor(QRunnable, QObject):
     statusUpdate = Signal(str)
     model: PoseModel
     inputFileName: str
-
+    outputFileName: str
 
     def __init__(self) -> None:
         """
@@ -35,6 +35,7 @@ class PoseReprocessor(QRunnable, QObject):
         self.transformer = Scaler(1280, 1280, self.transformer)
 
         self.inputFileName = ""
+        self.outputFileName = ""
     
     @Slot(PoseModel)
     def setModel(self, model: PoseModel) -> None:
@@ -50,6 +51,13 @@ class PoseReprocessor(QRunnable, QObject):
         """
         self.inputFileName = filename
 
+    @Slot(str)
+    def setOutputFilename(self, filename: str) -> None:
+        """
+        Set the video file output.
+        """
+        self.outputFileName = filename
+
     @Slot()
     def run(self) -> None:
         """
@@ -61,7 +69,7 @@ class PoseReprocessor(QRunnable, QObject):
         source = CVVideoFileSource(self.inputFileName)
         frameRate = source.frameRate()
         
-        sink = CVVideoRecorder(frameRate, 1280, 1280, outputFile="after_processing.mp4")
+        sink = CVVideoRecorder(frameRate, 1280, 1280, outputFile=self.outputFileName)
 
         frameIndex = 0
 
@@ -89,7 +97,11 @@ class PoseReprocessingWidget(QWidget):
     """
     threadpool: QThreadPool
     inputFilename: str
+    outputFilename: str
     model: Optional[PoseModel]
+
+    inFileSelector: FileSelector
+    outFileSelector: FileSelector
 
     def __init__(self, modelManager: ModelManager, threadpool=QThreadPool()) -> None:
         """
@@ -100,15 +112,19 @@ class PoseReprocessingWidget(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        self.fileSelector = FileSelector(self)
-        self.fileSelector.fileSelected.connect(self.setInputFilename)
-        layout.addWidget(self.fileSelector)
+        self.inFileSelector = FileSelector(self, title="Input File")
+        self.inFileSelector.fileSelected.connect(self.setInputFilename)
+        layout.addWidget(self.inFileSelector)
 
-        self.modelSelector = ModelSelector(modelManager)
+        self.outFileSelector = FileSelector(self, mode=FileSelector.MODE_SAVE, title="Output File")
+        self.outFileSelector.fileSelected.connect(self.setOutputFilename)
+        layout.addWidget(self.outFileSelector)
+
+        self.modelSelector = ModelSelector(modelManager, self)
         self.modelSelector.modelSelected.connect(self.setModel)
         layout.addWidget(self.modelSelector)
 
-        self.processButton = QPushButton("Run")
+        self.processButton = QPushButton("Run", self)
         self.processButton.clicked.connect(self.process)
         layout.addWidget(self.processButton)
 
@@ -134,6 +150,13 @@ class PoseReprocessingWidget(QWidget):
         self.inputFilename = inputFilename
 
     @Slot(str)
+    def setOutputFilename(self, outputFilename: str) -> None:
+        """
+        Set the output file path.
+        """
+        self.outputFilename = outputFilename
+
+    @Slot(str)
     def onStatusUpdate(self, statusUpdate: str) -> None:
         """
         Update the status label.
@@ -147,6 +170,7 @@ class PoseReprocessingWidget(QWidget):
         """
         reprocessor = PoseReprocessor()
         reprocessor.setInputFilename(self.inputFilename)
+        reprocessor.setOutputFilename(self.outputFilename)
         reprocessor.setModel(self.model)
         reprocessor.statusUpdate.connect(self.onStatusUpdate)
         self.threadpool.start(reprocessor)

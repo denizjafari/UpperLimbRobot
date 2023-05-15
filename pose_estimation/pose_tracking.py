@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, \
 from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
 from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, ImageMirror, Scaler
-from pose_estimation.ui_utils import CameraSelector, ModelSelector
+from pose_estimation.ui_utils import CameraSelector, FileSelector, ModelSelector
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
@@ -161,7 +161,7 @@ class PoseTracker(QObject):
         """
         return self.recorder is not None
 
-    def startRecording(self) -> None:
+    def startRecording(self, filename: str = "outfile.mp4") -> None:
         """
         Start a recording. If there is already a recording in process,
         do nothing.
@@ -169,7 +169,7 @@ class PoseTracker(QObject):
         if self.isRecording():
             return
         
-        self.recorder = CVVideoRecorder(self.lastFrameRate, 640, 640)
+        self.recorder = CVVideoRecorder(self.lastFrameRate, 640, 640, outputFile=filename)
         self.recordingToggle.emit()
 
     def endRecording(self) -> None:
@@ -222,10 +222,10 @@ class PoseTrackerWidget(QWidget):
         self.frameRateLabel = QLabel()
         layout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.cameraSelector = CameraSelector()
+        self.cameraSelector = CameraSelector(self)
         layout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
 
-        self.modelSelector = ModelSelector(modelManager)
+        self.modelSelector = ModelSelector(modelManager, self)
         layout.addWidget(self.modelSelector, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.skeletonButton = QCheckBox("Show Skeleton")
@@ -247,6 +247,10 @@ class PoseTrackerWidget(QWidget):
         self.confidenceSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.confidenceSlider.setTickInterval(5)
         layout.addWidget(self.confidenceSlider, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        self.outFileSelector = FileSelector(self, title="Recording Output File",
+                                            mode=FileSelector.MODE_SAVE)
+        self.layout().addWidget(self.outFileSelector)
 
         self.recorder = None
         self.recorderToggleButton = QPushButton("Start Recording")
@@ -283,7 +287,7 @@ class PoseTrackerWidget(QWidget):
         if self.poseTracker.isRecording():
             self.poseTracker.endRecording()
         else:
-            self.poseTracker.startRecording()
+            self.poseTracker.startRecording(self.outFileSelector.selectedFile())
 
     @Slot()
     def onRecordingToggled(self) -> None:
