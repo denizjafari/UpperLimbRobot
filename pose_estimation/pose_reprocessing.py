@@ -29,9 +29,9 @@ class PoseReprocessor(QRunnable, QObject):
         QObject.__init__(self)
         self.model = FeedThroughModel()
 
-        self.transformer = LandmarkConfidenceFilter()
-        self.transformer.confidenceThreshold = 0.5
-        self.transformer = LandmarkDrawer(self.transformer)
+        self.first_transformer = LandmarkConfidenceFilter()
+        self.first_transformer.confidenceThreshold = 0.5
+        self.transformer = LandmarkDrawer(self.first_transformer)
         self.transformer = Scaler(1280, 1280, self.transformer)
 
         self.inputFileName = ""
@@ -79,7 +79,7 @@ class PoseReprocessor(QRunnable, QObject):
             if frame is None: break
 
             image, keypoints = self.model.detect(frame)
-            image, keypoints = self.transformer.transform(image, keypoints)
+            image, keypoints = self.first_transformer.transform(image, keypoints)
 
             sink.addFrame(image)
             self.statusUpdate.emit(f"Processed frame #{frameIndex}")

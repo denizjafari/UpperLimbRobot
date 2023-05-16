@@ -24,11 +24,11 @@ class CameraSelectorButton(QRadioButton):
     cameraDevice: QCameraDevice
     selected = Signal(QCamera)
 
-    def __init__(self, device: QCameraDevice) -> None:
+    def __init__(self, device: QCameraDevice, parent: Optional[QWidget] = None) -> None:
         """
         Initialize the selector for a given camera device.
         """
-        QRadioButton.__init__(self, device.description())
+        QRadioButton.__init__(self, device.description(), parent)
         self.cameraDevice = device
 
         self.toggled.connect(self.slotSelected)
@@ -65,27 +65,43 @@ class CameraSelector(QGroupBox):
     A group of radio buttons to select a camera from the inputs.
     """
     selected = Signal(QCamera)
+    refreshButton: QPushButton
+    cameraButtons: list[CameraSelectorButton]
+    qMediaDevices: QMediaDevices
+    vLayout: QVBoxLayout
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Intitialize the selector and update the list of cameras.
         """
         QGroupBox.__init__(self, "Camera", parent)
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
+
+        self.qMediaDevices = QMediaDevices()
+        self.qMediaDevices.videoInputsChanged.connect(self.updateCameraDevices)
+
+        self.cameraButtons = []
+
         self.updateCameraDevices()
 
-
+    @Slot()
     def updateCameraDevices(self) -> None:
         """
         Update the list of available cameras and add radio buttons.
         """
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        while len(self.cameraButtons) > 0:
+            button = self.cameraButtons.pop()
+            self.vLayout.removeWidget(button)
+            button.deleteLater()
 
         cameraDevices = QMediaDevices.videoInputs()
         for camera in cameraDevices:
-            button = CameraSelectorButton(camera)
+            button = CameraSelectorButton(camera, self)
             button.selected.connect(self.selected)
-            layout.addWidget(button)
+
+            self.vLayout.addWidget(button)
+            self.cameraButtons.append(button)
 
 class ModelSelectorButton(QRadioButton):
     """
