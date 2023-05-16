@@ -8,6 +8,8 @@ MARKER_RADIUS = 3
 # The level of confidence above which a marker is drawn
 MARKER_CONFIDENCE_THRESHOLD = 0.0
 
+LINE_THICKNESS = 1
+
 class Transformer:
     """
     Interface that is implemented by all transformers. A transformer makes
@@ -116,6 +118,51 @@ class LandmarkDrawer(Transformer):
                 x = round(keypoint[0] * width)
                 y = round(keypoint[1] * height)
                 cv2.circle(image, (y, x), self.markerRadius, color=(255, 255, 255), thickness=-1)
+
+        return self.next(image, keypoints)
+    
+class BlazePoseSkeletonDrawer(Transformer):
+    """
+    Draw the skeleton detected by the BlaePose model.
+    """
+    isActive: bool
+    lineThickness: int
+
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize the Drawer.
+        """
+        Transformer.__init__(self, False, previous)
+
+        self.lineThickness = LINE_THICKNESS
+    
+    def transform(self, image: np.ndarray, keypoints: list[list[float]]) -> tuple[np.ndarray, list[list[float]]]:
+        """
+        Transform the image by connectin the joints with straight lines.
+        """
+        if self.isActive and len(keypoints) == 33:
+            width = image.shape[0]
+            height = image.shape[1]
+            color = (0, 0, 255)
+
+            def getCoordinates(index: int) -> tuple[int, int]:
+                return (round(width * keypoints[index][1]), round(height * keypoints[index][0]))
+            
+            def drawSequence(*args):
+                for i in range(1, len(args)):
+                    cv2.line(image,
+                             getCoordinates(args[i - 1]),
+                             getCoordinates(args[i]),
+                             color,
+                             thickness=self.lineThickness)
+            
+            drawSequence(8, 6, 5, 4, 0, 1, 2, 3, 7)
+            drawSequence(9, 10)
+            drawSequence(21, 15, 17, 19, 15, 13, 11, 23, 25, 27, 31, 29, 27)
+            drawSequence(22, 16, 18, 20, 16, 14, 12, 24, 26, 28, 32, 30)
+            drawSequence(11, 12)
+            drawSequence(23, 24)
+
 
         return self.next(image, keypoints)
     

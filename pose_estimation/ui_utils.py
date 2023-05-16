@@ -217,6 +217,7 @@ class FileSelector(QWidget):
 class OverlaySettingsWidget(QGroupBox):
     confidenceChanged = Signal(int)
     markerRadiusChanged = Signal(int)
+    lineThicknessChanged = Signal(int)
     skeletonToggled = Signal()
     mirrorToggled = Signal()
     modelSelected = Signal(PoseModel)
@@ -224,6 +225,7 @@ class OverlaySettingsWidget(QGroupBox):
     mirrorButton: QCheckBox
     skeletonButton: QCheckBox
     markerRadiusSlider: QSlider
+    lineThicknessSlider: QSlider
     confidenceSlider: QSlider
 
     def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
@@ -244,7 +246,6 @@ class OverlaySettingsWidget(QGroupBox):
         self.layout().addWidget(self.mirrorButton)
 
         layout.addWidget(QLabel("Marker Radius"))
-
         self.markerRadiusSlider = QSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
         self.markerRadiusSlider.setMinimum(1)
@@ -254,8 +255,17 @@ class OverlaySettingsWidget(QGroupBox):
         self.markerRadiusSlider.valueChanged.connect(self.markerRadiusChanged)
         self.layout().addWidget(self.markerRadiusSlider)
 
-        layout.addWidget(QLabel("Confidence Threshold"))
+        layout.addWidget(QLabel("Line Thickness"))
+        self.lineThicknessSlider = QSlider(self,
+                                          orientation=Qt.Orientation.Horizontal)
+        self.lineThicknessSlider.setMinimum(1)
+        self.lineThicknessSlider.setMaximum(10)
+        self.lineThicknessSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.lineThicknessSlider.setTickInterval(1)
+        self.lineThicknessSlider.valueChanged.connect(self.lineThicknessChanged)
+        self.layout().addWidget(self.lineThicknessSlider)
 
+        layout.addWidget(QLabel("Confidence Threshold"))
         self.confidenceSlider = QSlider(self,
                                         orientation=Qt.Orientation.Horizontal)
         self.confidenceSlider.setMinimum(1)

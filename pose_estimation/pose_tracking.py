@@ -2,14 +2,14 @@ from typing import Optional
 from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton
 from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-from pose_estimation.transforms import LandmarkConfidenceFilter, \
+from pose_estimation.transforms import BlazePoseSkeletonDrawer, LandmarkConfidenceFilter, \
     LandmarkDrawer, ImageMirror, Scaler
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     OverlaySettingsWidget
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
-from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
+from pose_estimation.Models import BlazePose, FeedThroughModel, ModelManager, PoseModel
 
 
 class PoseTracker(QObject):
@@ -55,6 +55,7 @@ class PoseTracker(QObject):
         self.mirrorTransformer = ImageMirror(self.scaleTransformer)
         self.keypointFilter = LandmarkConfidenceFilter(self.mirrorTransformer)
         self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
+        self.skeletonTransformer = BlazePoseSkeletonDrawer(self.keypointTransformer)
 
         self.threadpool = threadpool
         self.framesInProcessing = 0
@@ -79,6 +80,8 @@ class PoseTracker(QObject):
         Toggle viewing the landmarks.
         """
         self.keypointTransformer.isActive = not self.keypointTransformer.isActive
+        self.skeletonTransformer.isActive = isinstance(self.model, BlazePose) \
+            and self.keypointTransformer.isActive
 
     @Slot()
     def onMirrorToggled(self) -> None:
@@ -93,6 +96,10 @@ class PoseTracker(QObject):
         Update the marker radius for the landmarks.
         """
         self.keypointTransformer.markerRadius = v
+
+    @Slot(int)
+    def onLineThicknessChanged(self, v) -> None:
+        self.skeletonTransformer.lineThickness = v
 
     @Slot(int)
     def onConfidenceChanged(self, v) -> None:
@@ -294,6 +301,7 @@ class PoseTrackerWidget(QWidget):
         self.overlaySettings.skeletonToggled.connect(poseTracker.onSkeletonToggled)
         self.overlaySettings.mirrorToggled.connect(poseTracker.onMirrorToggled)
         self.overlaySettings.markerRadiusChanged.connect(poseTracker.onMarkerRadiusChanged)
+        self.overlaySettings.lineThicknessChanged.connect(poseTracker.onLineThicknessChanged)
         self.overlaySettings.confidenceChanged.connect(poseTracker.onConfidenceChanged)
         self.overlaySettings.modelSelected.connect(poseTracker.setModel)
 
