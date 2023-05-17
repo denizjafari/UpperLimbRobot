@@ -3,8 +3,9 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Slot, QRunnable, Signal, QThreadPool, QObject
 
 from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
-from pose_estimation.transforms import LandmarkConfidenceFilter, LandmarkDrawer, Scaler
-from pose_estimation.ui_utils import FileSelector, ModelSelector
+from pose_estimation.transforms import BlazePoseSkeletonDrawer, ImageMirror, \
+    LandmarkDrawer, Scaler
+from pose_estimation.ui_utils import FileSelector, OverlaySettingsWidget
 from pose_estimation.video import CVVideoFileSource, CVVideoRecorder
 
 
@@ -20,6 +21,10 @@ class PoseReprocessor(QRunnable, QObject):
     model: PoseModel
     inputFileName: str
     outputFileName: str
+    scaler: Scaler
+    mirrorTransformer: ImageMirror
+    keypointTransformer: LandmarkDrawer
+    skeletonTransformer: BlazePoseSkeletonDrawer
 
     def __init__(self) -> None:
         """
@@ -29,13 +34,13 @@ class PoseReprocessor(QRunnable, QObject):
         QObject.__init__(self)
         self.model = FeedThroughModel()
 
-        self.first_transformer = LandmarkConfidenceFilter()
-        self.first_transformer.confidenceThreshold = 0.5
-        self.transformer = LandmarkDrawer(self.first_transformer)
-        self.transformer = Scaler(1280, 1280, self.transformer)
+        self.scaler = Scaler(640, 640)
+        self.mirrorTransformer = ImageMirror(self.scaler)
+        self.keypointTransformer = LandmarkDrawer(self.mirrorTransformer)
+        self.skeletonTransformer = BlazePoseSkeletonDrawer(self.keypointTransformer)
 
         self.inputFileName = ""
-        self.outputFileName = ""
+        self.outputFileName = ""        
     
     @Slot(PoseModel)
     def setModel(self, model: PoseModel) -> None:
@@ -58,6 +63,23 @@ class PoseReprocessor(QRunnable, QObject):
         """
         self.outputFileName = filename
 
+    @Slot(int)
+    def setLineThickness(self, lineThickness: int) -> None:
+        self.skeletonTransformer.lineThickness = lineThickness
+
+    @Slot(int)
+    def setMarkerRadius(self, markerRadius: int) -> None:
+        self.keypointTransformer.markerRadius = markerRadius
+
+    @Slot(bool)
+    def setShowSkeleton(self, showSkeleton: bool) -> None:
+        self.keypointTransformer.isActive = showSkeleton
+        self.skeletonTransformer.isActive = showSkeleton
+
+    @Slot(bool)
+    def setMirror(self, mirror: bool) -> None:
+        self.mirrorTransformer.isActive = mirror
+
     @Slot()
     def run(self) -> None:
         """
@@ -69,7 +91,7 @@ class PoseReprocessor(QRunnable, QObject):
         source = CVVideoFileSource(self.inputFileName)
         frameRate = source.frameRate()
         
-        sink = CVVideoRecorder(frameRate, 1280, 1280, outputFile=self.outputFileName)
+        sink = CVVideoRecorder(frameRate, 640, 640, outputFile=self.outputFileName)
 
         frameIndex = 0
 
@@ -79,7 +101,7 @@ class PoseReprocessor(QRunnable, QObject):
             if frame is None: break
 
             image, keypoints = self.model.detect(frame)
-            image, keypoints = self.first_transformer.transform(image, keypoints)
+            image, keypoints = self.scaler.transform(image, keypoints)
 
             sink.addFrame(image)
             self.statusUpdate.emit(f"Processed frame #{frameIndex}")
@@ -120,9 +142,13 @@ class PoseReprocessingWidget(QWidget):
         self.outFileSelector.fileSelected.connect(self.setOutputFilename)
         layout.addWidget(self.outFileSelector)
 
-        self.modelSelector = ModelSelector(modelManager, self)
-        self.modelSelector.modelSelected.connect(self.setModel)
-        layout.addWidget(self.modelSelector)
+        self.overlaySettings = OverlaySettingsWidget(modelManager, self)
+        self.overlaySettings.skeletonToggled.connect(self.onSkeletonToggled)
+        self.overlaySettings.mirrorToggled.connect(self.onMirrorToggled)
+        self.overlaySettings.markerRadiusChanged.connect(self.onMarkerRadiusChanged)
+        self.overlaySettings.lineThicknessChanged.connect(self.onLineThicknessChanged)
+        self.overlaySettings.modelSelected.connect(self.setModel)
+        layout.addWidget(self.overlaySettings)
 
         self.processButton = QPushButton("Run", self)
         self.processButton.clicked.connect(self.process)
@@ -135,12 +161,40 @@ class PoseReprocessingWidget(QWidget):
         self.inputFilename = ""
         self.model = FeedThroughModel()
 
+        self.showSkeleton = False
+        self.mirror = False
+
     @Slot(PoseModel)
     def setModel(self, model: PoseModel) -> None:
         """
         Set the model.
         """
         self.model = model
+
+    @Slot()
+    def onSkeletonToggled(self) -> None:
+        """
+        Toggle viewing the landmarks.
+        """
+        self.showSkeleton = not self.showSkeleton
+
+    @Slot()
+    def onMirrorToggled(self) -> None:
+        """
+        Toggle mirroring the frame.
+        """
+        self.mirror = not self.mirror
+
+    @Slot(int)
+    def onMarkerRadiusChanged(self, v) -> None:
+        """
+        Update the marker radius for the landmarks.
+        """
+        self.markerRadius = v
+
+    @Slot(int)
+    def onLineThicknessChanged(self, v) -> None:
+        self.lineThickness = v
 
     @Slot(str)
     def setInputFilename(self, inputFilename: str) -> None:
@@ -172,5 +226,9 @@ class PoseReprocessingWidget(QWidget):
         reprocessor.setInputFilename(self.inputFilename)
         reprocessor.setOutputFilename(self.outputFilename)
         reprocessor.setModel(self.model)
+        reprocessor.setMarkerRadius(self.markerRadius)
+        reprocessor.setLineThickness(self.lineThickness)
+        reprocessor.setMirror(self.mirror)
+        reprocessor.setShowSkeleton(self.showSkeleton)
         reprocessor.statusUpdate.connect(self.onStatusUpdate)
         self.threadpool.start(reprocessor)
