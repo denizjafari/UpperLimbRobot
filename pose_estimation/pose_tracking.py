@@ -1,8 +1,10 @@
+import io
 from typing import Optional
-from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton
-from PySide6.QtCore import Qt, Signal, Slot, QObject, QThreadPool, QTimer
+from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, \
+    QCheckBox
+from PySide6.QtCore import Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-from pose_estimation.transforms import BlazePoseSkeletonDrawer, LandmarkConfidenceFilter, \
+from pose_estimation.transforms import BlazePoseSkeletonDrawer, CsvExporter, LandmarkConfidenceFilter, \
     LandmarkDrawer, ImageMirror, Scaler
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     OverlaySettingsWidget
@@ -45,17 +47,21 @@ class PoseTracker(QObject):
     frameCount: int
     lastFrameRate: int
 
+    csvFile: Optional[io.TextIOBase]
+
 
     def __init__(self, threadpool=QThreadPool()) -> None:
         """
         Initialize the pose tracker.
         """
         QObject.__init__(self)
+
         self.scaleTransformer = Scaler(640, 640)
         self.mirrorTransformer = ImageMirror(self.scaleTransformer)
         self.keypointFilter = LandmarkConfidenceFilter(self.mirrorTransformer)
         self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
         self.skeletonTransformer = BlazePoseSkeletonDrawer(self.keypointTransformer)
+        self.csvExporter = CsvExporter(self.skeletonTransformer)
 
         self.threadpool = threadpool
         self.framesInProcessing = 0
@@ -69,6 +75,7 @@ class PoseTracker(QObject):
         self.lastFrameRate = 0
         self.recorder = None
         self.videoSource = None
+        self.csvFile = None
 
         self.model = FeedThroughModel()
 
@@ -169,7 +176,9 @@ class PoseTracker(QObject):
         """
         return self.recorder is not None
 
-    def startRecording(self, filename: str = "outfile.mp4") -> None:
+    def startRecording(self,
+                       filename: str = "outfile.mp4",
+                       csvFilename: Optional[str] = None) -> None:
         """
         Start a recording. If there is already a recording in process,
         do nothing.
@@ -178,6 +187,9 @@ class PoseTracker(QObject):
             return
         
         self.recorder = CVVideoRecorder(self.lastFrameRate, 640, 640, outputFile=filename)
+        if csvFilename is not None:
+            self.csvFile = open(csvFilename, "w", newline="")
+            self.csvExporter.setFile(self.csvFile)
         self.recordingToggle.emit()
 
     def endRecording(self) -> None:
@@ -187,6 +199,10 @@ class PoseTracker(QObject):
         if not self.isRecording():
             return
         
+        if self.csvFile is not None:
+            self.csvFile.close()
+            self.csvFile = None
+            self.csvExporter.setFile(None)
         self.recorder.close()
         self.recorder = None
         self.recordingToggle.emit()
@@ -231,16 +247,23 @@ class PoseTrackerWidget(QWidget):
         self.layout().addWidget(self.frameRateLabel, 8, 6, 1, 2)
 
         self.overlaySettings = OverlaySettingsWidget(modelManager, self)
-        self.layout().addWidget(self.overlaySettings, 0, 8, 9, 8)
+        self.layout().addWidget(self.overlaySettings, 0, 8, 7, 8)
 
         self.outFileSelector = FileSelector(self, title="Recording Output File",
                                             mode=FileSelector.MODE_SAVE)
-        self.layout().addWidget(self.outFileSelector, 9, 8, 2, 6)
+        self.layout().addWidget(self.outFileSelector, 7, 8, 1, 6)
+
+        self.enableCsvOutput = QCheckBox("Export as CSV", self)
+        self.layout().addWidget(self.enableCsvOutput, 8, 8, 1, 2)
+
+        self.csvFileSelector = FileSelector(self, title="CSV Output File",
+                                            mode=FileSelector.MODE_SAVE)
+        self.layout().addWidget(self.csvFileSelector, 8, 10, 1, 4)
 
         self.recorder = None
         self.recorderToggleButton = QPushButton("Start Recording")
         self.recorderToggleButton.clicked.connect(self.toggleRecording)
-        self.layout().addWidget(self.recorderToggleButton, 9, 14, 2, 1)
+        self.layout().addWidget(self.recorderToggleButton, 8, 14, 1, 1)
 
         self.poseTracker = None
 
@@ -272,7 +295,9 @@ class PoseTrackerWidget(QWidget):
         if self.poseTracker.isRecording():
             self.poseTracker.endRecording()
         else:
-            self.poseTracker.startRecording(self.outFileSelector.selectedFile())
+            csvPath = self.csvFileSelector.selectedFile() \
+                if self.enableCsvOutput.isChecked() else None
+            self.poseTracker.startRecording(self.outFileSelector.selectedFile(), csvPath)
 
     @Slot()
     def onRecordingToggled(self) -> None:
