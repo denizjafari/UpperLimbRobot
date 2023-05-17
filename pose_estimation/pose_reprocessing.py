@@ -1,9 +1,11 @@
+import io
 from typing import Optional
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, \
+    QCheckBox
 from PySide6.QtCore import Slot, QRunnable, Signal, QThreadPool, QObject
 
 from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
-from pose_estimation.transforms import BlazePoseSkeletonDrawer, ImageMirror, \
+from pose_estimation.transforms import BlazePoseSkeletonDrawer, CsvImporter, ImageMirror, \
     LandmarkDrawer, Scaler
 from pose_estimation.ui_utils import FileSelector, OverlaySettingsWidget
 from pose_estimation.video import CVVideoFileSource, CVVideoRecorder
@@ -26,6 +28,8 @@ class PoseReprocessor(QRunnable, QObject):
     keypointTransformer: LandmarkDrawer
     skeletonTransformer: BlazePoseSkeletonDrawer
 
+    csvInputFile: Optional[io.TextIOBase]
+
     def __init__(self) -> None:
         """
         Initialize the object and thread runnable.
@@ -35,7 +39,8 @@ class PoseReprocessor(QRunnable, QObject):
         self.model = FeedThroughModel()
 
         self.scaler = Scaler(640, 640)
-        self.mirrorTransformer = ImageMirror(self.scaler)
+        self.csvLoader = CsvImporter(33, self.scaler)
+        self.mirrorTransformer = ImageMirror(self.csvLoader)
         self.keypointTransformer = LandmarkDrawer(self.mirrorTransformer)
         self.skeletonTransformer = BlazePoseSkeletonDrawer(self.keypointTransformer)
 
@@ -62,6 +67,21 @@ class PoseReprocessor(QRunnable, QObject):
         Set the video file output.
         """
         self.outputFileName = filename
+
+    @Slot(str)
+    def setCsvInputFilename(self, filename: Optional[str]) -> None:
+        """
+        Set the csv input filename
+        """
+        self.csvInputFile = open(filename, "r", newline="")
+        self.csvLoader.setFile(self.csvInputFile)
+
+    @Slot(str)
+    def setCsvOutputFilename(self, filename: Optional[str]) -> None:
+        """
+        Set the csv input filename
+        """
+        self.csvOutputFilename = filename
 
     @Slot(int)
     def setLineThickness(self, lineThickness: int) -> None:
@@ -107,6 +127,7 @@ class PoseReprocessor(QRunnable, QObject):
             self.statusUpdate.emit(f"Processed frame #{frameIndex}")
 
         sink.close()
+        if self.csvInputFile is not None: self.csvInputFile.close()
         self.statusUpdate.emit("Done")
 
 class PoseReprocessingWidget(QWidget):
@@ -141,6 +162,12 @@ class PoseReprocessingWidget(QWidget):
         self.outFileSelector = FileSelector(self, mode=FileSelector.MODE_SAVE, title="Output File")
         self.outFileSelector.fileSelected.connect(self.setOutputFilename)
         layout.addWidget(self.outFileSelector)
+
+        self.useCsvFileInput = QCheckBox("Import CSV file", self)
+        layout.addWidget(self.useCsvFileInput)
+
+        self.csvInputFileSelector = FileSelector(self, title="CSV input file")
+        layout.addWidget(self.csvInputFileSelector)
 
         self.overlaySettings = OverlaySettingsWidget(modelManager, self)
         self.overlaySettings.skeletonToggled.connect(self.onSkeletonToggled)
@@ -230,5 +257,8 @@ class PoseReprocessingWidget(QWidget):
         reprocessor.setLineThickness(self.lineThickness)
         reprocessor.setMirror(self.mirror)
         reprocessor.setShowSkeleton(self.showSkeleton)
+        reprocessor.setCsvInputFilename(
+            self.csvInputFileSelector.selectedFile() \
+                if self.useCsvFileInput.isChecked() else None)
         reprocessor.statusUpdate.connect(self.onStatusUpdate)
         self.threadpool.start(reprocessor)

@@ -202,6 +202,43 @@ class Scaler(Transformer):
 
         return self.next(image, keypoints)
     
+class CsvImporter(Transformer):
+    """
+    Imports the keypoints frame by frame to a separate file.
+    """
+    isActive: bool
+    csvReader: Optional[csv._reader]
+    keypointCount: int
+
+    def __init__(self, keypointCount: int, previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, True, previous)
+
+        self.csvReader = None
+        self.keypointCount = keypointCount
+
+    def setFile(self, file: Optional[io.TextIOBase]) -> None:
+        """
+        Set the file that the csv should be read from.
+        The previous file is NOT closed.
+        """
+        self.csvReader = iter(csv.reader(file)) if file is not None else None
+
+    def transform(self, image: np.ndarray, keypoints: list[list[float]]) \
+        -> tuple[np.ndarray, list[list[float]]]:
+        """
+        Import the keypoints for the current image from a file if the transformer
+        is active and the file is set.
+        """
+        if self.isActive and self.csvReader is not None:
+            keypoints = []
+            for _ in range(self.keypointCount):
+                try:
+                    keypoints.append([float(x) for x in next(self.csvReader)])
+                except StopIteration:
+                    keypoints.append([0.0, 0.0, 0.0])
+        
+        return self.next(image, keypoints)
+    
 class CsvExporter(Transformer):
     """
     Exports the keypoints frame by frame to a separate file.
@@ -214,7 +251,7 @@ class CsvExporter(Transformer):
 
         self.csvWriter = None
 
-    def setFile(self, file: io.TextIOBase):
+    def setFile(self, file: io.TextIOBase) -> None:
         """
         Set the file that the csv should be written to.
         The previous file is NOT closed.
