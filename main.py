@@ -27,7 +27,7 @@ if __name__ == "__main__":
     reprocessWindow = PoseReprocessingWidget(modelManager, threadpool)
     window.addTab(reprocessWindow, "Pose Reprocessing")
 
-    modularWindow = ModularPoseProcessorWidget()
+    modularWindow = ModularPoseProcessorWidget(modelManager, window)
     window.addTab(modularWindow, "Modular Pose Processing")
 
     window.setWindowState(Qt.WindowState.WindowMaximized)

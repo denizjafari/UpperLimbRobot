@@ -84,6 +84,12 @@ class LandmarkDrawer(Transformer):
         Transformer.__init__(self, False, previous)
 
         self.markerRadius = MARKER_RADIUS
+
+    def setMarkerRadius(self, markerRadius) -> None:
+        """
+        Set the marker radius.
+        """
+        self.markerRadius = markerRadius
     
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
@@ -116,6 +122,13 @@ class SkeletonDrawer(Transformer):
         Transformer.__init__(self, False, previous)
 
         self.lineThickness = LINE_THICKNESS
+
+    def setLineThickness(self, lineThickness) -> None:
+        """
+        Set the line thickness.
+        """
+        self.lineThickness = lineThickness
+    
     
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
