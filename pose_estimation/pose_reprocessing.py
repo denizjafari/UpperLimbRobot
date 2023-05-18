@@ -123,7 +123,7 @@ class PoseReprocessor(QRunnable, QObject):
             frame = source.nextFrame()
             if frame is None: break
 
-            image, keypoints = self.scaler.transform(frame, SimpleKeypointSet([], []))
+            image, keypoints = self.scaler.transform(frame, [])
 
             sink.addFrame(image)
             self.statusUpdate.emit(f"Processed frame #{frameIndex}")

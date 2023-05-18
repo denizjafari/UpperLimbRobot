@@ -69,7 +69,7 @@ class VideoFrameProcessor(QRunnable, QObject):
         Convert the video frame to an image, analyze it and emit a signal with
         the processed image.
         """
-        image, keypoints = self.transformer.transform(self.videoFrame, SimpleKeypointSet([], []))
+        image, keypoints = self.transformer.transform(self.videoFrame, [])
         self.frameReady.emit(image, keypoints)
 
 class VideoSource:

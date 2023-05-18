@@ -176,11 +176,11 @@ class BlazePose(PoseModel):
             ]
     
 class FeedThroughModel(PoseModel):
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
+    def detect(self, image: np.ndarray) -> KeypointSet:
         """
         Do nothing and return the input as the result
         """
-        return image, SimpleKeypointSet([], [])
+        return SimpleKeypointSet([], [])
     
     def __str__(self) -> str:
         return "None"

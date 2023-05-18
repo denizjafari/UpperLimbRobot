@@ -38,7 +38,7 @@ class Transformer:
 
     def transform(self,
                   image: np.ndarray,
-                  keypointSet: KeypointSet) -> tuple[np.ndarray, KeypointSet]:
+                  keypointSet: KeypointSet) -> tuple[np.ndarray, list[KeypointSet]]:
         """
         Transform the input image. This can occur in place or as a copy.
         Therefore, always respect the return value.
@@ -60,14 +60,15 @@ class ImageMirror(Transformer):
     
     def transform(self,
                   image: np.ndarray,
-                  keypointSet: KeypointSet) -> tuple[np.ndarray, KeypointSet]:
+                  keypointSet: list[KeypointSet]) -> tuple[np.ndarray, list[KeypointSet]]:
         """
         Transform the image by flipping it.
         """
         if self.isActive:
             image = cv2.flip(image, 1)
-            for keypoint in keypointSet.getKeypoints():
-                keypoint[1] = 1.0 - keypoint[1]
+            for s in keypointSet:
+                for keypoint in s.getKeypoints():
+                    keypoint[1] = 1.0 - keypoint[1]
         return self.next(image, keypointSet)
 
 class LandmarkDrawer(Transformer):
@@ -84,8 +85,8 @@ class LandmarkDrawer(Transformer):
 
         self.markerRadius = MARKER_RADIUS
     
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, KeypointSet]:
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
         """
         Transform the image by adding circles to highlight the landmarks.f
         """
@@ -93,10 +94,11 @@ class LandmarkDrawer(Transformer):
             width = image.shape[0]
             height = image.shape[1]
 
-            for keypoint in keypointSet.getKeypoints():
-                x = round(keypoint[0] * width)
-                y = round(keypoint[1] * height)
-                cv2.circle(image, (y, x), self.markerRadius, color=(255, 255, 255), thickness=-1)
+            for s in keypointSet:
+                for keypoint in s.getKeypoints():
+                    x = round(keypoint[0] * width)
+                    y = round(keypoint[1] * height)
+                    cv2.circle(image, (y, x), self.markerRadius, color=(255, 255, 255), thickness=-1)
 
         return self.next(image, keypointSet)
     
@@ -115,31 +117,33 @@ class SkeletonDrawer(Transformer):
 
         self.lineThickness = LINE_THICKNESS
     
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, KeypointSet]:
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
         """
         Transform the image by connectin the joints with straight lines.
         """
         if self.isActive:
             width = image.shape[0]
             height = image.shape[1]
-            color = (0, 0, 255)
-            keypoints = keypointSet.getKeypoints()
 
-            def getCoordinates(index: int) -> tuple[int, int]:
-                return (round(width * keypoints[index][1]),
-                        round(height * keypoints[index][0]))
-            
-            def drawSequence(*args):
-                for i in range(1, len(args)):
-                    cv2.line(image,
-                             getCoordinates(args[i - 1]),
-                             getCoordinates(args[i]),
-                             color,
-                             thickness=self.lineThickness)
-                    
-            for s in keypointSet.getSkeletonLines():
-                drawSequence(*s)
+            for s in keypointSet:
+                color = (0, 0, 255)
+                keypoints = s.getKeypoints()
+
+                def getCoordinates(index: int) -> tuple[int, int]:
+                    return (round(width * keypoints[index][1]),
+                            round(height * keypoints[index][0]))
+                
+                def drawSequence(*args):
+                    for i in range(1, len(args)):
+                        cv2.line(image,
+                                getCoordinates(args[i - 1]),
+                                getCoordinates(args[i]),
+                                color,
+                                thickness=self.lineThickness)
+                        
+                for l in s.getSkeletonLines():
+                    drawSequence(*l)
 
         return self.next(image, keypointSet)
     
@@ -160,8 +164,8 @@ class Scaler(Transformer):
         self.targetWidth = width
         self.targetHeight = height
 
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, KeypointSet]:
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
         """
         Transform the image by scaling it up to the target dimensions.
         """
@@ -189,12 +193,12 @@ class ModelRunner(Transformer):
     def setModel(self, model: PoseModel) -> None:
         self.model = model
 
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, KeypointSet]:
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
         if self.isActive and self.model is not None:
-            return self.next(image, self.model.detect(image))
-        else:
-            return self.next(image, keypointSet)
+            keypointSet.append(self.model.detect(image))
+        
+        return self.next(image, keypointSet)
         
     
 class CsvImporter(Transformer):
@@ -218,8 +222,8 @@ class CsvImporter(Transformer):
         """
         self.csvReader = iter(csv.reader(file)) if file is not None else None
 
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, KeypointSet]:
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
         """
         Import the keypoints for the current image from a file if the transformer
         is active and the file is set.
@@ -231,8 +235,10 @@ class CsvImporter(Transformer):
                     keypoints.append([float(x) for x in next(self.csvReader)])
                 except StopIteration:
                     keypoints.append([0.0, 0.0, 0.0])
+
+            keypointSet.append(BlazePose.KeypointSet(keypoints))
         
-        return self.next(image, BlazePose.KeypointSet(keypoints))
+        return self.next(image, keypointSet)
     
 class CsvExporter(Transformer):
     """
@@ -253,14 +259,15 @@ class CsvExporter(Transformer):
         """
         self.csvWriter = csv.writer(file) if file is not None else None
 
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, KeypointSet]:
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
         """
-        Export the keypoints of the current image to a file if the transformer
-        is active and the file is set.
+        Export the first set of keypoints from the list of keypoint sets. This
+        set is subsequently popped from the list.
         """
         if self.isActive and self.csvWriter is not None:
-            for k in keypointSet.getKeypoints():
+            s = keypointSet.pop(0)
+            for k in s.getKeypoints():
                 self.csvWriter.writerow(k)
         
         return self.next(image, keypointSet)
