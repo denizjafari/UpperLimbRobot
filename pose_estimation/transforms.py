@@ -11,7 +11,7 @@ from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
 
 # The default radius used to draw a marker
 MARKER_RADIUS = 3
-
+# The default thickness for the skeleton lines
 LINE_THICKNESS = 1
 
 class Transformer:
@@ -164,6 +164,13 @@ class Scaler(Transformer):
         self.targetWidth = width
         self.targetHeight = height
 
+    def setTargetSize(self, targetSize: int) -> None:
+        """
+        Set targetWidth and targetHeight at the same time to scale a square.
+        """
+        self.targetWidth = targetSize
+        self.targetHeight = targetSize
+
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
         """
@@ -191,10 +198,17 @@ class ModelRunner(Transformer):
         self.model = None
 
     def setModel(self, model: PoseModel) -> None:
+        """
+        Set the model to bs used for detection.
+        """
         self.model = model
 
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
+        """
+        Let the model detect the keypoints and add them as a new set of
+        keypoints.
+        """
         if self.isActive and self.model is not None:
             keypointSet.append(self.model.detect(image))
         
