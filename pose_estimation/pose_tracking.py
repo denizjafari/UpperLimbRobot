@@ -5,13 +5,13 @@ from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, \
 from PySide6.QtCore import Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
 from pose_estimation.transforms import CsvExporter, \
-    LandmarkDrawer, ImageMirror, Scaler, SkeletonDrawer
+    LandmarkDrawer, ImageMirror, ModelRunner, Scaler, SkeletonDrawer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     OverlaySettingsWidget
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
     VideoFrameProcessor, VideoRecorder, VideoSource, npArrayToQImage
 
-from pose_estimation.Models import BlazePose, FeedThroughModel, ModelManager, PoseModel
+from pose_estimation.Models import ModelManager, PoseModel
 
 
 class PoseTracker(QObject):
@@ -19,9 +19,6 @@ class PoseTracker(QObject):
     The Tracker that sets up the camera and analyzes frames as they come.
 
     frameReady - a signal that is issued when a resulting image is ready.
-
-    displayOptions - the frame processing options.
-    model - the model to use for detection.
 
     camera - the camera that is capturing the frames.
     cameraSession - the camera session that feeds camera input into the
@@ -32,8 +29,6 @@ class PoseTracker(QObject):
     frameReady = Signal(QImage)
     frameRateUpdate = Signal(int)
     recordingToggle = Signal()
-
-    model: PoseModel
 
     scaleTransformer: Scaler
     keypointTransformer: LandmarkDrawer
@@ -56,7 +51,8 @@ class PoseTracker(QObject):
         QObject.__init__(self)
 
         self.scaleTransformer = Scaler(640, 640)
-        self.mirrorTransformer = ImageMirror(self.scaleTransformer)
+        self.modelRunner = ModelRunner(self.scaleTransformer)
+        self.mirrorTransformer = ImageMirror(self.modelRunner)
         self.keypointTransformer = LandmarkDrawer(self.mirrorTransformer)
         self.skeletonTransformer = SkeletonDrawer(self.keypointTransformer)
         self.csvExporter = CsvExporter(self.skeletonTransformer)
@@ -75,8 +71,6 @@ class PoseTracker(QObject):
         self.videoSource = None
         self.csvFile = None
 
-        self.model = FeedThroughModel()
-
         self.pollNextFrame()
 
     @Slot()
@@ -85,8 +79,7 @@ class PoseTracker(QObject):
         Toggle viewing the landmarks.
         """
         self.keypointTransformer.isActive = not self.keypointTransformer.isActive
-        self.skeletonTransformer.isActive = isinstance(self.model, BlazePose) \
-            and self.keypointTransformer.isActive
+        self.skeletonTransformer.isActive = self.keypointTransformer.isActive
 
     @Slot()
     def onMirrorToggled(self) -> None:
@@ -115,8 +108,7 @@ class PoseTracker(QObject):
         
         nextFrame = self.videoSource.nextFrame()
         if nextFrame is not None:
-            processor = VideoFrameProcessor(self.model,
-                                            self.scaleTransformer, 
+            processor = VideoFrameProcessor(self.scaleTransformer, 
                                             nextFrame)
             processor.frameReady.connect(lambda image, _:
                                          self.onFrameReady(npArrayToQImage(image)))
@@ -159,7 +151,7 @@ class PoseTracker(QObject):
         """
         Set the model to use for detection.
         """
-        self.model = model
+        self.modelRunner.setModel(model)
 
     def isRecording(self) -> bool:
         """

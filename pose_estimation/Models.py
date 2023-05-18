@@ -28,7 +28,7 @@ class PoseModel:
     """
     Abstract class to allow models to be exchanged easily.
     """
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
+    def detect(self, image: np.ndarray) -> KeypointSet:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -65,7 +65,7 @@ class MoveNetLightning(PoseModel):
         self.movenet = module.signatures['serving_default']
             
 
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
+    def detect(self, image: np.ndarray) -> KeypointSet:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -73,14 +73,12 @@ class MoveNetLightning(PoseModel):
         image - the image to analyze.
         """
         image = tf.expand_dims(image, axis=0)
-        image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
+        image = tf.image.resize(image, (self.inputSize, self.inputSize))
         image = tf.cast(image, dtype=np.int32)
 
         output = self.movenet(image)["output_0"].numpy()[0, 0].tolist()
 
-        image = tf.squeeze(image).numpy()
-
-        return image, SimpleKeypointSet(output, [])
+        return SimpleKeypointSet(output, [])
     
     def __str__(self) -> str:
         return "MoveNet (Lightning)"
@@ -99,7 +97,7 @@ class MoveNetThunder(PoseModel):
         self.movenet = module.signatures['serving_default']
             
 
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
+    def detect(self, image: np.ndarray) -> KeypointSet:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -107,14 +105,12 @@ class MoveNetThunder(PoseModel):
         image - the image to analyze.
         """
         image = tf.expand_dims(image, axis=0)
-        image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
+        image = tf.image.resize(image, (self.inputSize, self.inputSize))
         image = tf.cast(image, dtype=np.int32)
 
         output = self.movenet(image)["output_0"].numpy()[0, 0].tolist()
 
-        image = tf.squeeze(image).numpy()
-
-        return image, SimpleKeypointSet(output, [])
+        return SimpleKeypointSet(output, [])
     
     def __str__(self) -> str:
         return "MoveNet (Thunder)"
@@ -131,14 +127,14 @@ class BlazePose(PoseModel):
                      static_image_mode=False)
         self.inputSize = 256
     
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
+    def detect(self, image: np.ndarray) -> KeypointSet:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
 
         image - the image to analyze.
         """
-        image = tf.image.resize_with_pad(image, self.inputSize, self.inputSize)
+        image = tf.image.resize(image, (self.inputSize, self.inputSize))
         image = tf.cast(image, dtype=np.uint8).numpy()
 
         output = self.blazePose.process(image).pose_landmarks
@@ -149,7 +145,7 @@ class BlazePose(PoseModel):
         else:
             result = SimpleKeypointSet([], [])
 
-        return image, result
+        return result
     
     def __str__(self) -> str:
         return "BlazePose"

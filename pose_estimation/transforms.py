@@ -4,9 +4,10 @@ from typing import Optional, Callable
 import io
 import csv
 import numpy as np
+import tensorflow as tf
 import cv2
 
-from pose_estimation.Models import BlazePose, KeypointSet
+from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
 
 # The default radius used to draw a marker
 MARKER_RADIUS = 3
@@ -20,7 +21,7 @@ class Transformer:
     These transformers can be layered like neural networks, by wrapping
     previous layers in later layers.
     """
-    active: bool
+    isActive: bool
     next: Callable[[np.ndarray, KeypointSet], np.ndarray]
 
     def __init__(self,
@@ -42,7 +43,7 @@ class Transformer:
         Transform the input image. This can occur in place or as a copy.
         Therefore, always respect the return value.
         """
-        raise NotImplementedError
+        return self.next(image, keypointSet)
     
 class ImageMirror(Transformer):
     """
@@ -165,11 +166,36 @@ class Scaler(Transformer):
         Transform the image by scaling it up to the target dimensions.
         """
         if self.isActive:
-            image = cv2.resize(image,
-                               (self.targetWidth, self.targetHeight),
-                               interpolation=cv2.INTER_NEAREST)
+            image = tf.image.resize_with_pad(image,
+                                             self.targetWidth,
+                                             self.targetHeight).numpy()
 
         return self.next(image, keypointSet)
+    
+
+class ModelRunner(Transformer):
+    """
+    Runs a model on the image and adds the keypoints to the list.
+    """
+    isActive: bool
+    model: Optional[PoseModel]
+
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, True, previous)
+
+        self.model = None
+
+    def setModel(self, model: PoseModel) -> None:
+        self.model = model
+
+    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
+        -> tuple[np.ndarray, KeypointSet]:
+        if self.isActive and self.model is not None:
+            return self.next(image, self.model.detect(image))
+        else:
+            return self.next(image, keypointSet)
+        
     
 class CsvImporter(Transformer):
     """

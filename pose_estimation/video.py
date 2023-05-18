@@ -9,7 +9,7 @@ from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QVideoSink, QVid
 from PySide6.QtGui import QImage
 from PySide6.QtCore import Signal, Slot, QRunnable, QObject
 
-from pose_estimation.Models import PoseModel
+from pose_estimation.Models import KeypointSet, PoseModel, SimpleKeypointSet
 from pose_estimation.transforms import Transformer
 
 
@@ -46,14 +46,12 @@ class VideoFrameProcessor(QRunnable, QObject):
     displayOptions - the display options to use.
     videoFrame - the video frame from the video sink.
     """
-    frameReady = Signal(np.ndarray, np.ndarray)
-    model: PoseModel
+    frameReady = Signal(np.ndarray, KeypointSet)
     transformer: Transformer
     videoFrame: np.ndarray
     recorder: VideoRecorder
 
     def __init__(self,
-                 model: PoseModel,
                  transformer: Transformer,
                  videoFrame: np.ndarray) -> None:
         """
@@ -64,7 +62,6 @@ class VideoFrameProcessor(QRunnable, QObject):
 
         self.transformer = transformer
         self.videoFrame = videoFrame
-        self.model = model
 
     @Slot()
     def run(self) -> None:
@@ -72,9 +69,7 @@ class VideoFrameProcessor(QRunnable, QObject):
         Convert the video frame to an image, analyze it and emit a signal with
         the processed image.
         """
-        image, keypoints = self.model.detect(self.videoFrame)
-        image, keypoints = self.transformer.transform(image, keypoints)
-
+        image, keypoints = self.transformer.transform(self.videoFrame, SimpleKeypointSet([], []))
         self.frameReady.emit(image, keypoints)
 
 class VideoSource:

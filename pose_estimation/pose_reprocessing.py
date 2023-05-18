@@ -4,9 +4,9 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, \
     QCheckBox
 from PySide6.QtCore import Slot, QRunnable, Signal, QThreadPool, QObject
 
-from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
+from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel, SimpleKeypointSet
 from pose_estimation.transforms import CsvImporter, ImageMirror, \
-    LandmarkDrawer, Scaler, SkeletonDrawer
+    LandmarkDrawer, ModelRunner, Scaler, SkeletonDrawer
 from pose_estimation.ui_utils import FileSelector, OverlaySettingsWidget
 from pose_estimation.video import CVVideoFileSource, CVVideoRecorder
 
@@ -20,10 +20,12 @@ class PoseReprocessor(QRunnable, QObject):
     model - the model to be used for video processing.
     """
     statusUpdate = Signal(str)
-    model: PoseModel
     inputFileName: str
     outputFileName: str
+
     scaler: Scaler
+    modelRunner: ModelRunner
+    csvLoader: CsvImporter
     mirrorTransformer: ImageMirror
     keypointTransformer: LandmarkDrawer
     skeletonTransformer: SkeletonDrawer
@@ -36,23 +38,24 @@ class PoseReprocessor(QRunnable, QObject):
         """
         QRunnable.__init__(self)
         QObject.__init__(self)
-        self.model = FeedThroughModel()
 
         self.scaler = Scaler(640, 640)
-        self.csvLoader = CsvImporter(33, self.scaler)
+        self.modelRunner = ModelRunner(self.scaler)
+        self.csvLoader = CsvImporter(33, self.modelRunner)
         self.mirrorTransformer = ImageMirror(self.csvLoader)
         self.keypointTransformer = LandmarkDrawer(self.mirrorTransformer)
         self.skeletonTransformer = SkeletonDrawer(self.keypointTransformer)
 
         self.inputFileName = ""
-        self.outputFileName = ""        
+        self.outputFileName = ""   
+        self.csvInputFile = None     
     
     @Slot(PoseModel)
     def setModel(self, model: PoseModel) -> None:
         """
         Set the model to be used.
         """
-        self.model = model
+        self.modelRunner.setModel(model)
 
     @Slot(str)
     def setInputFilename(self, filename: str) -> None:
@@ -120,8 +123,7 @@ class PoseReprocessor(QRunnable, QObject):
             frame = source.nextFrame()
             if frame is None: break
 
-            image, keypoints = self.model.detect(frame)
-            image, keypoints = self.scaler.transform(image, keypoints)
+            image, keypoints = self.scaler.transform(frame, SimpleKeypointSet([], []))
 
             sink.addFrame(image)
             self.statusUpdate.emit(f"Processed frame #{frameIndex}")
@@ -141,7 +143,6 @@ class PoseReprocessingWidget(QWidget):
     threadpool: QThreadPool
     inputFilename: str
     outputFilename: str
-    model: Optional[PoseModel]
 
     inFileSelector: FileSelector
     outFileSelector: FileSelector
