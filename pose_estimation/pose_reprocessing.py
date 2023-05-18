@@ -5,8 +5,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, \
 from PySide6.QtCore import Slot, QRunnable, Signal, QThreadPool, QObject
 
 from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
-from pose_estimation.transforms import BlazePoseSkeletonDrawer, CsvImporter, ImageMirror, \
-    LandmarkDrawer, Scaler
+from pose_estimation.transforms import CsvImporter, ImageMirror, \
+    LandmarkDrawer, Scaler, SkeletonDrawer
 from pose_estimation.ui_utils import FileSelector, OverlaySettingsWidget
 from pose_estimation.video import CVVideoFileSource, CVVideoRecorder
 
@@ -26,7 +26,7 @@ class PoseReprocessor(QRunnable, QObject):
     scaler: Scaler
     mirrorTransformer: ImageMirror
     keypointTransformer: LandmarkDrawer
-    skeletonTransformer: BlazePoseSkeletonDrawer
+    skeletonTransformer: SkeletonDrawer
 
     csvInputFile: Optional[io.TextIOBase]
 
@@ -42,7 +42,7 @@ class PoseReprocessor(QRunnable, QObject):
         self.csvLoader = CsvImporter(33, self.scaler)
         self.mirrorTransformer = ImageMirror(self.csvLoader)
         self.keypointTransformer = LandmarkDrawer(self.mirrorTransformer)
-        self.skeletonTransformer = BlazePoseSkeletonDrawer(self.keypointTransformer)
+        self.skeletonTransformer = SkeletonDrawer(self.keypointTransformer)
 
         self.inputFileName = ""
         self.outputFileName = ""        

@@ -215,7 +215,6 @@ class FileSelector(QWidget):
     
 
 class OverlaySettingsWidget(QGroupBox):
-    confidenceChanged = Signal(int)
     markerRadiusChanged = Signal(int)
     lineThicknessChanged = Signal(int)
     skeletonToggled = Signal()
@@ -226,7 +225,6 @@ class OverlaySettingsWidget(QGroupBox):
     skeletonButton: QCheckBox
     markerRadiusSlider: QSlider
     lineThicknessSlider: QSlider
-    confidenceSlider: QSlider
 
     def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
         QGroupBox.__init__(self, parent)
@@ -264,15 +262,5 @@ class OverlaySettingsWidget(QGroupBox):
         self.lineThicknessSlider.setTickInterval(1)
         self.lineThicknessSlider.valueChanged.connect(self.lineThicknessChanged)
         self.layout().addWidget(self.lineThicknessSlider)
-
-        layout.addWidget(QLabel("Confidence Threshold"))
-        self.confidenceSlider = QSlider(self,
-                                        orientation=Qt.Orientation.Horizontal)
-        self.confidenceSlider.setMinimum(1)
-        self.confidenceSlider.setMaximum(100)
-        self.confidenceSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.confidenceSlider.setTickInterval(5)
-        self.confidenceSlider.valueChanged.connect(self.confidenceChanged)
-        self.layout().addWidget(self.confidenceSlider)
 
         layout.addStretch()

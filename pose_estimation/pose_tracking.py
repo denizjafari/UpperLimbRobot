@@ -4,8 +4,8 @@ from PySide6.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, \
     QCheckBox
 from PySide6.QtCore import Signal, Slot, QObject, QThreadPool, QTimer
 from PySide6.QtGui import QPixmap, QImage
-from pose_estimation.transforms import BlazePoseSkeletonDrawer, CsvExporter, LandmarkConfidenceFilter, \
-    LandmarkDrawer, ImageMirror, Scaler
+from pose_estimation.transforms import CsvExporter, \
+    LandmarkDrawer, ImageMirror, Scaler, SkeletonDrawer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     OverlaySettingsWidget
 from pose_estimation.video import CVVideoRecorder, QVideoSource, \
@@ -36,7 +36,6 @@ class PoseTracker(QObject):
     model: PoseModel
 
     scaleTransformer: Scaler
-    keypointFilter: LandmarkConfidenceFilter
     keypointTransformer: LandmarkDrawer
     mirrorTransformer: ImageMirror
 
@@ -58,9 +57,8 @@ class PoseTracker(QObject):
 
         self.scaleTransformer = Scaler(640, 640)
         self.mirrorTransformer = ImageMirror(self.scaleTransformer)
-        self.keypointFilter = LandmarkConfidenceFilter(self.mirrorTransformer)
-        self.keypointTransformer = LandmarkDrawer(self.keypointFilter)
-        self.skeletonTransformer = BlazePoseSkeletonDrawer(self.keypointTransformer)
+        self.keypointTransformer = LandmarkDrawer(self.mirrorTransformer)
+        self.skeletonTransformer = SkeletonDrawer(self.keypointTransformer)
         self.csvExporter = CsvExporter(self.skeletonTransformer)
 
         self.threadpool = threadpool
@@ -107,13 +105,6 @@ class PoseTracker(QObject):
     @Slot(int)
     def onLineThicknessChanged(self, v) -> None:
         self.skeletonTransformer.lineThickness = v
-
-    @Slot(int)
-    def onConfidenceChanged(self, v) -> None:
-        """
-        Update the confidence threshold for landmarks.
-        """
-        self.keypointFilter.confidenceThreshold = v / 100
 
     def processNextFrame(self) -> None:
         """
@@ -327,7 +318,6 @@ class PoseTrackerWidget(QWidget):
         self.overlaySettings.mirrorToggled.connect(poseTracker.onMirrorToggled)
         self.overlaySettings.markerRadiusChanged.connect(poseTracker.onMarkerRadiusChanged)
         self.overlaySettings.lineThicknessChanged.connect(poseTracker.onLineThicknessChanged)
-        self.overlaySettings.confidenceChanged.connect(poseTracker.onConfidenceChanged)
         self.overlaySettings.modelSelected.connect(poseTracker.setModel)
 
         poseTracker.recordingToggle.connect(self.onRecordingToggled)

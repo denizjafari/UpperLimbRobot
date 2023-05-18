@@ -4,19 +4,52 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import mediapipe.python.solutions.pose as mp_pose
 
+class KeypointSet:
+    """
+    A set to store all keypoint sets recognized from a model / imported.
+    """
+
+    def getKeypoints(self) -> list[list[float]]:
+        """
+        Returns the underlying modifiable list of keypoints
+        """
+        raise NotImplementedError
+    
+
+    def getSkeletonLines(self) -> list[list[int]]:
+        """
+        Returns a list of skeleton lines. A skeleton line is a sequence
+        of indices into the keypoint list that indicates in which order the
+        indexed keypoints should be connected.
+        """
+        raise NotImplementedError
 
 class PoseModel:
     """
     Abstract class to allow models to be exchanged easily.
     """
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, list[list[float]]]:
+    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
 
         image - the image to analyze.
         """
-        raise NotImplementedError
+        raise NotImplementedError  
+
+class SimpleKeypointSet(KeypointSet):
+    keypoints: list[list[float]]
+    skeletonLines: list[list[int]]
+
+    def __init__(self, keypoints: list[list[float]], skeletonLines: list[list[int]]) -> None:
+        self.keypoints = keypoints
+        self.skeletonLines = skeletonLines
+
+    def getKeypoints(self) -> list[list[float]]:
+        return self.keypoints
+    
+    def getSkeletonLines(self) -> list[list[int]]:
+        return self.skeletonLines
     
 
 class MoveNetLightning(PoseModel):
@@ -32,7 +65,7 @@ class MoveNetLightning(PoseModel):
         self.movenet = module.signatures['serving_default']
             
 
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, list[list[float]]]:
+    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -47,7 +80,7 @@ class MoveNetLightning(PoseModel):
 
         image = tf.squeeze(image).numpy()
 
-        return image, output
+        return image, SimpleKeypointSet(output, [])
     
     def __str__(self) -> str:
         return "MoveNet (Lightning)"
@@ -66,7 +99,7 @@ class MoveNetThunder(PoseModel):
         self.movenet = module.signatures['serving_default']
             
 
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, list[list[float]]]:
+    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -81,7 +114,7 @@ class MoveNetThunder(PoseModel):
 
         image = tf.squeeze(image).numpy()
 
-        return image, output
+        return image, SimpleKeypointSet(output, [])
     
     def __str__(self) -> str:
         return "MoveNet (Thunder)"
@@ -98,7 +131,7 @@ class BlazePose(PoseModel):
                      static_image_mode=False)
         self.inputSize = 256
     
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, list[list[float]]]:
+    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -110,24 +143,48 @@ class BlazePose(PoseModel):
 
         output = self.blazePose.process(image).pose_landmarks
 
-
         if output is not None:
             output = output.landmark
-            result = [[output[i].y, output[i].x, output[i].visibility] for i in range(33)]
+            result = BlazePose.KeypointSet(output)
         else:
-            result = []
+            result = SimpleKeypointSet([], [])
 
         return image, result
     
     def __str__(self) -> str:
         return "BlazePose"
     
+    class KeypointSet(KeypointSet):
+        keypoints: list[list[float]]
+
+        def __init__(self, output) -> None:
+            if isinstance(output, list):
+                self.keypoints = output
+            else:
+                self.keypoints = [
+                    [output[i].y, output[i].x, output[i].visibility]
+                    for i in range(33)
+                    ]
+
+        def getKeypoints(self) -> list[list[float]]:
+            return self.keypoints
+        
+        def getSkeletonLines(self) -> list[list[int]]:
+            return [
+                [8, 6, 5, 4, 0, 1, 2, 3, 7],
+                [9, 10],
+                [21, 15, 17, 19, 15, 13, 11, 23, 25, 27, 31, 29, 27],
+                [22, 16, 18, 20, 16, 14, 12, 24, 26, 28, 32, 30],
+                [11, 12],
+                [23, 24],
+            ]
+    
 class FeedThroughModel(PoseModel):
-    def detect(self, image: np.ndarray) -> tuple[np.ndarray, list[list[float]]]:
+    def detect(self, image: np.ndarray) -> tuple[np.ndarray, KeypointSet]:
         """
         Do nothing and return the input as the result
         """
-        return image, []
+        return image, SimpleKeypointSet([], [])
     
     def __str__(self) -> str:
         return "None"
