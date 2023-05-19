@@ -1,7 +1,7 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
     QLabel, QVBoxLayout, QComboBox
-from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
+from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt, QTimer
 from PySide6.QtGui import QPixmap
 import numpy as np
 
@@ -10,7 +10,8 @@ from pose_estimation.transform_widgets import ImageMirrorWidget, \
     LandmarkDrawerWidget, ModelRunnerWidget, ScalerWidget, \
         SkeletonDrawerWidget, TransformerWidget
 from pose_estimation.transforms import Transformer
-from pose_estimation.video import CVVideoSource, VideoSource, npArrayToQImage
+from pose_estimation.ui_utils import CameraSelector
+from pose_estimation.video import CVVideoSource, QVideoSource, VideoSource, npArrayToQImage
 
 
 class PipelineWidget(QWidget, Transformer):
@@ -143,26 +144,51 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
 
-        self.videoSource = CVVideoSource()
+        self.videoSource = QVideoSource()
 
         self.displayLabel = QLabel()
         self.vLayout.addWidget(self.displayLabel, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        self.frameRateLabel = QLabel()
+        self.vLayout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.cameraSelector = CameraSelector(self)
+        self.cameraSelector.selected.connect(self.videoSource.setCamera)
+        self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.frameRateTimer = QTimer()
+        self.frameRateTimer.setInterval(1000)
+        self.frameRateTimer.timeout.connect(self.onFrameRateUpdate)
+        self.frameRateTimer.start()
+
+        self.frameCount = 0
+        self.lastFrameRate = 0
+
         self.pipelineWidget = PipelineWidget(modelManager, self)
         self.vLayout.addWidget(self.pipelineWidget)
+        self.qThreadPool = QThreadPool.globalInstance()
 
-        self.processFrame(None)
+        self.processNextFrame()
+
+        
+    def processNextFrame(self) -> None:
+        processor = FrameProcessor(self.videoSource, self.pipelineWidget)
+        processor.frameReady.connect(self.showFrame)
+        self.qThreadPool.start(processor)
 
 
     @Slot(np.ndarray)
-    def processFrame(self, frame: Optional[np.ndarray]) -> None:
-        """
-        Process a frame by running the transformation pipeline in a separate
-        thread.
-        """
-        processor = FrameProcessor(self.videoSource, self.pipelineWidget)
-        processor.frameReady.connect(self.processFrame)
-        QThreadPool.globalInstance().start(processor)
-
+    def showFrame(self, frame: Optional[np.ndarray]) -> None:
         if frame is not None:
-            self.displayLabel.setPixmap(QPixmap.fromImage(npArrayToQImage(frame)))
+            qImage = npArrayToQImage(frame)
+            pixmap = QPixmap.fromImage(qImage)
+            self.displayLabel.setPixmap(pixmap)
+            self.frameCount += 1
+        
+        self.processNextFrame()
+
+    @Slot()
+    def onFrameRateUpdate(self) -> None:
+        self.frameRateLabel.setText(f"FPS: {self.frameCount}")
+        self.frameCount = 0
+

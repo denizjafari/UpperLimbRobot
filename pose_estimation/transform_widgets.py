@@ -1,6 +1,6 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
-    QPushButton, QCheckBox, QSlider
+    QPushButton, QCheckBox, QSlider, QGroupBox
 from PySide6.QtCore import Slot, Signal, Qt
 from pose_estimation.Models import ModelManager
 
@@ -8,7 +8,7 @@ from pose_estimation.transforms import ImageMirror, LandmarkDrawer, ModelRunner,
 from pose_estimation.ui_utils import ModelSelector
 
 
-class TransformerWidget(QWidget):
+class TransformerWidget(QGroupBox):
     """
     The base transformer widget including the title label and remove logic.
     """
@@ -22,13 +22,11 @@ class TransformerWidget(QWidget):
         """
         Initialize the TransformerWidget.
         """
-        QWidget.__init__(self, parent)
+        QGroupBox.__init__(self, parent)
+        self.setTitle(title)
 
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
-
-        self.titleLabel = QLabel(title, self)
-        self.vLayout.addWidget(self.titleLabel)
 
         self.activeCheckBox = QCheckBox("Active")
         self.activeCheckBox.clicked.connect(self.onActiveToggle)
