@@ -6,8 +6,11 @@ import csv
 import numpy as np
 import tensorflow as tf
 import cv2
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QImage
 
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
+from pose_estimation.video import npArrayToQImage
 
 # The default radius used to draw a marker
 MARKER_RADIUS = 3
@@ -299,3 +302,31 @@ class CsvExporter(Transformer):
         
         return self.next(image, keypointSet)
     
+class QImageProvider(Transformer, QObject):
+    """
+    Emits a signal with the np.ndarray image converted to a QImage.
+    """
+    frameReady = Signal(QImage)
+    isActive: bool
+
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize the image provider
+        """
+        Transformer.__init__(self, True, previous)
+        QObject.__init__(self)
+
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
+        """
+        Export the first set of keypoints from the list of keypoint sets. This
+        set is subsequently popped from the list.
+        """
+        if self.isActive:
+            if image is not None:
+                qImage = npArrayToQImage(image)
+            else:
+                qImage = None
+            self.frameReady.emit(qImage)
+
+        self.next(image, keypointSet)

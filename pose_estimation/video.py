@@ -7,10 +7,7 @@ from typing import Optional
 import tensorflow as tf
 from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QVideoSink, QVideoFrame
 from PySide6.QtGui import QImage
-from PySide6.QtCore import Signal, Slot, QRunnable, QObject
-
-from pose_estimation.Models import KeypointSet, PoseModel, SimpleKeypointSet
-from pose_estimation.transforms import Transformer
+from PySide6.QtCore import Slot
 
 
 def qImageToNpArray(image: QImage) -> np.ndarray:
@@ -34,43 +31,6 @@ def npArrayToQImage(image: np.ndarray) -> QImage:
     image = QImage(buffer, image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
 
     return image
-
-
-class VideoFrameProcessor(QRunnable, QObject):
-    """
-    One task that processes one video frame and signals the completion
-    of that frame.
-
-    frameReady - the signal that is emitted with the processed image.
-    model - the model to use to detect the pose.
-    displayOptions - the display options to use.
-    videoFrame - the video frame from the video sink.
-    """
-    frameReady = Signal(np.ndarray, KeypointSet)
-    transformer: Transformer
-    videoFrame: np.ndarray
-    recorder: VideoRecorder
-
-    def __init__(self,
-                 transformer: Transformer,
-                 videoFrame: np.ndarray) -> None:
-        """
-        Initialize the runner.
-        """
-        QRunnable.__init__(self)
-        QObject.__init__(self)
-
-        self.transformer = transformer
-        self.videoFrame = videoFrame
-
-    @Slot()
-    def run(self) -> None:
-        """
-        Convert the video frame to an image, analyze it and emit a signal with
-        the processed image.
-        """
-        image, keypoints = self.transformer.transform(self.videoFrame, [])
-        self.frameReady.emit(image, keypoints)
 
 class VideoSource:
     """

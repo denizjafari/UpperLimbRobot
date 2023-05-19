@@ -1,17 +1,17 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
     QLabel, QVBoxLayout, QComboBox
-from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt, QTimer
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt, QTimer
+from PySide6.QtGui import QPixmap, QImage
 import numpy as np
 
 from pose_estimation.Models import KeypointSet, ModelManager
 from pose_estimation.transform_widgets import ImageMirrorWidget, \
     LandmarkDrawerWidget, ModelRunnerWidget, ScalerWidget, \
         SkeletonDrawerWidget, TransformerWidget
-from pose_estimation.transforms import Transformer
+from pose_estimation.transforms import QImageProvider, Transformer
 from pose_estimation.ui_utils import CameraSelector
-from pose_estimation.video import CVVideoSource, QVideoSource, VideoSource, npArrayToQImage
+from pose_estimation.video import QVideoSource, VideoSource
 
 
 class PipelineWidget(QWidget, Transformer):
@@ -36,6 +36,8 @@ class PipelineWidget(QWidget, Transformer):
         self.transformerWidgets = []
         self.modelManager = modelManager
 
+        self.imageProvider = QImageProvider()
+
         self.transformerSelector = QComboBox(self)
         self.transformerSelector.addItem("Scaler")
         self.transformerSelector.addItem("Mirror")
@@ -57,6 +59,8 @@ class PipelineWidget(QWidget, Transformer):
         """
         for t in self.transformerWidgets:
             image, keypointSet = t.transformer.transform(image, keypointSet)
+
+        self.imageProvider.transform(image, keypointSet)
 
         return image, keypointSet
     
@@ -99,7 +103,6 @@ class FrameProcessor(QRunnable, QObject):
     """
     Thread runnable that grabs one frame from a source and transforms it.
     """
-    frameReady = Signal(np.ndarray)
 
     def __init__(self, source: VideoSource, transformer: Transformer) -> None:
         """
@@ -118,8 +121,6 @@ class FrameProcessor(QRunnable, QObject):
         """
         image = self.source.nextFrame()
         image, _ = self.transformer.transform(image, [])
-
-        self.frameReady.emit(image)
 
 
 class ModularPoseProcessorWidget(QWidget):
@@ -168,19 +169,18 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout.addWidget(self.pipelineWidget)
         self.qThreadPool = QThreadPool.globalInstance()
 
+        self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
         self.processNextFrame()
 
         
     def processNextFrame(self) -> None:
         processor = FrameProcessor(self.videoSource, self.pipelineWidget)
-        processor.frameReady.connect(self.showFrame)
         self.qThreadPool.start(processor)
 
 
     @Slot(np.ndarray)
-    def showFrame(self, frame: Optional[np.ndarray]) -> None:
-        if frame is not None:
-            qImage = npArrayToQImage(frame)
+    def showFrame(self, qImage: Optional[QImage]) -> None:
+        if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
             self.frameCount += 1
