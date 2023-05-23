@@ -7,7 +7,7 @@ from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from pose_estimation.Models import ModelManager
 from pose_estimation.video import FrameRateProvider
 from pose_estimation.transforms import CsvExporter, ImageMirror, \
-    LandmarkDrawer, ModelRunner, RecorderTransformer, Scaler, SkeletonDrawer, \
+    LandmarkDrawer, ModelRunner, PoseFeedbackTransformer, RecorderTransformer, Scaler, SkeletonDrawer, \
         Transformer
 from pose_estimation.ui_utils import FileSelector, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
@@ -37,6 +37,7 @@ class TransformerWidget(QGroupBox):
         self.vLayout.addLayout(self.headLayout)
 
         self.activeCheckBox = QCheckBox("Active")
+        self.activeCheckBox.setChecked(True)
         self.activeCheckBox.clicked.connect(self.onActiveToggle)
         self.headLayout.addWidget(self.activeCheckBox)
 
@@ -307,3 +308,24 @@ class RecorderTransformerWidget(TransformerWidget):
 
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
+
+
+class PoseFeedbackWidget(TransformerWidget):
+
+    def __init__(self,
+                 parent: Optional[QWidget] = None, ) -> None:
+        """
+        Initialize the RecorderTransformerWidget.
+        """
+        TransformerWidget.__init__(self, "Feedback", parent)
+
+        self.transformer = PoseFeedbackTransformer()
+
+        self.angleLimitSlider = QSlider(self,
+                                          orientation=Qt.Orientation.Horizontal)
+        self.angleLimitSlider.setMinimum(0)
+        self.angleLimitSlider.setMaximum(40)
+        self.angleLimitSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.angleLimitSlider.setTickInterval(5)
+        self.angleLimitSlider.valueChanged.connect(self.transformer.setAngleLimit)
+        self.vLayout.addWidget(self.angleLimitSlider)

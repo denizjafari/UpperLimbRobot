@@ -7,7 +7,7 @@ import numpy as np
 
 from pose_estimation.Models import KeypointSet, ModelManager
 from pose_estimation.transform_widgets import ImageMirrorWidget, \
-    LandmarkDrawerWidget, ModelRunnerWidget, RecorderTransformerWidget, ScalerWidget, \
+    LandmarkDrawerWidget, ModelRunnerWidget, PoseFeedbackWidget, RecorderTransformerWidget, ScalerWidget, \
         SkeletonDrawerWidget, TransformerWidget
 from pose_estimation.transforms import QImageProvider, Transformer
 from pose_estimation.ui_utils import CameraSelector
@@ -48,6 +48,7 @@ class PipelineWidget(QWidget, Transformer):
         self.transformerSelector.addItem("Landmarks")
         self.transformerSelector.addItem("Skeleton")
         self.transformerSelector.addItem("Recorder")
+        self.transformerSelector.addItem("Feedback")
         self.hLayout.addWidget(self.transformerSelector)
 
         self.addButton = QPushButton("Add Transformer", self)
@@ -86,6 +87,8 @@ class PipelineWidget(QWidget, Transformer):
             widget = SkeletonDrawerWidget(self)
         elif index == 5:
             widget = RecorderTransformerWidget(self.frameRateProvider, self)
+        elif index == 6:
+            widget = PoseFeedbackWidget(self)
         else:
             widget = None
 

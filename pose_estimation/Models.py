@@ -23,6 +23,18 @@ class KeypointSet:
         indexed keypoints should be connected.
         """
         raise NotImplementedError
+    
+    def getLeftShoulder(self) -> list[float]:
+        """
+        Return the coordinates and confidence for the left shoulder.
+        """
+        raise NotImplementedError
+
+    def getRightShoulder(self) -> list[float]:
+        """
+        Return the coordinates and confidence for the right shoulder.
+        """
+        raise NotImplementedError
 
 class PoseModel:
     """
@@ -50,6 +62,12 @@ class SimpleKeypointSet(KeypointSet):
     
     def getSkeletonLines(self) -> list[list[int]]:
         return self.skeletonLines
+    
+    def getLeftShoulder(self) -> list[float]:
+        return [0.0, 0.0, 0.0]
+    
+    def getRightShoulder(self) -> list[float]:
+        return [0.0, 0.0, 0.0]
     
 
 class MoveNetLightning(PoseModel):
@@ -174,6 +192,12 @@ class BlazePose(PoseModel):
                 [11, 12],
                 [23, 24],
             ]
+        
+        def getLeftShoulder(self) -> list[float]:
+            return self.getKeypoints()[11]
+        
+        def getRightShoulder(self) -> list[float]:
+            return self.getKeypoints()[12]
     
 class FeedThroughModel(PoseModel):
     def detect(self, image: np.ndarray) -> KeypointSet:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from typing import Optional, Callable
 
 import io
@@ -71,7 +72,7 @@ class ImageMirror(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, False, previous)
+        Transformer.__init__(self, True, previous)
     
     def transform(self,
                   image: np.ndarray,
@@ -96,7 +97,7 @@ class LandmarkDrawer(Transformer):
     markerRadius: int
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
-        Transformer.__init__(self, False, previous)
+        Transformer.__init__(self, True, previous)
 
         self.markerRadius = MARKER_RADIUS
 
@@ -134,7 +135,7 @@ class SkeletonDrawer(Transformer):
         """
         Initialize the Drawer.
         """
-        Transformer.__init__(self, False, previous)
+        Transformer.__init__(self, True, previous)
 
         self.lineThickness = LINE_THICKNESS
 
@@ -356,7 +357,7 @@ class RecorderTransformer(Transformer):
         """
         Initialize the image provider
         """
-        Transformer.__init__(self, False, previous)
+        Transformer.__init__(self, True, previous)
 
         self.recorder = None
         self.width = 0
@@ -368,13 +369,49 @@ class RecorderTransformer(Transformer):
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
         """
-        Export the first set of keypoints from the list of keypoint sets. This
-        set is subsequently popped from the list.
+        Record the current frame if the transformer is active and the recorder
+        is initialized.
         """
         self.width = image.shape[1]
         self.height = image.shape[0]
         
         if self.isActive and self.recorder is not None:
             self.recorder.addFrame(image)
+
+        return self.next(image, keypointSet)
+    
+
+class PoseFeedbackTransformer(Transformer):
+    keypointSetIndex: int
+    angleLimit: int
+
+    def __init__(self,
+                 keypointSetIndex: int = 0,
+                 previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, True, previous)
+        self.keypointSetIndex = keypointSetIndex
+        self.angleLimit = 10
+
+    def setAngleLimit(self, angleLimit: int) -> None:
+        self.angleLimit = angleLimit
+
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:      
+        if self.isActive:
+            leftShoulder = keypointSet[self.keypointSetIndex].getLeftShoulder()
+            rightShoulder = keypointSet[self.keypointSetIndex].getRightShoulder()
+
+            delta_x = abs(rightShoulder[1] - leftShoulder[1])
+            delta_y = abs(rightShoulder[0] - leftShoulder[0])
+
+            angle_rad = math.atan(delta_y / delta_x)
+            angle_deg = math.degrees(angle_rad)
+
+            if angle_deg > self.angleLimit:
+                color = (0, 0, 255)
+            else:
+                color = (0, 255, 0)
+            
+            cv2.rectangle(image, (0,0), (image.shape[1], image.shape[0]), color, thickness=10)
 
         return self.next(image, keypointSet)
