@@ -48,6 +48,18 @@ class Transformer:
         """
         return self.next(image, keypointSet)
     
+    def setNextTransformer(self, nextTransformer: Optional[Transformer]) -> None:
+        """
+        Changes the next transformer in the pipeline.
+
+        nextTransformer - the next transformer, can be None to make the
+        pipeline end with this transformer
+        """
+        if nextTransformer is None:
+            self.next = lambda x, y: (x, y)
+        else:
+            self.next = nextTransformer.transform
+    
 class ImageMirror(Transformer):
     """
     A transformer which mirrors the image along the y-axis. Useful when dealing
@@ -275,12 +287,14 @@ class CsvExporter(Transformer):
     Exports the keypoints frame by frame to a separate file.
     """
     isActive: bool
+    index: int
     csvWriter: Optional[csv._writer]
 
-    def __init__(self, previous: Optional[Transformer] = None) -> None:
+    def __init__(self, index: int, previous: Optional[Transformer] = None) -> None:
         Transformer.__init__(self, True, previous)
 
         self.csvWriter = None
+        self.index = index
 
     def setFile(self, file: io.TextIOBase) -> None:
         """
@@ -296,8 +310,7 @@ class CsvExporter(Transformer):
         set is subsequently popped from the list.
         """
         if self.isActive and self.csvWriter is not None:
-            s = keypointSet.pop(0)
-            for k in s.getKeypoints():
+            for k in keypointSet[self.index].getKeypoints():
                 self.csvWriter.writerow(k)
         
         return self.next(image, keypointSet)

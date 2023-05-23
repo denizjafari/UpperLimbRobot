@@ -1,6 +1,7 @@
+from io import TextIOBase
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
-    QPushButton, QCheckBox, QSlider, QGroupBox
+    QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 
 from pose_estimation.Models import ModelManager
@@ -32,13 +33,16 @@ class TransformerWidget(QGroupBox):
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
 
+        self.headLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.headLayout)
+
         self.activeCheckBox = QCheckBox("Active")
         self.activeCheckBox.clicked.connect(self.onActiveToggle)
-        self.vLayout.addWidget(self.activeCheckBox)
+        self.headLayout.addWidget(self.activeCheckBox)
 
         self.removeButton = QPushButton("Remove", self)
         self.removeButton.clicked.connect(self.removed)
-        self.vLayout.addWidget(self.removeButton)
+        self.headLayout.addWidget(self.removeButton)
 
 
     def onActiveToggle(self) -> None:
@@ -188,9 +192,12 @@ class RecorderLoader(QRunnable, QObject):
 
 class RecorderTransformerWidget(TransformerWidget):
     """
+    Widget for the recorder and csv exporter widgets
     """
     videoRecorder: VideoRecorder
     csvExporter: Optional[CsvExporter]
+    selectors: list[FileSelector]
+    outputFiles: list[TextIOBase]
     videoRecorder: Optional[VideoRecorder]
     isRecording: bool
     transformer: RecorderTransformer
@@ -207,7 +214,9 @@ class RecorderTransformerWidget(TransformerWidget):
         frameRateProvider.frameRateUpdated.connect(self.setFrameRate)
 
         self.transformer = RecorderTransformer()
-        self.csvExporter = None
+        self.selectors = []
+        self.csvExporter = Optional[CsvExporter]
+        self.outputFiles = []
         self.videoRecorder = None
         self.isRecording = False
         self.frameRate = 0
@@ -217,21 +226,55 @@ class RecorderTransformerWidget(TransformerWidget):
                                                title="Output File")
         self.vLayout.addWidget(self.outputFileSelector)
 
+        self.csvExporterLayout = QVBoxLayout()
+        self.vLayout.addLayout(self.csvExporterLayout)
+
+        self.hButtonLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.hButtonLayout)
+
+        self.addExporterButton = QPushButton("Add CSV Exporter")
+        self.addExporterButton.clicked.connect(self.addExporter)
+        self.hButtonLayout.addWidget(self.addExporterButton)
+
         self.recordingButton = QPushButton("Start Recording", self)
         self.recordingButton.clicked.connect(self.toggleRecording)
-        self.vLayout.addWidget(self.recordingButton)
+        self.hButtonLayout.addWidget(self.recordingButton)
 
         self.threadpool = QThreadPool.globalInstance()
 
+    @Slot()
+    def addExporter(self) -> None:
+        """
+        Add a csv exporter to the widget and pipeline.
+        """
+        selector = FileSelector(self, title="CSV output",removable=True)
+        self.selectors.append(selector)
+
+        def remove() -> None:
+            self.selectors.remove(selector)
+            self.csvExporterLayout.removeWidget(selector)
+            selector.deleteLater()
+
+        selector.removeButton.clicked.connect(remove)
+        self.csvExporterLayout.addWidget(selector)
+
     @Slot(int)
     def setFrameRate(self, frameRate: int) -> None:
+        """
+        Update the frame rate to the current value.
+        """
         self.frameRate = frameRate
 
     @Slot(VideoRecorder)
     def onRecordingToggled(self, videoRecorder: Optional[VideoRecorder]) -> None:
+        """
+        A slot to be called when the recording has been toggled. Prepare the
+        recorder transformer and update the user interface.
+        """
         self.isRecording = videoRecorder is not None
         if not self.isRecording and self.videoRecorder is not None:
             self.videoRecorder.close()
+
         self.videoRecorder = videoRecorder
         self.transformer.setVideoRecorder(videoRecorder)
         buttonText = ("Stop" if self.isRecording else "Start") + " Recording"
@@ -239,12 +282,28 @@ class RecorderTransformerWidget(TransformerWidget):
 
     @Slot()
     def toggleRecording(self) -> None:
+        """
+        Toggle the recording between start and stop.
+        """
         if self.isRecording:
+            for file in self.outputFiles:
+                file.close()
+            self.files = []
             self.onRecordingToggled(None)
         else:
             loader = RecorderLoader(self.frameRate,
                                     self.transformer.width,
                                     self.transformer.height,
                                     self.outputFileSelector.selectedFile())
+            
+            previousExporter = self.transformer
+            self.transformer.setNextTransformer(None)
+            for index, selector in enumerate(self.selectors):
+                exporter = CsvExporter(index, previousExporter)
+                file = open(selector.selectedFile(), "w", newline="")
+                exporter.setFile(file)
+                previousExporter = exporter
+                print(previousExporter)
+
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)

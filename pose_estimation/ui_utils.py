@@ -171,28 +171,37 @@ class FileSelector(QWidget):
     textInput: QLineEdit
     label: QLabel
 
-    def __init__(self, parent: Optional[QWidget] = None, mode=MODE_LOAD, title="File") -> None:
+    removeButton: QPushButton
+
+    def __init__(self,
+                 parent: Optional[QWidget] = None,
+                 mode=MODE_LOAD,
+                 title:Optional[str]=None,
+                 removable=False) -> None:
         """
         Initialize the file selector widget.
         """
         QWidget.__init__(self, parent)
 
-        self.setLayout(QVBoxLayout())
+        self.setLayout(QHBoxLayout())
 
-        self.label = QLabel(title, self)
-        self.layout().addWidget(self.label)
+        if title is not None:
+            self.label = QLabel(title, self)
+            self.layout().addWidget(self.label)
 
-        hContainer = QWidget(self)
-        hContainer.setLayout(QHBoxLayout())
-        self.layout().addWidget(hContainer)
-
-        self.textInput = QLineEdit(hContainer)
+        self.textInput = QLineEdit(self)
         self.textInput.textChanged.connect(self.fileSelected)
-        hContainer.layout().addWidget(self.textInput)
+        self.layout().addWidget(self.textInput)
 
-        self.fileSelectButton = QPushButton("Select file", hContainer)
+        self.fileSelectButton = QPushButton("Select file", self)
         self.fileSelectButton.clicked.connect(self.selectFile)
-        hContainer.layout().addWidget(self.fileSelectButton)
+        self.layout().addWidget(self.fileSelectButton)
+
+        if removable:
+            self.removeButton = QPushButton("Remove", self)
+            self.layout().addWidget(self.removeButton)
+        else:
+            self.removeButton = None
         
         self.option = mode
 
