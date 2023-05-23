@@ -7,7 +7,7 @@ from typing import Optional
 import tensorflow as tf
 from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QVideoSink, QVideoFrame
 from PySide6.QtGui import QImage
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Slot, Signal, QObject, QTimer
 
 
 def qImageToNpArray(image: QImage) -> np.ndarray:
@@ -31,6 +31,43 @@ def npArrayToQImage(image: np.ndarray) -> QImage:
     image = QImage(buffer, image.shape[1], image.shape[0], QImage.Format.Format_RGB32)
 
     return image
+
+class FrameRateProvider(QObject):
+    """
+    Keeps track of the frame rate. Emits a signal to update the frame rate
+    every second with the number of frames that were rendered in the previous
+    second.
+    """
+    frameRateUpdated = Signal(int)
+    frameCount: int
+
+    def __init__(self) -> None:
+        """
+        Initialize the frame rate provider.
+        """
+        QObject.__init__(self)
+        self.frameRateTimer = QTimer()
+        self.frameRateTimer.setInterval(1000)
+        self.frameRateTimer.timeout.connect(self._onFrameRateUpdate)
+        self.frameRateTimer.start()
+
+        self.frameCount = 0
+
+    @Slot()
+    def onFrameReady(self) -> None:
+        """
+        Slot to be called whenever a frame is ready to be displayed.
+        """
+        self.frameCount += 1
+
+    @Slot()
+    def _onFrameRateUpdate(self) -> None:
+        """
+        Emit a signal carrying the number of frames that were processed in the
+        previous second.
+        """
+        self.frameRateUpdated.emit(self.frameCount)
+        self.frameCount = 0
 
 class VideoSource:
     """

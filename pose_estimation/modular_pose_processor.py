@@ -1,17 +1,17 @@
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
     QLabel, QVBoxLayout, QComboBox
-from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt, QTimer
+from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt, Signal
 from PySide6.QtGui import QPixmap, QImage
 import numpy as np
 
 from pose_estimation.Models import KeypointSet, ModelManager
 from pose_estimation.transform_widgets import ImageMirrorWidget, \
-    LandmarkDrawerWidget, ModelRunnerWidget, ScalerWidget, \
+    LandmarkDrawerWidget, ModelRunnerWidget, RecorderTransformerWidget, ScalerWidget, \
         SkeletonDrawerWidget, TransformerWidget
 from pose_estimation.transforms import QImageProvider, Transformer
 from pose_estimation.ui_utils import CameraSelector
-from pose_estimation.video import QVideoSource, VideoSource
+from pose_estimation.video import FrameRateProvider, QVideoSource, VideoSource
 
 
 class PipelineWidget(QWidget, Transformer):
@@ -20,10 +20,12 @@ class PipelineWidget(QWidget, Transformer):
     full pipeline as if it was one transformer.
     """
     modelManager: ModelManager
+    frameRateProvider: FrameRateProvider
     transformerWidgets: list[TransformerWidget]
 
     def __init__(self,
                  modelManager: ModelManager,
+                 frameRateProvider: FrameRateProvider,
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the PipelineWidget by adding
@@ -35,6 +37,7 @@ class PipelineWidget(QWidget, Transformer):
 
         self.transformerWidgets = []
         self.modelManager = modelManager
+        self.frameRateProvider = frameRateProvider
 
         self.imageProvider = QImageProvider()
 
@@ -44,6 +47,7 @@ class PipelineWidget(QWidget, Transformer):
         self.transformerSelector.addItem("Model")
         self.transformerSelector.addItem("Landmarks")
         self.transformerSelector.addItem("Skeleton")
+        self.transformerSelector.addItem("Recorder")
         self.hLayout.addWidget(self.transformerSelector)
 
         self.addButton = QPushButton("Add Transformer", self)
@@ -80,6 +84,8 @@ class PipelineWidget(QWidget, Transformer):
             widget = LandmarkDrawerWidget(self)
         elif index == 4:
             widget = SkeletonDrawerWidget(self)
+        elif index == 5:
+            widget = RecorderTransformerWidget(self.frameRateProvider, self)
         else:
             widget = None
 
@@ -145,6 +151,9 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
 
+        self.frameRateProvider = FrameRateProvider()
+        self.frameRateProvider.frameRateUpdated.connect(self.onFrameRateUpdate)
+
         self.videoSource = QVideoSource()
 
         self.displayLabel = QLabel()
@@ -157,15 +166,7 @@ class ModularPoseProcessorWidget(QWidget):
         self.cameraSelector.selected.connect(self.videoSource.setCamera)
         self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.frameRateTimer = QTimer()
-        self.frameRateTimer.setInterval(1000)
-        self.frameRateTimer.timeout.connect(self.onFrameRateUpdate)
-        self.frameRateTimer.start()
-
-        self.frameCount = 0
-        self.lastFrameRate = 0
-
-        self.pipelineWidget = PipelineWidget(modelManager, self)
+        self.pipelineWidget = PipelineWidget(modelManager, self.frameRateProvider, self)
         self.vLayout.addWidget(self.pipelineWidget)
         self.qThreadPool = QThreadPool.globalInstance()
 
@@ -183,12 +184,10 @@ class ModularPoseProcessorWidget(QWidget):
         if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
-            self.frameCount += 1
+            self.frameRateProvider.onFrameReady()
         
         self.processNextFrame()
 
-    @Slot()
-    def onFrameRateUpdate(self) -> None:
-        self.frameRateLabel.setText(f"FPS: {self.frameCount}")
-        self.frameCount = 0
-
+    @Slot(int)
+    def onFrameRateUpdate(self, frameRate: int) -> None:
+        self.frameRateLabel.setText(f"FPS: {frameRate}")

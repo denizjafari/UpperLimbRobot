@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
-from pose_estimation.video import npArrayToQImage
+from pose_estimation.video import VideoRecorder, npArrayToQImage
 
 # The default radius used to draw a marker
 MARKER_RADIUS = 3
@@ -319,8 +319,7 @@ class QImageProvider(Transformer, QObject):
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
         """
-        Export the first set of keypoints from the list of keypoint sets. This
-        set is subsequently popped from the list.
+        Convert the image into a QImage and emit it with the signal.
         """
         if self.isActive:
             if image is not None:
@@ -329,4 +328,40 @@ class QImageProvider(Transformer, QObject):
                 qImage = None
             self.frameReady.emit(qImage)
 
-        self.next(image, keypointSet)
+        return self.next(image, keypointSet)
+
+class RecorderTransformer(Transformer):
+    """
+    Records the image.
+    """
+    isActive: bool
+    recorder: Optional[VideoRecorder]
+    width: int
+    height: int
+
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize the image provider
+        """
+        Transformer.__init__(self, False, previous)
+
+        self.recorder = None
+        self.width = 0
+        self.height = 0
+
+    def setVideoRecorder(self, recorder: VideoRecorder):
+        self.recorder = recorder
+
+    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
+        -> tuple[np.ndarray, list[KeypointSet]]:
+        """
+        Export the first set of keypoints from the list of keypoint sets. This
+        set is subsequently popped from the list.
+        """
+        self.width = image.shape[1]
+        self.height = image.shape[0]
+        
+        if self.isActive and self.recorder is not None:
+            self.recorder.addFrame(image)
+
+        return self.next(image, keypointSet)
