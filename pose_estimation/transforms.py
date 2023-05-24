@@ -14,11 +14,6 @@ from PySide6.QtGui import QImage
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
 from pose_estimation.video import VideoRecorder, npArrayToQImage
 
-# The default radius used to draw a marker
-MARKER_RADIUS = 3
-# The default thickness for the skeleton lines
-LINE_THICKNESS = 1
-
 class Transformer:
     """
     Interface that is implemented by all transformers. A transformer makes
@@ -96,17 +91,25 @@ class LandmarkDrawer(Transformer):
     """
     isActive: bool
     markerRadius: int
+    color: tuple[int, int, int]
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         Transformer.__init__(self, True, previous)
 
-        self.markerRadius = MARKER_RADIUS
+        self.markerRadius = 1
+        self.color = (255, 255, 255)
 
     def setMarkerRadius(self, markerRadius) -> None:
         """
         Set the marker radius.
         """
         self.markerRadius = markerRadius
+
+    def setRGBColor(self, color: tuple[int, int, int]) -> None:
+        self.color = (color[2], color[1], color[0])
+    
+    def getRGBColor(self) -> tuple[int, int, int]:
+        return (self.color[2], self.color[1], self.color[0])
     
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
@@ -121,7 +124,7 @@ class LandmarkDrawer(Transformer):
                 for keypoint in s.getKeypoints():
                     x = round(keypoint[0] * width)
                     y = round(keypoint[1] * height)
-                    cv2.circle(image, (y, x), self.markerRadius, color=(255, 255, 255), thickness=-1)
+                    cv2.circle(image, (y, x), self.markerRadius, color=self.color, thickness=-1)
 
         return self.next(image, keypointSet)
     
@@ -131,6 +134,7 @@ class SkeletonDrawer(Transformer):
     """
     isActive: bool
     lineThickness: int
+    color: tuple[int, int, int]
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         """
@@ -138,7 +142,8 @@ class SkeletonDrawer(Transformer):
         """
         Transformer.__init__(self, True, previous)
 
-        self.lineThickness = LINE_THICKNESS
+        self.lineThickness = 1
+        self.color = (0, 0, 255)
 
     def setLineThickness(self, lineThickness) -> None:
         """
@@ -146,6 +151,11 @@ class SkeletonDrawer(Transformer):
         """
         self.lineThickness = lineThickness
     
+    def setRGBColor(self, color: tuple[int, int, int]) -> None:
+        self.color = (color[2], color[1], color[0])
+
+    def getRGBColor(self) -> tuple[int, int, int]:
+        return (self.color[2], self.color[1], self.color[0])
     
     def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
         -> tuple[np.ndarray, list[KeypointSet]]:
@@ -157,7 +167,6 @@ class SkeletonDrawer(Transformer):
             height = image.shape[1]
 
             for s in keypointSet:
-                color = (0, 0, 255)
                 keypoints = s.getKeypoints()
 
                 def getCoordinates(index: int) -> tuple[int, int]:
@@ -169,7 +178,7 @@ class SkeletonDrawer(Transformer):
                         cv2.line(image,
                                 getCoordinates(args[i - 1]),
                                 getCoordinates(args[i]),
-                                color,
+                                self.color,
                                 thickness=self.lineThickness)
                         
                 for l in s.getSkeletonLines():
@@ -405,14 +414,19 @@ class PoseFeedbackTransformer(Transformer):
             delta_x = abs(rightShoulder[1] - leftShoulder[1])
             delta_y = abs(rightShoulder[0] - leftShoulder[0])
 
-            angle_rad = math.atan(delta_y / delta_x)
-            angle_deg = math.degrees(angle_rad)
+            if delta_x != 0:
+                angle_rad = math.atan(delta_y / delta_x)
+                angle_deg = math.degrees(angle_rad)
 
-            if angle_deg > self.angleLimit:
-                color = (0, 0, 255)
-            else:
-                color = (0, 255, 0)
-            
-            cv2.rectangle(image, (0,0), (image.shape[1], image.shape[0]), color, thickness=10)
+                if angle_deg > self.angleLimit:
+                    color = (0, 0, 255)
+                else:
+                    color = (0, 255, 0)
+                
+                cv2.rectangle(image,
+                              (0,0),
+                              (image.shape[1], image.shape[0]),
+                              color,
+                              thickness=10)
 
         return self.next(image, keypointSet)

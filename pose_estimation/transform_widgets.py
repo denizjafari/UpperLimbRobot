@@ -1,7 +1,9 @@
 from io import TextIOBase
 from typing import Optional
+
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
-    QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout
+    QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout, QColorDialog
+from PySide6.QtGui import QColor
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 
 from pose_estimation.Models import ModelManager
@@ -131,6 +133,12 @@ class LandmarkDrawerWidget(TransformerWidget):
         self.sliderLabel = QLabel("Marker Radius", self)
         self.vLayout.addWidget(self.sliderLabel)
 
+        self.colorDialog = QColorDialog(self, self.transformer.getRGBColor())
+        self.colorDialog.currentColorChanged.connect(
+            lambda qColor: self.transformer.setRGBColor((qColor.red(),
+                                                        qColor.green(),
+                                                        qColor.blue())))
+
         self.markerRadiusSlider = LabeledQSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
         self.markerRadiusSlider.setMinimum(1)
@@ -139,6 +147,10 @@ class LandmarkDrawerWidget(TransformerWidget):
         self.markerRadiusSlider.setTickInterval(1)
         self.markerRadiusSlider.valueChanged.connect(self.transformer.setMarkerRadius)
         self.vLayout.addWidget(self.markerRadiusSlider)
+
+        self.chooseColorButton = QPushButton("Change color...", self)
+        self.chooseColorButton.clicked.connect(self.colorDialog.open)
+        self.vLayout.addWidget(self.chooseColorButton)
 
 
 class SkeletonDrawerWidget(TransformerWidget):
@@ -157,6 +169,12 @@ class SkeletonDrawerWidget(TransformerWidget):
         self.sliderLabel = QLabel("Line Thickness", self)
         self.vLayout.addWidget(self.sliderLabel)
 
+        self.colorDialog = QColorDialog(self, self.transformer.getRGBColor())
+        self.colorDialog.currentColorChanged.connect(
+            lambda qColor: self.transformer.setRGBColor((qColor.red(),
+                                                        qColor.green(),
+                                                        qColor.blue())))
+
         self.lineThicknessSlider = LabeledQSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
         self.lineThicknessSlider.setMinimum(1)
@@ -165,6 +183,10 @@ class SkeletonDrawerWidget(TransformerWidget):
         self.lineThicknessSlider.setTickInterval(1)
         self.lineThicknessSlider.valueChanged.connect(self.transformer.setLineThickness)
         self.vLayout.addWidget(self.lineThicknessSlider)
+
+        self.chooseColorButton = QPushButton("Change color...", self)
+        self.chooseColorButton.clicked.connect(self.colorDialog.open)
+        self.vLayout.addWidget(self.chooseColorButton)
 
 
 class RecorderLoader(QRunnable, QObject):
@@ -318,6 +340,9 @@ class RecorderTransformerWidget(TransformerWidget):
 
 
 class PoseFeedbackWidget(TransformerWidget):
+    """
+    Widget for the pose feedback transformer.
+    """
 
     def __init__(self,
                  parent: Optional[QWidget] = None, ) -> None:
