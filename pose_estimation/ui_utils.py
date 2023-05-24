@@ -1,8 +1,10 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
-    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QCheckBox, QSlider
-from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
-from PySide6.QtCore import Signal, Slot, Qt
 from typing import Optional
+
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
+    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QCheckBox, QSlider, \
+    QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip
+from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
+from PySide6.QtCore import Signal, Slot, Qt, QPoint
 
 from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
 
@@ -221,6 +223,33 @@ class FileSelector(QWidget):
         Get the selected filename.
         """
         return self.textInput.text()
+    
+
+class LabeledQSlider(QSlider):
+    """
+    Slider that also shows the value as a tooltip when it is changed.
+    """
+    def sliderChange(self, change: QAbstractSlider.SliderChange) -> None:
+        """
+        Do the default action, but also display the currently selected value
+        as a tooltip.
+        """
+        super().sliderChange(change)
+
+        if change == QAbstractSlider.SliderChange.SliderValueChange:
+            sliderStyle = QStyleOptionSlider()
+            self.initStyleOption(sliderStyle)
+
+            sr = self.style().subControlRect(QStyle.ComplexControl.CC_Slider,
+                                             sliderStyle,
+                                             QStyle.SubControl.SC_SliderHandle,
+                                             self)
+            
+            bottomRight = sr.bottomRight()
+
+            QToolTip.showText(
+                self.mapToGlobal(QPoint(bottomRight.x(), bottomRight.y())),
+                str(self.value()))
     
 
 class OverlaySettingsWidget(QGroupBox):

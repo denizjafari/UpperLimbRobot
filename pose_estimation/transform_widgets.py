@@ -9,7 +9,7 @@ from pose_estimation.video import FrameRateProvider
 from pose_estimation.transforms import CsvExporter, ImageMirror, \
     LandmarkDrawer, ModelRunner, PoseFeedbackTransformer, RecorderTransformer, Scaler, SkeletonDrawer, \
         Transformer
-from pose_estimation.ui_utils import FileSelector, ModelSelector
+from pose_estimation.ui_utils import FileSelector, LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 
@@ -128,7 +128,10 @@ class LandmarkDrawerWidget(TransformerWidget):
 
         self.transformer = LandmarkDrawer()
 
-        self.markerRadiusSlider = QSlider(self,
+        self.sliderLabel = QLabel("Marker Radius", self)
+        self.vLayout.addWidget(self.sliderLabel)
+
+        self.markerRadiusSlider = LabeledQSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
         self.markerRadiusSlider.setMinimum(1)
         self.markerRadiusSlider.setMaximum(10)
@@ -150,7 +153,11 @@ class SkeletonDrawerWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Skeleton Drawer", parent)
 
         self.transformer = SkeletonDrawer()
-        self.lineThicknessSlider = QSlider(self,
+
+        self.sliderLabel = QLabel("Line Thickness", self)
+        self.vLayout.addWidget(self.sliderLabel)
+
+        self.lineThicknessSlider = LabeledQSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
         self.lineThicknessSlider.setMinimum(1)
         self.lineThicknessSlider.setMaximum(10)
@@ -321,7 +328,10 @@ class PoseFeedbackWidget(TransformerWidget):
 
         self.transformer = PoseFeedbackTransformer()
 
-        self.angleLimitSlider = QSlider(self,
+        self.sliderLabel = QLabel("Angle Limit", self)
+        self.vLayout.addWidget(self.sliderLabel)
+
+        self.angleLimitSlider = LabeledQSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
         self.angleLimitSlider.setMinimum(0)
         self.angleLimitSlider.setMaximum(40)

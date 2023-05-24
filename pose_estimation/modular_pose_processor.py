@@ -1,9 +1,11 @@
 from typing import Optional
+
+import numpy as np
+
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
     QLabel, QVBoxLayout, QComboBox
-from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt, Signal
+from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
-import numpy as np
 
 from pose_estimation.Models import KeypointSet, ModelManager
 from pose_estimation.transform_widgets import ImageMirrorWidget, \
