@@ -12,7 +12,51 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
-from pose_estimation.video import VideoRecorder, npArrayToQImage
+from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, npArrayToQImage
+
+class FrameData:
+    dryRun: bool
+    _width: int
+    _height: int
+
+    streamEnded: bool
+    image: Optional[np.ndarray]
+    keypointSets: list[KeypointSet]
+
+    def __init__(self,
+                 width: int = -1,
+                 height: int = -1,
+                 dryRun: bool = False,
+                 image: Optional[np.ndarray] = None,
+                 streamEnded: bool = False,
+                 frameRate: int = -1,
+                 keypointSets: Optional[list[KeypointSet]] = None):
+        self.dryRun = dryRun
+        self.image = image
+        self._width = width
+        self._height = height
+        self.frameRate = frameRate
+        self.streamEnded = streamEnded
+        self.keypointSets = keypointSets if keypointSets is not None else []
+
+    def width(self):
+        if self.image is not None:
+            return self.image.shape[1]
+        else:
+            return self._width
+        
+    def height(self):
+        if self.image is not None:
+            return self.image.shape[0]
+        else:
+            return self._width
+
+    def setWidth(self, width) -> None:
+        self._width = width
+    
+    def setHeight(self, height) -> None:
+        self._height = height
+
 
 class Transformer:
     """
@@ -32,18 +76,16 @@ class Transformer:
         optionally setting the next transformer in the chain.
         """
         self.isActive = isActive
-        self.next = lambda x, y: (x, y)
+        self.next = lambda x: x
         if previous is not None:
             previous.next = self.transform
 
-    def transform(self,
-                  image: np.ndarray,
-                  keypointSet: KeypointSet) -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Transform the input image. This can occur in place or as a copy.
         Therefore, always respect the return value.
         """
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
     def setNextTransformer(self, nextTransformer: Optional[Transformer]) -> None:
         """
@@ -53,7 +95,7 @@ class Transformer:
         pipeline end with this transformer
         """
         if nextTransformer is None:
-            self.next = lambda x, y: (x, y)
+            self.next = lambda x: x
         else:
             self.next = nextTransformer.transform
     
@@ -70,18 +112,16 @@ class ImageMirror(Transformer):
         """
         Transformer.__init__(self, True, previous)
     
-    def transform(self,
-                  image: np.ndarray,
-                  keypointSet: list[KeypointSet]) -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Transform the image by flipping it.
         """
         if self.isActive:
-            image = cv2.flip(image, 1)
-            for s in keypointSet:
+            frameData.image = cv2.flip(frameData.image, 1)
+            for s in frameData.keypointSets:
                 for keypoint in s.getKeypoints():
                     keypoint[1] = 1.0 - keypoint[1]
-        return self.next(image, keypointSet)
+        return self.next(frameData)
 
 class LandmarkDrawer(Transformer):
     """
@@ -111,22 +151,18 @@ class LandmarkDrawer(Transformer):
     def getRGBColor(self) -> tuple[int, int, int]:
         return (self.color[2], self.color[1], self.color[0])
     
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
-        Transform the image by adding circles to highlight the landmarks.f
+        Transform the image by adding circles to highlight the landmarks.
         """
-        if self.isActive:
-            width = image.shape[0]
-            height = image.shape[1]
-
-            for s in keypointSet:
+        if self.isActive and not frameData.dryRun:
+            for s in frameData.keypointSets:
                 for keypoint in s.getKeypoints():
-                    x = round(keypoint[0] * width)
-                    y = round(keypoint[1] * height)
-                    cv2.circle(image, (y, x), self.markerRadius, color=self.color, thickness=-1)
+                    x = round(keypoint[0] * frameData.width())
+                    y = round(keypoint[1] * frameData.height())
+                    cv2.circle(frameData.image, (y, x), self.markerRadius, color=self.color, thickness=-1)
 
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
 class SkeletonDrawer(Transformer):
     """
@@ -157,25 +193,21 @@ class SkeletonDrawer(Transformer):
     def getRGBColor(self) -> tuple[int, int, int]:
         return (self.color[2], self.color[1], self.color[0])
     
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Transform the image by connectin the joints with straight lines.
         """
-        if self.isActive:
-            width = image.shape[0]
-            height = image.shape[1]
-
-            for s in keypointSet:
+        if self.isActive and not frameData.dryRun:
+            for s in frameData.keypointSets:
                 keypoints = s.getKeypoints()
 
                 def getCoordinates(index: int) -> tuple[int, int]:
-                    return (round(width * keypoints[index][1]),
-                            round(height * keypoints[index][0]))
+                    return (round(frameData.width() * keypoints[index][1]),
+                            round(frameData.height() * keypoints[index][0]))
                 
                 def drawSequence(*args):
                     for i in range(1, len(args)):
-                        cv2.line(image,
+                        cv2.line(frameData.image,
                                 getCoordinates(args[i - 1]),
                                 getCoordinates(args[i]),
                                 self.color,
@@ -184,7 +216,7 @@ class SkeletonDrawer(Transformer):
                 for l in s.getSkeletonLines():
                     drawSequence(*l)
 
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
 class Scaler(Transformer):
     """
@@ -210,17 +242,20 @@ class Scaler(Transformer):
         self.targetWidth = targetSize
         self.targetHeight = targetSize
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Transform the image by scaling it up to the target dimensions.
         """
         if self.isActive:
-            image = tf.image.resize_with_pad(image,
-                                             self.targetWidth,
-                                             self.targetHeight).numpy()
+            if not frameData.dryRun and frameData.image is not None:
+                frameData.image = tf.image.resize_with_pad(frameData.image,
+                                                self.targetWidth,
+                                                self.targetHeight).numpy()
+            else:
+                frameData.setWidth(self.targetWidth)
+                frameData.setHeight(self.targetHeight)
 
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
 
 class ModelRunner(Transformer):
@@ -242,16 +277,16 @@ class ModelRunner(Transformer):
         """
         self.model = model
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Let the model detect the keypoints and add them as a new set of
         keypoints.
         """
-        if self.isActive and self.model is not None:
-            keypointSet.append(self.model.detect(image))
+        if self.isActive and self.model is not None and not frameData.dryRun \
+            and frameData.image is not None:
+            frameData.keypointSets.append(self.model.detect(frameData.image))
         
-        return self.next(image, keypointSet)
+        return self.next(frameData)
         
     
 class CsvImporter(Transformer):
@@ -275,13 +310,12 @@ class CsvImporter(Transformer):
         """
         self.csvReader = iter(csv.reader(file)) if file is not None else None
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Import the keypoints for the current image from a file if the transformer
         is active and the file is set.
         """
-        if self.isActive and self.csvReader is not None:
+        if self.isActive and self.csvReader is not None and not frameData.dryRun:
             keypoints = []
             for _ in range(self.keypointCount):
                 try:
@@ -289,9 +323,9 @@ class CsvImporter(Transformer):
                 except StopIteration:
                     keypoints.append([0.0, 0.0, 0.0])
 
-            keypointSet.append(BlazePose.KeypointSet(keypoints))
+            frameData.keypointSets.append(BlazePose.KeypointSet(keypoints))
         
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
 class CsvExporter(Transformer):
     """
@@ -314,17 +348,16 @@ class CsvExporter(Transformer):
         """
         self.csvWriter = csv.writer(file) if file is not None else None
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Export the first set of keypoints from the list of keypoint sets. This
         set is subsequently popped from the list.
         """
-        if self.isActive and self.csvWriter is not None:
-            for k in keypointSet[self.index].getKeypoints():
+        if self.isActive and self.csvWriter is not None and not frameData.dryRun:
+            for k in frameData.keypointSets[self.index].getKeypoints():
                 self.csvWriter.writerow(k)
         
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
 class QImageProvider(Transformer, QObject):
     """
@@ -340,19 +373,18 @@ class QImageProvider(Transformer, QObject):
         Transformer.__init__(self, True, previous)
         QObject.__init__(self)
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Convert the image into a QImage and emit it with the signal.
         """
         if self.isActive:
-            if image is not None:
-                qImage = npArrayToQImage(image)
+            if frameData.image is not None:
+                qImage = npArrayToQImage(frameData.image)
             else:
                 qImage = None
             self.frameReady.emit(qImage)
 
-        return self.next(image, keypointSet)
+        return self.next(frameData)
 
 class RecorderTransformer(Transformer):
     """
@@ -360,6 +392,7 @@ class RecorderTransformer(Transformer):
     """
     isActive: bool
     recorder: Optional[VideoRecorder]
+    frameRate: int
     width: int
     height: int
 
@@ -376,19 +409,19 @@ class RecorderTransformer(Transformer):
     def setVideoRecorder(self, recorder: VideoRecorder):
         self.recorder = recorder
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Record the current frame if the transformer is active and the recorder
         is initialized.
         """
-        self.width = image.shape[1]
-        self.height = image.shape[0]
+        self.width = frameData.width()
+        self.height = frameData.height()
+        self.frameRate = frameData.frameRate
         
-        if self.isActive and self.recorder is not None:
-            self.recorder.addFrame(image)
+        if self.isActive and self.recorder is not None and not frameData.dryRun:
+            self.recorder.addFrame(frameData.image)
 
-        return self.next(image, keypointSet)
+        return self.next(frameData)
     
 
 class PoseFeedbackTransformer(Transformer):
@@ -405,11 +438,10 @@ class PoseFeedbackTransformer(Transformer):
     def setAngleLimit(self, angleLimit: int) -> None:
         self.angleLimit = angleLimit
 
-    def transform(self, image: np.ndarray, keypointSet: list[KeypointSet]) \
-        -> tuple[np.ndarray, list[KeypointSet]]:      
-        if self.isActive:
-            leftShoulder = keypointSet[self.keypointSetIndex].getLeftShoulder()
-            rightShoulder = keypointSet[self.keypointSetIndex].getRightShoulder()
+    def transform(self, frameData: FrameData) -> FrameData:
+        if self.isActive and not frameData.dryRun:
+            leftShoulder = frameData.keypointSets[self.keypointSetIndex].getLeftShoulder()
+            rightShoulder = frameData.keypointSets[self.keypointSetIndex].getRightShoulder()
 
             delta_x = abs(rightShoulder[1] - leftShoulder[1])
             delta_y = abs(rightShoulder[0] - leftShoulder[0])
@@ -423,10 +455,39 @@ class PoseFeedbackTransformer(Transformer):
                 else:
                     color = (0, 255, 0)
                 
-                cv2.rectangle(image,
+                cv2.rectangle(frameData.image,
                               (0,0),
-                              (image.shape[1], image.shape[0]),
+                              (frameData.width(), frameData.height()),
                               color,
                               thickness=10)
 
-        return self.next(image, keypointSet)
+        return self.next(frameData)
+    
+
+class VideoSourceTransformer(Transformer, QObject):
+    """
+    Grabs the next frame from the video source and puts it in the pipeline.
+    """
+    streamEnded = Signal()
+    videoSource: Optional[VideoSource]
+
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, True, previous)
+        QObject.__init__(self)
+        self.videoSource = None
+    
+    def setVideoSource(self, videoSource: VideoSource) -> None:
+        self.videoSource = videoSource
+
+    def transform(self, frameData: FrameData) -> FrameData:
+        if self.videoSource is not None:
+            frameData.frameRate = self.videoSource.frameRate()
+            if self.isActive:
+                try:
+                    frameData.image = self.videoSource.nextFrame()
+                except NoMoreFrames:
+                    frameData.streamEnded = True
+            return self.next(frameData)
+        
+        return frameData

@@ -3,15 +3,15 @@ from typing import Optional
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
     QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout, QColorDialog
-from PySide6.QtGui import QColor
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 
 from pose_estimation.Models import ModelManager
-from pose_estimation.video import FrameRateProvider
+from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import CsvExporter, ImageMirror, \
-    LandmarkDrawer, ModelRunner, PoseFeedbackTransformer, RecorderTransformer, Scaler, SkeletonDrawer, \
-        Transformer
-from pose_estimation.ui_utils import FileSelector, LabeledQSlider, ModelSelector
+    LandmarkDrawer, ModelRunner, PoseFeedbackTransformer, RecorderTransformer, \
+        Scaler, SkeletonDrawer, Transformer, VideoSourceTransformer
+from pose_estimation.ui_utils import CameraSelector, FileSelector, \
+    LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 
@@ -223,6 +223,7 @@ class RecorderLoader(QRunnable, QObject):
 class RecorderTransformerWidget(TransformerWidget):
     """
     Widget for the recorder and csv exporter widgets
+    TODO: Fix mess with csv exporters when not recordin / inactive
     """
     videoRecorder: VideoRecorder
     csvExporter: Optional[CsvExporter]
@@ -231,25 +232,19 @@ class RecorderTransformerWidget(TransformerWidget):
     videoRecorder: Optional[VideoRecorder]
     isRecording: bool
     transformer: RecorderTransformer
-    frameRate: int
 
     def __init__(self,
-                 frameRateProvider: FrameRateProvider,
                  parent: Optional[QWidget] = None, ) -> None:
         """
         Initialize the RecorderTransformerWidget.
         """
         TransformerWidget.__init__(self, "Recorder", parent)
 
-        frameRateProvider.frameRateUpdated.connect(self.setFrameRate)
-
         self.transformer = RecorderTransformer()
         self.selectors = []
-        self.csvExporter = Optional[CsvExporter]
         self.outputFiles = []
         self.videoRecorder = None
         self.isRecording = False
-        self.frameRate = 0
 
         self.outputFileSelector = FileSelector(self,
                                                mode=FileSelector.MODE_SAVE,
@@ -288,13 +283,6 @@ class RecorderTransformerWidget(TransformerWidget):
         selector.removeButton.clicked.connect(remove)
         self.csvExporterLayout.addWidget(selector)
 
-    @Slot(int)
-    def setFrameRate(self, frameRate: int) -> None:
-        """
-        Update the frame rate to the current value.
-        """
-        self.frameRate = frameRate
-
     @Slot(VideoRecorder)
     def onRecordingToggled(self, videoRecorder: Optional[VideoRecorder]) -> None:
         """
@@ -321,7 +309,7 @@ class RecorderTransformerWidget(TransformerWidget):
             self.files = []
             self.onRecordingToggled(None)
         else:
-            loader = RecorderLoader(self.frameRate,
+            loader = RecorderLoader(self.transformer.frameRate,
                                     self.transformer.width,
                                     self.transformer.height,
                                     self.outputFileSelector.selectedFile())
@@ -364,3 +352,46 @@ class PoseFeedbackWidget(TransformerWidget):
         self.angleLimitSlider.setTickInterval(5)
         self.angleLimitSlider.valueChanged.connect(self.transformer.setAngleLimit)
         self.vLayout.addWidget(self.angleLimitSlider)
+
+
+class QCameraSourceWidget(TransformerWidget):
+    videoSource: QVideoSource
+    transformer: VideoSourceTransformer
+
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the QCameraSourceWidget.
+        """
+        TransformerWidget.__init__(self, "Camera Source", parent)
+        self.videoSource = QVideoSource()
+
+        self.transformer = VideoSourceTransformer()
+        self.transformer.videoSource = self.videoSource
+        
+        self.cameraSelector = CameraSelector(self)
+        self.cameraSelector.selected.connect(self.videoSource.setCamera)
+        self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
+
+
+class VideoSourceWidget(TransformerWidget):
+    videoSource: CVVideoFileSource
+    transformer: VideoSourceTransformer
+
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        TransformerWidget.__init__(self, "Video Source", parent)
+
+        self.transformer = VideoSourceTransformer()
+
+        self.fileSelector = FileSelector(self, title="Video Source")
+        self.vLayout.addWidget(self.fileSelector)
+
+        self.loadButton = QPushButton("Load", self)
+        self.loadButton.clicked.connect(self.load)
+        self.vLayout.addWidget(self.loadButton)
+
+    @Slot()
+    def load(self) -> None:
+        self.videoSource = CVVideoFileSource(self.fileSelector.selectedFile())
+        self.transformer.setVideoSource(self.videoSource)

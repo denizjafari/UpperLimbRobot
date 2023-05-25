@@ -14,7 +14,6 @@ if __name__ == "__main__":
     modelManager = ModelManager([FeedThroughModel, BlazePose], threadpool)
 
     window = QTabWidget()
-    videoSource = QVideoSource()
 
     modularWindow = ModularPoseProcessorWidget(modelManager, window)
     window.addTab(modularWindow, "Modular Pose Processing")

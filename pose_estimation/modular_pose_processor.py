@@ -7,14 +7,12 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
 from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
-from pose_estimation.Models import KeypointSet, ModelManager
+from pose_estimation.Models import ModelManager
 from pose_estimation.transform_widgets import ImageMirrorWidget, \
-    LandmarkDrawerWidget, ModelRunnerWidget, PoseFeedbackWidget, RecorderTransformerWidget, ScalerWidget, \
-        SkeletonDrawerWidget, TransformerWidget
-from pose_estimation.transforms import QImageProvider, Transformer
-from pose_estimation.ui_utils import CameraSelector
-from pose_estimation.video import FrameRateProvider, QVideoSource, VideoSource
-
+    LandmarkDrawerWidget, ModelRunnerWidget, PoseFeedbackWidget, \
+        QCameraSourceWidget, RecorderTransformerWidget, ScalerWidget, \
+        SkeletonDrawerWidget, TransformerWidget, VideoSourceWidget
+from pose_estimation.transforms import FrameData, QImageProvider, Transformer
 
 class PipelineWidget(QWidget, Transformer):
     """
@@ -22,12 +20,11 @@ class PipelineWidget(QWidget, Transformer):
     full pipeline as if it was one transformer.
     """
     modelManager: ModelManager
-    frameRateProvider: FrameRateProvider
+    lastFrameData: FrameData
     transformerWidgets: list[TransformerWidget]
 
     def __init__(self,
                  modelManager: ModelManager,
-                 frameRateProvider: FrameRateProvider,
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the PipelineWidget by adding
@@ -39,11 +36,13 @@ class PipelineWidget(QWidget, Transformer):
 
         self.transformerWidgets = []
         self.modelManager = modelManager
-        self.frameRateProvider = frameRateProvider
+        self.qThreadPool = QThreadPool.globalInstance()
 
         self.imageProvider = QImageProvider()
 
         self.transformerSelector = QComboBox(self)
+        self.transformerSelector.addItem("Camera Source")
+        self.transformerSelector.addItem("Video Source")
         self.transformerSelector.addItem("Scaler")
         self.transformerSelector.addItem("Mirror")
         self.transformerSelector.addItem("Model")
@@ -57,19 +56,21 @@ class PipelineWidget(QWidget, Transformer):
         self.addButton.clicked.connect(self.onAdd)
         self.hLayout.addWidget(self.addButton)
 
+        self.lastFrameData = FrameData()
+
         self.hLayout.addStretch()
 
-    def transform(self, image: np.ndarray, keypointSet: KeypointSet) \
-        -> tuple[np.ndarray, list[KeypointSet]]:
+    def transform(self, frameData: FrameData) -> FrameData:
         """
         Apply all transforms.
         """
         for t in self.transformerWidgets:
-            image, keypointSet = t.transformer.transform(image, keypointSet)
+            frameData = t.transformer.transform(frameData)
 
-        self.imageProvider.transform(image, keypointSet)
+        frameData = self.imageProvider.transform(frameData)
+        self.lastFrameData = frameData
 
-        return image, keypointSet
+        return frameData
     
     @Slot()
     def onAdd(self) -> None:
@@ -78,18 +79,22 @@ class PipelineWidget(QWidget, Transformer):
         """
         index = self.transformerSelector.currentIndex()
         if index == 0:
-            widget = ScalerWidget(self)
+            widget = QCameraSourceWidget(self)
         elif index == 1:
-            widget = ImageMirrorWidget(self)
+            widget = VideoSourceWidget(self)
         elif index == 2:
-            widget = ModelRunnerWidget(self.modelManager, self)
+            widget = ScalerWidget(self)
         elif index == 3:
-            widget = LandmarkDrawerWidget(self)
+            widget = ImageMirrorWidget(self)
         elif index == 4:
-            widget = SkeletonDrawerWidget(self)
+            widget = ModelRunnerWidget(self.modelManager, self)
         elif index == 5:
-            widget = RecorderTransformerWidget(self.frameRateProvider, self)
+            widget = LandmarkDrawerWidget(self)
         elif index == 6:
+            widget = SkeletonDrawerWidget(self)
+        elif index == 7:
+            widget = RecorderTransformerWidget(self)
+        elif index == 8:
             widget = PoseFeedbackWidget(self)
         else:
             widget = None
@@ -98,7 +103,6 @@ class PipelineWidget(QWidget, Transformer):
             self.transformerWidgets.append(widget)
             self.hLayout.insertWidget(len(self.transformerWidgets) - 1, widget)
             widget.removed.connect(lambda: self.removeTransformerWidget(widget))
-        
 
     @Slot(TransformerWidget)
     def removeTransformerWidget(self, widget: TransformerWidget) -> None:
@@ -107,7 +111,7 @@ class PipelineWidget(QWidget, Transformer):
         """
         self.transformerWidgets.remove(widget)
         self.hLayout.removeWidget(widget)
-        widget.deleteLater()        
+        widget.deleteLater()
 
 
 class FrameProcessor(QRunnable, QObject):
@@ -115,31 +119,28 @@ class FrameProcessor(QRunnable, QObject):
     Thread runnable that grabs one frame from a source and transforms it.
     """
 
-    def __init__(self, source: VideoSource, transformer: Transformer) -> None:
+    def __init__(self, transformer: Transformer, dryRun: bool = False) -> None:
         """
         Initialize the frame processor to use some source and transformer.
         """
         QRunnable.__init__(self)
         QObject.__init__(self)
 
-        self.source = source
         self.transformer = transformer
+        self.frameData = FrameData(dryRun=dryRun)
 
     @Slot()
     def run(self) -> None:
         """
         Run the thread.
         """
-        image = self.source.nextFrame()
-        image, _ = self.transformer.transform(image, [])
-
+        self.transformer.transform(self.frameData)
 
 class ModularPoseProcessorWidget(QWidget):
     """
     Widget that allows building a pipeline of transformers modularly while
     keeping them editable.
     """
-    videoSource: VideoSource
 
     vLayout: QVBoxLayout
     displayLabel: QLabel
@@ -156,42 +157,55 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
 
-        self.frameRateProvider = FrameRateProvider()
-        self.frameRateProvider.frameRateUpdated.connect(self.onFrameRateUpdate)
-
-        self.videoSource = QVideoSource()
-
         self.displayLabel = QLabel()
         self.vLayout.addWidget(self.displayLabel, alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.frameRateLabel = QLabel()
         self.vLayout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        self.cameraSelector = CameraSelector(self)
-        self.cameraSelector.selected.connect(self.videoSource.setCamera)
-        self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.startButton = QPushButton("Start", self)
+        self.startButton.clicked.connect(self.toggleRunning)
+        self.vLayout.addWidget(self.startButton)
 
-        self.pipelineWidget = PipelineWidget(modelManager, self.frameRateProvider, self)
+        self.pipelineWidget = PipelineWidget(modelManager, self)
         self.vLayout.addWidget(self.pipelineWidget)
         self.qThreadPool = QThreadPool.globalInstance()
 
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
-        self.processNextFrame()
+        self.lastFrameRate = 0
+        self.isRunning = False
 
+    def toggleRunning(self) -> None:
+        if not self.isRunning:
+            self.dryRun()
+            self.startButton.setText("Stop")
+        else:
+            self.startButton.setText("Start")
         
-    def processNextFrame(self) -> None:
-        processor = FrameProcessor(self.videoSource, self.pipelineWidget)
+        self.isRunning = not self.isRunning
+
+    def dryRun(self) -> None:
+        processor = FrameProcessor(self.pipelineWidget, dryRun=True)
         self.qThreadPool.start(processor)
 
+    def processNextFrame(self) -> None:
+        processor = FrameProcessor(self.pipelineWidget)
+        self.qThreadPool.start(processor)
 
     @Slot(np.ndarray)
     def showFrame(self, qImage: Optional[QImage]) -> None:
         if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
-            self.frameRateProvider.onFrameReady()
+            nextFrameRate = self.pipelineWidget.lastFrameData.frameRate
+            if self.pipelineWidget.lastFrameData.streamEnded:
+                self.toggleRunning()
+            if nextFrameRate != self.lastFrameRate:
+                self.lastFrameRate = nextFrameRate
+                self.onFrameRateUpdate(self.lastFrameRate)
         
-        self.processNextFrame()
+        if self.isRunning:
+            self.processNextFrame()
 
     @Slot(int)
     def onFrameRateUpdate(self, frameRate: int) -> None:

@@ -32,7 +32,10 @@ def npArrayToQImage(image: np.ndarray) -> QImage:
 
     return image
 
-class FrameRateProvider(QObject):
+class NoMoreFrames(Exception):
+    pass
+
+class FrameRateAccumulator(QObject):
     """
     Keeps track of the frame rate. Emits a signal to update the frame rate
     every second with the number of frames that were rendered in the previous
@@ -40,8 +43,9 @@ class FrameRateProvider(QObject):
     """
     frameRateUpdated = Signal(int)
     frameCount: int
+    lastFrameRate: int
 
-    def __init__(self) -> None:
+    def __init__(self, baseFrameRate: int = 0) -> None:
         """
         Initialize the frame rate provider.
         """
@@ -52,6 +56,10 @@ class FrameRateProvider(QObject):
         self.frameRateTimer.start()
 
         self.frameCount = 0
+        self.lastFrameRate = baseFrameRate
+
+    def frameRate(self) -> int:
+        return self.lastFrameRate
 
     @Slot()
     def onFrameReady(self) -> None:
@@ -66,17 +74,22 @@ class FrameRateProvider(QObject):
         Emit a signal carrying the number of frames that were processed in the
         previous second.
         """
-        self.frameRateUpdated.emit(self.frameCount)
+        self.lastFrameRate = self.frameCount
         self.frameCount = 0
 
 class VideoSource:
     """
     An interface that acts as a source of frames.
     """
+    frameRateAcc: FrameRateAccumulator
+
     def nextFrame(self) -> np.ndarray:
         """
         Retrieve the most recent frame available
         """
+        raise NotImplementedError
+    
+    def frameRate(self) -> int:
         raise NotImplementedError
     
 
@@ -93,6 +106,7 @@ class CVVideoSource(VideoSource):
         Initialize the Video Capture by using the camera at index 0.
         """
         self.videoCapture = cv2.VideoCapture(0)
+        self.frameRateAcc = FrameRateAccumulator()
 
     def nextFrame(self) -> np.ndarray:
         """
@@ -104,18 +118,24 @@ class CVVideoSource(VideoSource):
         else:
             return None
         
+    def frameRate(self) -> int:
+        return self.frameRateAcc.frameRate()
+        
+        
 class CVVideoFileSource(VideoSource):
     """
     Video source that loads from a file.
     TODO: Closing/Releasing
     """
     videoCapture: cv2.VideoCapture
+    originalFrameRate: int
 
     def __init__(self, filename: str) -> None:
         self.videoCapture = cv2.VideoCapture(filename)
+        self.originalFrameRate = round(self.videoCapture.get(cv2.CAP_PROP_FPS))
 
-    def frameRate(self) -> float:
-        return self.videoCapture.get(cv2.CAP_PROP_FPS)
+    def frameRate(self) -> int:
+        return self.originalFrameRate
 
     def nextFrame(self) -> np.ndarray:
         ret, frame = self.videoCapture.read()
@@ -123,7 +143,7 @@ class CVVideoFileSource(VideoSource):
         if ret:
             return frame
         else:
-            return None
+            raise NoMoreFrames
 
 
 class QVideoSource(VideoSource):
@@ -152,13 +172,17 @@ class QVideoSource(VideoSource):
         self.cameraSession.setVideoSink(self.videoSink)
         self.camera = None
         self.videoFrame = None
-
+        self.frameRateAcc = FrameRateAccumulator()
+    
+    def frameRate(self) -> int:
+        return self.frameRateAcc.frameRate()
 
     def nextFrame(self) -> np.ndarray:
         """
         Retrieve the most recent frame available
         """
         if self.videoFrame is not None:
+            self.frameRateAcc.onFrameReady()
             image = self.videoFrame.toImage()        
             return qImageToNpArray(image)
         else:
