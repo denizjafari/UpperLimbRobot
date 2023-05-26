@@ -1,10 +1,10 @@
 from __future__ import annotations
+from typing import Optional
 
 import numpy as np
 import cv2
-from typing import Optional
-
 import tensorflow as tf
+
 from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QVideoSink, QVideoFrame
 from PySide6.QtGui import QImage
 from PySide6.QtCore import Slot, Signal, QObject, QTimer

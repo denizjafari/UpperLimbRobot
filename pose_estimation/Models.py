@@ -1,8 +1,9 @@
-from PySide6.QtCore import QRunnable, QObject, Signal, Slot, QThreadPool
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 import mediapipe.python.solutions.pose as mp_pose
+
+from PySide6.QtCore import QRunnable, QObject, Signal, Slot, QThreadPool
 
 class KeypointSet:
     """

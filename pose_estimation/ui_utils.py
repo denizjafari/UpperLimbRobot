@@ -1,10 +1,10 @@
 from typing import Optional
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
-    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QCheckBox, QSlider, \
+    QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QSlider, \
     QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
-from PySide6.QtCore import Signal, Slot, Qt, QPoint
+from PySide6.QtCore import Signal, Slot, QPoint
 
 from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
 
@@ -13,10 +13,6 @@ from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
 TARGET_FRAME_WIDTH = 296
 TARGET_FRAME_HEIGHT = 296
 TARGET_FRAME_RATE = 25
-
-# The number of frames that should be allowed to processed at each point in time.
-# Higher numbers allow for a smoother display, while additional lag is induced.
-MAX_FRAMES_IN_PROCESSING = 1
 
 
 class CameraSelectorButton(QRadioButton):
@@ -250,55 +246,3 @@ class LabeledQSlider(QSlider):
             QToolTip.showText(
                 self.mapToGlobal(QPoint(bottomRight.x(), bottomRight.y())),
                 str(self.value()))
-    
-
-class OverlaySettingsWidget(QGroupBox):
-    markerRadiusChanged = Signal(int)
-    lineThicknessChanged = Signal(int)
-    skeletonToggled = Signal()
-    mirrorToggled = Signal()
-    modelSelected = Signal(PoseModel)
-
-    mirrorButton: QCheckBox
-    skeletonButton: QCheckBox
-    markerRadiusSlider: QSlider
-    lineThicknessSlider: QSlider
-
-    def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
-        QGroupBox.__init__(self, parent)
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-
-        self.modelSelector = ModelSelector(modelManager, self)
-        self.modelSelector.modelSelected.connect(self.modelSelected)
-        self.layout().addWidget(self.modelSelector)
-
-        self.skeletonButton = QCheckBox("Show Skeleton", self)
-        self.skeletonButton.toggled.connect(self.skeletonToggled)
-        self.layout().addWidget(self.skeletonButton)
-
-        self.mirrorButton = QCheckBox("Mirror Image", self)
-        self.mirrorButton.toggled.connect(self.mirrorToggled)
-        self.layout().addWidget(self.mirrorButton)
-
-        layout.addWidget(QLabel("Marker Radius"))
-        self.markerRadiusSlider = QSlider(self,
-                                          orientation=Qt.Orientation.Horizontal)
-        self.markerRadiusSlider.setMinimum(1)
-        self.markerRadiusSlider.setMaximum(10)
-        self.markerRadiusSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.markerRadiusSlider.setTickInterval(1)
-        self.markerRadiusSlider.valueChanged.connect(self.markerRadiusChanged)
-        self.layout().addWidget(self.markerRadiusSlider)
-
-        layout.addWidget(QLabel("Line Thickness"))
-        self.lineThicknessSlider = QSlider(self,
-                                          orientation=Qt.Orientation.Horizontal)
-        self.lineThicknessSlider.setMinimum(1)
-        self.lineThicknessSlider.setMaximum(10)
-        self.lineThicknessSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.lineThicknessSlider.setTickInterval(1)
-        self.lineThicknessSlider.valueChanged.connect(self.lineThicknessChanged)
-        self.layout().addWidget(self.lineThicknessSlider)
-
-        layout.addStretch()

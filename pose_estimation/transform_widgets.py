@@ -375,11 +375,17 @@ class QCameraSourceWidget(TransformerWidget):
 
 
 class VideoSourceWidget(TransformerWidget):
+    """
+    Selects a video file as source.
+    """
     videoSource: CVVideoFileSource
     transformer: VideoSourceTransformer
 
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
         TransformerWidget.__init__(self, "Video Source", parent)
 
         self.transformer = VideoSourceTransformer()
@@ -393,5 +399,9 @@ class VideoSourceWidget(TransformerWidget):
 
     @Slot()
     def load(self) -> None:
+        """
+        Load the video by creating the appropriate video file source object
+        and setting it in the transformer.
+        """
         self.videoSource = CVVideoFileSource(self.fileSelector.selectedFile())
         self.transformer.setVideoSource(self.videoSource)

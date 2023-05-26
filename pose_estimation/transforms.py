@@ -1,7 +1,7 @@
 from __future__ import annotations
-import math
 from typing import Optional, Callable
 
+import math
 import io
 import csv
 import numpy as np
@@ -12,9 +12,23 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
-from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, npArrayToQImage
+from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
+    npArrayToQImage
 
 class FrameData:
+    """
+    Contains image, keypoints and metadata to pass between transformers.
+
+    dryRun - whether this run is a dry run. If true, no complex processing
+    should take place. Instead, format changes like image resolution
+    adjustments should take place.
+    _width - the width of the proprosed image if the image is None.
+    _height - the height of the proposed image if the image is None.
+
+    streamEnded - whether the stream of frames is ended.
+    image - the image/frame that should be processed (if it exists).
+    keypointSets - a list of all detected keypointSets.
+    """
     dryRun: bool
     _width: int
     _height: int
@@ -31,6 +45,9 @@ class FrameData:
                  streamEnded: bool = False,
                  frameRate: int = -1,
                  keypointSets: Optional[list[KeypointSet]] = None):
+        """
+        Initialize the FrameData object.
+        """
         self.dryRun = dryRun
         self.image = image
         self._width = width
@@ -39,29 +56,41 @@ class FrameData:
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
 
-    def width(self):
+    def width(self) -> int:
+        """
+        Determine the width of the (proposed) image.
+        """
         if self.image is not None:
             return self.image.shape[1]
         else:
             return self._width
         
-    def height(self):
+    def height(self) -> int:
+        """
+        Determine the height of the (proposed) image.
+        """
         if self.image is not None:
             return self.image.shape[0]
         else:
             return self._width
 
     def setWidth(self, width) -> None:
+        """
+        If the image is None, set the proposed image width.
+        """
         self._width = width
     
     def setHeight(self, height) -> None:
+        """
+        If the image is None, set the proposed image height.
+        """
         self._height = height
 
 
 class Transformer:
     """
     Interface that is implemented by all transformers. A transformer makes
-    modifications to images and/or the landmarks detected by the model.
+    modifications to images, the landmarks, and/or metadata in the pipeline.
     These transformers can be layered like neural networks, by wrapping
     previous layers in later layers.
     """
@@ -87,7 +116,8 @@ class Transformer:
         """
         return self.next(frameData)
     
-    def setNextTransformer(self, nextTransformer: Optional[Transformer]) -> None:
+    def setNextTransformer(self,
+                           nextTransformer: Optional[Transformer]) -> None:
         """
         Changes the next transformer in the pipeline.
 
@@ -134,6 +164,9 @@ class LandmarkDrawer(Transformer):
     color: tuple[int, int, int]
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
 
         self.markerRadius = 1
@@ -146,9 +179,17 @@ class LandmarkDrawer(Transformer):
         self.markerRadius = markerRadius
 
     def setRGBColor(self, color: tuple[int, int, int]) -> None:
+        """
+        Set the color of the markers. Takes in a tuple of three values 0-255
+        for the r, g abd b channels.
+        """
         self.color = (color[2], color[1], color[0])
     
     def getRGBColor(self) -> tuple[int, int, int]:
+        """
+        Get the color of the markers. Returns a tuple of three values 0-255
+        for the r, g abd b channels.
+        """
         return (self.color[2], self.color[1], self.color[0])
     
     def transform(self, frameData: FrameData) -> FrameData:
@@ -160,7 +201,11 @@ class LandmarkDrawer(Transformer):
                 for keypoint in s.getKeypoints():
                     x = round(keypoint[0] * frameData.width())
                     y = round(keypoint[1] * frameData.height())
-                    cv2.circle(frameData.image, (y, x), self.markerRadius, color=self.color, thickness=-1)
+                    cv2.circle(frameData.image,
+                               (y, x),
+                               self.markerRadius,
+                               color=self.color,
+                               thickness=-1)
 
         return self.next(frameData)
     
@@ -188,14 +233,22 @@ class SkeletonDrawer(Transformer):
         self.lineThickness = lineThickness
     
     def setRGBColor(self, color: tuple[int, int, int]) -> None:
+        """
+        Set the color of the lines. Takes in a tuple of three values 0-255
+        for the r, g abd b channels.
+        """
         self.color = (color[2], color[1], color[0])
-
+    
     def getRGBColor(self) -> tuple[int, int, int]:
+        """
+        Get the color of the lines. Returns a tuple of three values 0-255
+        for the r, g abd b channels.
+        """
         return (self.color[2], self.color[1], self.color[0])
     
     def transform(self, frameData: FrameData) -> FrameData:
         """
-        Transform the image by connectin the joints with straight lines.
+        Transform the image by connectin the body joints with straight lines.
         """
         if self.isActive and not frameData.dryRun:
             for s in frameData.keypointSets:
@@ -230,6 +283,9 @@ class Scaler(Transformer):
                  width: int,
                  height: int,
                  previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
 
         self.targetWidth = width
@@ -267,6 +323,9 @@ class ModelRunner(Transformer):
 
     def __init__(self,
                  previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
 
         self.model = None
@@ -291,13 +350,19 @@ class ModelRunner(Transformer):
     
 class CsvImporter(Transformer):
     """
-    Imports the keypoints frame by frame to a separate file.
+    Imports the keypoints frame by frame from a separate file. Currently only
+    supports BlazePose-type model keypoints.
     """
     isActive: bool
     csvReader: Optional[csv._reader]
     keypointCount: int
 
-    def __init__(self, keypointCount: int, previous: Optional[Transformer] = None) -> None:
+    def __init__(self,
+                 keypointCount: int,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
 
         self.csvReader = None
@@ -312,10 +377,12 @@ class CsvImporter(Transformer):
 
     def transform(self, frameData: FrameData) -> FrameData:
         """
-        Import the keypoints for the current image from a file if the transformer
-        is active and the file is set.
+        Import the keypoints for the current image from a file if the
+        transformer is active and the file is set.
         """
-        if self.isActive and self.csvReader is not None and not frameData.dryRun:
+        if self.isActive \
+            and self.csvReader is not None \
+                and not frameData.dryRun:
             keypoints = []
             for _ in range(self.keypointCount):
                 try:
@@ -335,7 +402,12 @@ class CsvExporter(Transformer):
     index: int
     csvWriter: Optional[csv._writer]
 
-    def __init__(self, index: int, previous: Optional[Transformer] = None) -> None:
+    def __init__(self,
+                 index: int,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
 
         self.csvWriter = None
@@ -353,7 +425,9 @@ class CsvExporter(Transformer):
         Export the first set of keypoints from the list of keypoint sets. This
         set is subsequently popped from the list.
         """
-        if self.isActive and self.csvWriter is not None and not frameData.dryRun:
+        if self.isActive \
+            and self.csvWriter is not None \
+                and not frameData.dryRun:
             for k in frameData.keypointSets[self.index].getKeypoints():
                 self.csvWriter.writerow(k)
         
@@ -407,6 +481,9 @@ class RecorderTransformer(Transformer):
         self.height = 0
 
     def setVideoRecorder(self, recorder: VideoRecorder):
+        """
+        Set the video recorder with which frames should be recorded.
+        """
         self.recorder = recorder
 
     def transform(self, frameData: FrameData) -> FrameData:
@@ -418,30 +495,55 @@ class RecorderTransformer(Transformer):
         self.height = frameData.height()
         self.frameRate = frameData.frameRate
         
-        if self.isActive and self.recorder is not None and not frameData.dryRun:
+        if self.isActive \
+            and self.recorder is not None \
+                and not frameData.dryRun:
             self.recorder.addFrame(frameData.image)
 
         return self.next(frameData)
     
 
 class PoseFeedbackTransformer(Transformer):
+    """
+    Adds feedback on compensation to the image. Measures the angle between a
+    straight line connecting the two shoulder joints and the horizontal axis.
+    If the angle is within the defined angleLimit, a green border is added to
+    the image, otherwise a red border is drawn.
+
+    keypointSetIndex - the index into the keypointSet list from which the
+    shoulder joint coordinates should be taken.
+    angleLimit - the maximum angle (in degrees) that is accepted.
+    """
     keypointSetIndex: int
     angleLimit: int
 
     def __init__(self,
                  keypointSetIndex: int = 0,
                  previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
+
         self.keypointSetIndex = keypointSetIndex
         self.angleLimit = 10
 
     def setAngleLimit(self, angleLimit: int) -> None:
+        """
+        Set the angleLimit to this angle (in degrees).
+        """
         self.angleLimit = angleLimit
 
     def transform(self, frameData: FrameData) -> FrameData:
+        """
+        Determine the angle between the straight line connecting the two
+        shoulder joints and the horizontal line. Then draw the border in
+        the correct color.
+        """
         if self.isActive and not frameData.dryRun:
-            leftShoulder = frameData.keypointSets[self.keypointSetIndex].getLeftShoulder()
-            rightShoulder = frameData.keypointSets[self.keypointSetIndex].getRightShoulder()
+            keypointSet = frameData.keypointSets[self.keypointSetIndex]
+            leftShoulder = keypointSet.getLeftShoulder()
+            rightShoulder = keypointSet.getRightShoulder()
 
             delta_x = abs(rightShoulder[1] - leftShoulder[1])
             delta_y = abs(rightShoulder[0] - leftShoulder[0])
@@ -473,14 +575,25 @@ class VideoSourceTransformer(Transformer, QObject):
 
     def __init__(self,
                  previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
         Transformer.__init__(self, True, previous)
         QObject.__init__(self)
+
         self.videoSource = None
     
     def setVideoSource(self, videoSource: VideoSource) -> None:
+        """
+        Set the source of the video.
+        """
         self.videoSource = videoSource
 
     def transform(self, frameData: FrameData) -> FrameData:
+        """
+        Add the frame rate property to the frameData object and process the
+        next frame.
+        """
         if self.videoSource is not None:
             frameData.frameRate = self.videoSource.frameRate()
             if self.isActive:
