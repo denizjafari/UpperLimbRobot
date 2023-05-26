@@ -213,7 +213,7 @@ class SkeletonDrawer(Transformer):
                                 self.color,
                                 thickness=self.lineThickness)
                         
-                for l in s.getSkeletonLines():
+                for l in s.getSkeletonLinesBody():
                     drawSequence(*l)
 
         return self.next(frameData)

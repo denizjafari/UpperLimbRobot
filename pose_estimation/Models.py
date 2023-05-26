@@ -16,11 +16,19 @@ class KeypointSet:
         raise NotImplementedError
     
 
-    def getSkeletonLines(self) -> list[list[int]]:
+    def getSkeletonLinesBody(self) -> list[list[int]]:
         """
-        Returns a list of skeleton lines. A skeleton line is a sequence
-        of indices into the keypoint list that indicates in which order the
-        indexed keypoints should be connected.
+        Returns a list of skeleton lines for the body. A skeleton line is a
+        sequence of indices into the keypoint list that indicates in which
+        order the indexed keypoints should be connected.
+        """
+        raise NotImplementedError
+    
+    def getSkeletonLinesFace(self) -> list[list[int]]:
+        """
+        Returns a list of skeleton lines for the face. A skeleton line is a
+        sequence of indices into the keypoint list that indicates in which
+        order the indexed keypoints should be connected.
         """
         raise NotImplementedError
     
@@ -60,9 +68,12 @@ class SimpleKeypointSet(KeypointSet):
     def getKeypoints(self) -> list[list[float]]:
         return self.keypoints
     
-    def getSkeletonLines(self) -> list[list[int]]:
+    def getSkeletonLinesBody(self) -> list[list[int]]:
         return self.skeletonLines
     
+    def getSkeletonLinesFace(self) -> list[list[int]]:
+        return self.skeletonLines
+
     def getLeftShoulder(self) -> list[float]:
         return [0.0, 0.0, 0.0]
     
@@ -183,15 +194,16 @@ class BlazePose(PoseModel):
         def getKeypoints(self) -> list[list[float]]:
             return self.keypoints
         
-        def getSkeletonLines(self) -> list[list[int]]:
+        def getSkeletonLinesBody(self) -> list[list[int]]:
             return [
-                [8, 6, 5, 4, 0, 1, 2, 3, 7],
-                [9, 10],
                 [21, 15, 17, 19, 15, 13, 11, 23, 25, 27, 31, 29, 27],
                 [22, 16, 18, 20, 16, 14, 12, 24, 26, 28, 32, 30],
                 [11, 12],
                 [23, 24],
             ]
+        
+        def getSkeletonLinesFace(self) -> list[list[int]]:
+            return [[8, 6, 5, 4, 0, 1, 2, 3, 7], [9, 10]]
         
         def getLeftShoulder(self) -> list[float]:
             return self.getKeypoints()[11]
