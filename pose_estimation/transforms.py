@@ -499,7 +499,9 @@ class RecorderTransformer(Transformer):
         
         if self.isActive \
             and self.recorder is not None \
-                and not frameData.dryRun:
+                and not frameData.dryRun \
+                    and not frameData.streamEnded \
+                        and frameData.image is not None:
             self.recorder.addFrame(frameData.image)
 
         return self.next(frameData)
@@ -618,7 +620,9 @@ class VideoSourceTransformer(Transformer, QObject):
         """
         if self.videoSource is not None:
             frameData.frameRate = self.videoSource.frameRate()
-            if self.isActive:
+            frameData.setWidth(self.videoSource.width())
+            frameData.setHeight(self.videoSource.height())
+            if self.isActive and not frameData.dryRun:
                 try:
                     frameData.image = self.videoSource.nextFrame()
                 except NoMoreFrames:

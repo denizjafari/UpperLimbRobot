@@ -89,7 +89,22 @@ class VideoSource:
         """
         raise NotImplementedError
     
+    def width(self) -> int:
+        """
+        Get the width of the source.
+        """
+        raise NotImplementedError
+
+    def height(self) -> int:
+        """
+        Get the height of the source.
+        """
+        raise NotImplementedError
+    
     def frameRate(self) -> int:
+        """
+        Get the frame rate of the source.
+        """
         raise NotImplementedError
     
 
@@ -118,6 +133,12 @@ class CVVideoSource(VideoSource):
         else:
             return None
         
+    def width(self) -> int:
+        return self.videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH)
+
+    def height(self) -> int:
+        return self.videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        
     def frameRate(self) -> int:
         return self.frameRateAcc.frameRate()
         
@@ -136,6 +157,12 @@ class CVVideoFileSource(VideoSource):
 
     def frameRate(self) -> int:
         return self.originalFrameRate
+    
+    def width(self) -> int:
+        return int(self.videoCapture.get(cv2.CAP_PROP_FRAME_WIDTH))
+
+    def height(self) -> int:
+        return int(self.videoCapture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     def nextFrame(self) -> np.ndarray:
         ret, frame = self.videoCapture.read()
@@ -176,6 +203,12 @@ class QVideoSource(VideoSource):
     
     def frameRate(self) -> int:
         return self.frameRateAcc.frameRate()
+    
+    def width(self) -> int:
+        return self.videoFrame.width() if self.videoFrame is not None else -1
+
+    def height(self) -> int:
+        return self.videoFrame.height() if self.videoFrame is not None else -1
 
     def nextFrame(self) -> np.ndarray:
         """
@@ -250,7 +283,11 @@ class CVVideoRecorder(VideoRecorder):
         width - the width of each frame in pixels
         height - the height of each fram in pixels
         """
-        self.recorder = cv2.VideoWriter(outputFile, -1, frameRate, (width, height))
+        print(f"Recording to {outputFile} with {width}x{height}@{frameRate}")
+        self.recorder = cv2.VideoWriter(outputFile,
+                                        cv2.VideoWriter_fourcc(*"mp4v"),
+                                        frameRate,
+                                        (width, height))
 
     def addFrame(self, image: np.ndarray) -> None:
         self.recorder.write(image.astype(np.uint8))

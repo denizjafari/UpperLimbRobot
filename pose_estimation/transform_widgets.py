@@ -8,9 +8,10 @@ from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 
 from pose_estimation.Models import ModelManager
 from pose_estimation.video import CVVideoFileSource, QVideoSource
-from pose_estimation.transforms import BackgroundRemover, CsvExporter, ImageMirror, \
-    LandmarkDrawer, ModelRunner, PoseFeedbackTransformer, RecorderTransformer, \
-        Scaler, SkeletonDrawer, Transformer, VideoSourceTransformer
+from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
+    CsvImporter, ImageMirror, LandmarkDrawer, ModelRunner, \
+        PoseFeedbackTransformer, RecorderTransformer, Scaler, SkeletonDrawer, \
+            Transformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
@@ -304,10 +305,12 @@ class RecorderTransformerWidget(TransformerWidget):
         """
         Toggle the recording between start and stop.
         """
+        self.transformer.setNextTransformer(None)
+
         if self.isRecording:
             for file in self.outputFiles:
                 file.close()
-            self.files = []
+            self.outputFiles = []
             self.onRecordingToggled(None)
         else:
             loader = RecorderLoader(self.transformer.frameRate,
@@ -316,13 +319,12 @@ class RecorderTransformerWidget(TransformerWidget):
                                     self.outputFileSelector.selectedFile())
             
             previousExporter = self.transformer
-            self.transformer.setNextTransformer(None)
             for index, selector in enumerate(self.selectors):
                 exporter = CsvExporter(index, previousExporter)
                 file = open(selector.selectedFile(), "w", newline="")
                 exporter.setFile(file)
+                self.outputFiles.append(file)
                 previousExporter = exporter
-                print(previousExporter)
 
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
@@ -376,6 +378,9 @@ class QCameraSourceWidget(TransformerWidget):
 
 
 class BackgroundRemoverWidget(TransformerWidget):
+    """
+    Removes the background from a frame.
+    """
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
         """
@@ -392,6 +397,7 @@ class VideoSourceWidget(TransformerWidget):
     """
     videoSource: CVVideoFileSource
     transformer: VideoSourceTransformer
+    selectors: list[FileSelector]
 
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
@@ -405,9 +411,36 @@ class VideoSourceWidget(TransformerWidget):
         self.fileSelector = FileSelector(self, title="Video Source")
         self.vLayout.addWidget(self.fileSelector)
 
+        self.csvImporterLayout = QVBoxLayout()
+        self.vLayout.addLayout(self.csvImporterLayout)
+
+        self.hButtonLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.hButtonLayout)
+
+        self.addImporterButton = QPushButton("Add CSV Importer")
+        self.addImporterButton.clicked.connect(self.addImporter)
+        self.hButtonLayout.addWidget(self.addImporterButton)
+
         self.loadButton = QPushButton("Load", self)
         self.loadButton.clicked.connect(self.load)
         self.vLayout.addWidget(self.loadButton)
+
+        self.selectors = []
+
+    def addImporter(self) -> None:
+        """
+        Add a csv importer to the widget and pipeline.
+        """
+        selector = FileSelector(self, title="CSV input", removable=True)
+        self.selectors.append(selector)
+
+        def remove() -> None:
+            self.selectors.remove(selector)
+            self.csvImporterLayout.removeWidget(selector)
+            selector.deleteLater()
+
+        selector.removeButton.clicked.connect(remove)
+        self.csvImporterLayout.addWidget(selector)
 
     @Slot()
     def load(self) -> None:
@@ -417,3 +450,11 @@ class VideoSourceWidget(TransformerWidget):
         """
         self.videoSource = CVVideoFileSource(self.fileSelector.selectedFile())
         self.transformer.setVideoSource(self.videoSource)
+
+        previousImporter = self.transformer
+        self.transformer.setNextTransformer(None)
+        for selector in self.selectors:
+            importer = CsvImporter(33, previousImporter)
+            file = open(selector.selectedFile(), "r", newline="")
+            importer.setFile(file)
+            previousImporter = importer

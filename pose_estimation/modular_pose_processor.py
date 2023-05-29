@@ -8,10 +8,11 @@ from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
-from pose_estimation.transform_widgets import BackgroundRemoverWidget, ImageMirrorWidget, \
-    LandmarkDrawerWidget, ModelRunnerWidget, PoseFeedbackWidget, \
-        QCameraSourceWidget, RecorderTransformerWidget, ScalerWidget, \
-        SkeletonDrawerWidget, TransformerWidget, VideoSourceWidget
+from pose_estimation.transform_widgets import BackgroundRemoverWidget, \
+    ImageMirrorWidget, LandmarkDrawerWidget, ModelRunnerWidget, \
+        PoseFeedbackWidget, QCameraSourceWidget, RecorderTransformerWidget, \
+            ScalerWidget, SkeletonDrawerWidget, TransformerWidget, \
+                VideoSourceWidget
 from pose_estimation.transforms import FrameData, QImageProvider, Transformer
 
 class PipelineWidget(QWidget, Transformer):
@@ -166,6 +167,10 @@ class ModularPoseProcessorWidget(QWidget):
         self.frameRateLabel = QLabel()
         self.vLayout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        self.linkButton = QPushButton("Link", self)
+        self.linkButton.clicked.connect(self.dryRun)
+        self.vLayout.addWidget(self.linkButton)
+
         self.startButton = QPushButton("Start", self)
         self.startButton.clicked.connect(self.toggleRunning)
         self.vLayout.addWidget(self.startButton)
@@ -179,8 +184,12 @@ class ModularPoseProcessorWidget(QWidget):
         self.isRunning = False
 
     def toggleRunning(self) -> None:
+        """
+        Toggle between the pipeline running and processing images and not
+        running.
+        """
         if not self.isRunning:
-            self.dryRun()
+            self.processNextFrame()
             self.startButton.setText("Stop")
         else:
             self.startButton.setText("Start")
@@ -188,15 +197,24 @@ class ModularPoseProcessorWidget(QWidget):
         self.isRunning = not self.isRunning
 
     def dryRun(self) -> None:
+        """
+        Perform a dry run to set resolutions and framerates for recorders.
+        """
         processor = FrameProcessor(self.pipelineWidget, dryRun=True)
         self.qThreadPool.start(processor)
 
     def processNextFrame(self) -> None:
+        """
+        Process the next frame that is available.
+        """
         processor = FrameProcessor(self.pipelineWidget)
         self.qThreadPool.start(processor)
 
     @Slot(np.ndarray)
     def showFrame(self, qImage: Optional[QImage]) -> None:
+        """
+        IF the qImage is not None, draw it to the application window.
+        """
         if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
@@ -212,4 +230,7 @@ class ModularPoseProcessorWidget(QWidget):
 
     @Slot(int)
     def onFrameRateUpdate(self, frameRate: int) -> None:
+        """
+        Update the label displaying the current frame rate.
+        """
         self.frameRateLabel.setText(f"FPS: {frameRate}")
