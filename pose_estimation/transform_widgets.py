@@ -46,12 +46,18 @@ class TransformerWidget(QGroupBox):
         self.headLayout.addWidget(self.activeCheckBox)
 
         self.removeButton = QPushButton("Remove", self)
-        self.removeButton.clicked.connect(self.removed)
+        self.removeButton.clicked.connect(self.onRemove)
         self.headLayout.addWidget(self.removeButton)
-
 
     def onActiveToggle(self) -> None:
         self.transformer.isActive = self.activeCheckBox.isChecked()
+    
+    def onRemove(self) -> None:
+        self.close()
+        self.removed.emit()
+
+    def close(self) -> None:
+        pass
 
 
 class ScalerWidget(TransformerWidget):
@@ -376,6 +382,9 @@ class QCameraSourceWidget(TransformerWidget):
         self.cameraSelector.selected.connect(self.videoSource.setCamera)
         self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
 
+    def close(self) -> None:
+        self.videoSource.close() 
+
 
 class BackgroundRemoverWidget(TransformerWidget):
     """
@@ -449,6 +458,8 @@ class VideoSourceWidget(TransformerWidget):
         and setting it in the transformer.
         """
         self.videoSource = CVVideoFileSource(self.fileSelector.selectedFile())
+        if self.transformer.videoSource is not None:
+            self.transformer.videoSource.close()
         self.transformer.setVideoSource(self.videoSource)
 
         previousImporter = self.transformer
@@ -458,3 +469,8 @@ class VideoSourceWidget(TransformerWidget):
             file = open(selector.selectedFile(), "r", newline="")
             importer.setFile(file)
             previousImporter = importer
+
+    
+    def close(self) -> None:
+        if self.transformer.videoSource:
+            self.transformer.videoSource.close()

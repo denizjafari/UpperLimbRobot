@@ -107,6 +107,12 @@ class VideoSource:
         """
         raise NotImplementedError
     
+    def close(self) -> None:
+        """
+        Stop the video source and release all resources associated with it.
+        """
+        raise NotImplementedError
+    
 
 class CVVideoSource(VideoSource):
     """
@@ -141,12 +147,14 @@ class CVVideoSource(VideoSource):
         
     def frameRate(self) -> int:
         return self.frameRateAcc.frameRate()
+    
+    def close(self) -> None:
+        self.videoCapture.release()
         
         
 class CVVideoFileSource(VideoSource):
     """
     Video source that loads from a file.
-    TODO: Closing/Releasing
     """
     videoCapture: cv2.VideoCapture
     originalFrameRate: int
@@ -171,6 +179,9 @@ class CVVideoFileSource(VideoSource):
             return frame
         else:
             raise NoMoreFrames
+        
+    def close(self) -> None:
+        self.videoCapture.release()
 
 
 class QVideoSource(VideoSource):
@@ -237,6 +248,10 @@ class QVideoSource(VideoSource):
         self.cameraSession.setCamera(camera)
         if self.camera is not None: self.camera.stop()
         self.camera = camera
+
+    def close(self) -> None:
+        if self.camera is not None:
+            self.camera.stop()
 
 
 class VideoRecorder:
