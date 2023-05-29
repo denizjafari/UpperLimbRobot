@@ -7,6 +7,8 @@ import csv
 import numpy as np
 import tensorflow as tf
 import cv2
+import cvzone
+from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
@@ -564,6 +566,26 @@ class PoseFeedbackTransformer(Transformer):
                               thickness=10)
 
         return self.next(frameData)
+    
+
+class BackgroundRemover(Transformer):
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
+        Transformer.__init__(self, True, previous)
+        self.segmentation = SelfiSegmentation(0)
+
+
+    def transform(self, frameData: FrameData) -> FrameData:
+        """
+        Remove the background
+        """
+        if self.isActive and not frameData.dryRun:
+           frameData.image = self.segmentation.removeBG(frameData.image.astype(np.uint8))
+        
+        return frameData
     
 
 class VideoSourceTransformer(Transformer, QObject):

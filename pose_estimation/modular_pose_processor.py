@@ -8,7 +8,7 @@ from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
-from pose_estimation.transform_widgets import ImageMirrorWidget, \
+from pose_estimation.transform_widgets import BackgroundRemoverWidget, ImageMirrorWidget, \
     LandmarkDrawerWidget, ModelRunnerWidget, PoseFeedbackWidget, \
         QCameraSourceWidget, RecorderTransformerWidget, ScalerWidget, \
         SkeletonDrawerWidget, TransformerWidget, VideoSourceWidget
@@ -50,6 +50,7 @@ class PipelineWidget(QWidget, Transformer):
         self.transformerSelector.addItem("Skeleton")
         self.transformerSelector.addItem("Recorder")
         self.transformerSelector.addItem("Feedback")
+        self.transformerSelector.addItem("Background Remover")
         self.hLayout.addWidget(self.transformerSelector)
 
         self.addButton = QPushButton("Add Transformer", self)
@@ -96,6 +97,8 @@ class PipelineWidget(QWidget, Transformer):
             widget = RecorderTransformerWidget(self)
         elif index == 8:
             widget = PoseFeedbackWidget(self)
+        elif index == 9:
+            widget = BackgroundRemoverWidget(self)
         else:
             widget = None
 

@@ -1,5 +1,6 @@
-from io import TextIOBase
 from typing import Optional
+
+from io import TextIOBase
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
     QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout, QColorDialog
@@ -7,7 +8,7 @@ from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 
 from pose_estimation.Models import ModelManager
 from pose_estimation.video import CVVideoFileSource, QVideoSource
-from pose_estimation.transforms import CsvExporter, ImageMirror, \
+from pose_estimation.transforms import BackgroundRemover, CsvExporter, ImageMirror, \
     LandmarkDrawer, ModelRunner, PoseFeedbackTransformer, RecorderTransformer, \
         Scaler, SkeletonDrawer, Transformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
@@ -372,6 +373,17 @@ class QCameraSourceWidget(TransformerWidget):
         self.cameraSelector = CameraSelector(self)
         self.cameraSelector.selected.connect(self.videoSource.setCamera)
         self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
+
+
+class BackgroundRemoverWidget(TransformerWidget):
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerWidget.__init__(self, "Background Remover", parent)
+        
+        self.transformer = BackgroundRemover()
 
 
 class VideoSourceWidget(TransformerWidget):
