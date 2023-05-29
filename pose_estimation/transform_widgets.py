@@ -50,7 +50,7 @@ class TransformerWidget(QGroupBox):
         self.headLayout.addWidget(self.removeButton)
 
     def onActiveToggle(self) -> None:
-        self.transformer.isActive = self.activeCheckBox.isChecked()
+        self.transformer.setActive(self.activeCheckBox.isChecked())
     
     def onRemove(self) -> None:
         self.close()

@@ -7,7 +7,6 @@ import csv
 import numpy as np
 import tensorflow as tf
 import cv2
-import cvzone
 from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
 from PySide6.QtCore import QObject, Signal
@@ -96,7 +95,7 @@ class Transformer:
     These transformers can be layered like neural networks, by wrapping
     previous layers in later layers.
     """
-    isActive: bool
+    _isActive: bool
     next: Callable[[np.ndarray, KeypointSet], np.ndarray]
 
     def __init__(self,
@@ -106,10 +105,22 @@ class Transformer:
         Initialize this transformer by setting whether it is active and
         optionally setting the next transformer in the chain.
         """
-        self.isActive = isActive
+        self._isActive = isActive
         self.next = lambda x: x
         if previous is not None:
             previous.next = self.transform
+
+    def active(self) -> bool:
+        """
+        Return whether this transformer is active or not.
+        """
+        return self._isActive
+    
+    def setActive(self, isActive: bool) -> None:
+        """
+        Set whether this transformer is active or not.
+        """
+        self._isActive = isActive
 
     def transform(self, frameData: FrameData) -> FrameData:
         """
@@ -136,8 +147,6 @@ class ImageMirror(Transformer):
     A transformer which mirrors the image along the y-axis. Useful when dealing
     with front cameras.
     """
-    isActive: True
-
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         """
         Initialize it.
@@ -148,7 +157,7 @@ class ImageMirror(Transformer):
         """
         Transform the image by flipping it.
         """
-        if self.isActive:
+        if self.active():
             frameData.image = cv2.flip(frameData.image, 1)
             for s in frameData.keypointSets:
                 for keypoint in s.getKeypoints():
@@ -161,7 +170,6 @@ class LandmarkDrawer(Transformer):
 
     markerRadius - the radius of the markers
     """
-    isActive: bool
     markerRadius: int
     color: tuple[int, int, int]
 
@@ -198,7 +206,7 @@ class LandmarkDrawer(Transformer):
         """
         Transform the image by adding circles to highlight the landmarks.
         """
-        if self.isActive and not frameData.dryRun:
+        if self.active() and not frameData.dryRun:
             for s in frameData.keypointSets:
                 for keypoint in s.getKeypoints():
                     x = round(keypoint[0] * frameData.width())
@@ -215,7 +223,6 @@ class SkeletonDrawer(Transformer):
     """
     Draw the skeleton detected by some model.
     """
-    isActive: bool
     lineThickness: int
     color: tuple[int, int, int]
 
@@ -252,7 +259,7 @@ class SkeletonDrawer(Transformer):
         """
         Transform the image by connectin the body joints with straight lines.
         """
-        if self.isActive and not frameData.dryRun:
+        if self.active() and not frameData.dryRun:
             for s in frameData.keypointSets:
                 keypoints = s.getKeypoints()
 
@@ -277,7 +284,6 @@ class Scaler(Transformer):
     """
     Scales the image up.
     """
-    isActive: bool
     targetWidth: int
     targetHeight: int
 
@@ -304,7 +310,7 @@ class Scaler(Transformer):
         """
         Transform the image by scaling it up to the target dimensions.
         """
-        if self.isActive:
+        if self.active():
             if not frameData.dryRun and frameData.image is not None:
                 frameData.image = tf.image.resize_with_pad(frameData.image,
                                                 self.targetWidth,
@@ -320,7 +326,6 @@ class ModelRunner(Transformer):
     """
     Runs a model on the image and adds the keypoints to the list.
     """
-    isActive: bool
     model: Optional[PoseModel]
 
     def __init__(self,
@@ -343,7 +348,7 @@ class ModelRunner(Transformer):
         Let the model detect the keypoints and add them as a new set of
         keypoints.
         """
-        if self.isActive and self.model is not None and not frameData.dryRun \
+        if self.active() and self.model is not None and not frameData.dryRun \
             and frameData.image is not None:
             frameData.keypointSets.append(self.model.detect(frameData.image))
         
@@ -355,7 +360,6 @@ class CsvImporter(Transformer):
     Imports the keypoints frame by frame from a separate file. Currently only
     supports BlazePose-type model keypoints.
     """
-    isActive: bool
     csvReader: Optional[csv._reader]
     keypointCount: int
 
@@ -382,7 +386,7 @@ class CsvImporter(Transformer):
         Import the keypoints for the current image from a file if the
         transformer is active and the file is set.
         """
-        if self.isActive \
+        if self.active() \
             and self.csvReader is not None \
                 and not frameData.dryRun:
             keypoints = []
@@ -400,7 +404,6 @@ class CsvExporter(Transformer):
     """
     Exports the keypoints frame by frame to a separate file.
     """
-    isActive: bool
     index: int
     csvWriter: Optional[csv._writer]
 
@@ -427,7 +430,7 @@ class CsvExporter(Transformer):
         Export the first set of keypoints from the list of keypoint sets. This
         set is subsequently popped from the list.
         """
-        if self.isActive \
+        if self.active() \
             and self.csvWriter is not None \
                 and not frameData.dryRun:
             for k in frameData.keypointSets[self.index].getKeypoints():
@@ -440,7 +443,6 @@ class QImageProvider(Transformer, QObject):
     Emits a signal with the np.ndarray image converted to a QImage.
     """
     frameReady = Signal(QImage)
-    isActive: bool
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         """
@@ -453,7 +455,7 @@ class QImageProvider(Transformer, QObject):
         """
         Convert the image into a QImage and emit it with the signal.
         """
-        if self.isActive:
+        if self.active():
             if frameData.image is not None:
                 qImage = npArrayToQImage(frameData.image)
             else:
@@ -466,7 +468,6 @@ class RecorderTransformer(Transformer):
     """
     Records the image.
     """
-    isActive: bool
     recorder: Optional[VideoRecorder]
     frameRate: int
     width: int
@@ -497,7 +498,7 @@ class RecorderTransformer(Transformer):
         self.height = frameData.height()
         self.frameRate = frameData.frameRate
         
-        if self.isActive \
+        if self.active() \
             and self.recorder is not None \
                 and not frameData.dryRun \
                     and not frameData.streamEnded \
@@ -544,7 +545,7 @@ class PoseFeedbackTransformer(Transformer):
         shoulder joints and the horizontal line. Then draw the border in
         the correct color.
         """
-        if self.isActive and not frameData.dryRun:
+        if self.active() and not frameData.dryRun:
             keypointSet = frameData.keypointSets[self.keypointSetIndex]
             leftShoulder = keypointSet.getLeftShoulder()
             rightShoulder = keypointSet.getRightShoulder()
@@ -584,7 +585,7 @@ class BackgroundRemover(Transformer):
         """
         Remove the background
         """
-        if self.isActive and not frameData.dryRun:
+        if self.active() and not frameData.dryRun:
            frameData.image = self.segmentation.removeBG(frameData.image.astype(np.uint8))
         
         return frameData
@@ -622,7 +623,7 @@ class VideoSourceTransformer(Transformer, QObject):
             frameData.frameRate = self.videoSource.frameRate()
             frameData.setWidth(self.videoSource.width())
             frameData.setHeight(self.videoSource.height())
-            if self.isActive and not frameData.dryRun:
+            if self.active() and not frameData.dryRun:
                 try:
                     frameData.image = self.videoSource.nextFrame()
                 except NoMoreFrames:
