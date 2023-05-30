@@ -121,6 +121,10 @@ class Transformer:
         self._isActive = isActive
 
     def next(self, frameData: FrameData) -> None:
+        """
+        Run the next stage in the pipeline. First acquire the lock of the next
+        stage before unlockint this stage.
+        """
         if self._next is not None:
             self._next.lock()
         self.unlock()
@@ -128,9 +132,15 @@ class Transformer:
             if self._next is not None else frameData
 
     def lock(self) -> None:
+        """
+        Lock this stage to multithreading.
+        """
         raise NotImplementedError
 
     def unlock(self) -> None:
+        """
+        Unlock this stage to multithreading.
+        """
         raise NotImplementedError
 
     def transform(self, frameData: FrameData) -> None:
@@ -148,22 +158,45 @@ class Transformer:
         pipeline end with this transformer
         """
         self._next = nextTransformer
+    
+    def getNextTransformer(self) -> None:
+        """
+        Get the transformer that comes after this one in the pipeline.
+        """
+        return self._next
 
 class TransformerStage(Transformer):
+    """
+    One stage in a pipeline that can only be entered by one thread at a time.
+    """
     def __init__(self,
                  isActive: bool = True,
                  previous: Optional[Transformer] = None) -> None:
+        """
+        Initilialize the stage.
+        """
         Transformer.__init__(self, isActive, previous)
 
         self._mutex = QMutex()
 
     def lock(self) -> None:
+        """
+        Lock the stage. Now, no other thread can enter this stage.
+        """
         self._mutex.lock()
 
     def unlock(self) -> None:
+        """
+        Unlock the stage. Allow other threads to enter this stage.
+        """
         self._mutex.unlock()
     
 class Pipeline(Transformer):
+    """
+    A pipeline of transformer stages. It can act as a transformer by itself,
+    but multiple threads can be in it at the same time. Only the stages the
+    pipeline is made of are locked to only one thread.
+    """
     transformers: list[Transformer]
 
     def __init__(self,
@@ -173,37 +206,74 @@ class Pipeline(Transformer):
         self.transformers = []
 
     def append(self, transformer: Transformer) -> None:
+        """
+        Append a Transformer to the end of the pipeline.
+        """
+        print(f"Appended transformer {transformer} to the pipeline")
         if len(self.transformers) > 0:
             self.transformers[-1].setNextTransformer(transformer)
         self.transformers.append(transformer)
         transformer.setNextTransformer(self._next)
 
-    """def remove(self, transformer: Transformer) -> None:
+    def remove(self, transformer: Transformer) -> None:
+        """
+        Remove the given transformer from the pipeline.
+        """
+        print(f"Removed transformer {transformer} from the pipeline")
         index = self.transformers.index(transformer)
-        transformer.setNextTransformer(None)
         if index > 0:
-    """     
+            self.transformers[index - 1].setNextTransformer(transformer.getNextTransformer())
+        transformer.setNextTransformer(None)
+        self.transformers.pop(index)
 
     def setNextTransformer(self, nextTransformer: Transformer | None) -> None:
+        """
+        Set the transformer that should be run after the pipeline is completed.
+        """
         if len(self.transformers) > 0:
             self.transformers[-1].setNextTransformer(nextTransformer)
         super().setNextTransformer(nextTransformer)
 
+    def getNextTransformer(self) -> None:
+        """
+        Get the transformer that is run after the pipeline is completed.
+        """
+        return self.transformers[-1].getNextTransformer() \
+            if len(self.transformers) > 0 else None
+
     def start(self, frameData: FrameData) -> None:
+        """
+        Stat the pipeline by locking the first stage and beginning
+        transformation.
+        """
         self.lock()
         return self.transform(frameData)
 
     def lock(self) -> None:
+        """
+        Lock the first stage in the pipeline.
+        """
         if len(self.transformers) > 0:
             self.transformers[0].lock()
 
     def unlock(self) -> None:
+        """
+        Do nothing. Unlocking the first stage is done by the first stage itself
+        upon completion of its transformation.
+        """
         pass
 
     def next(self, frameData: FrameData) -> None:
+        """
+        Do nothing. Running the first stage after this pipeline is coordinated
+        by the last stage in this pipeline.
+        """
         pass
     
     def transform(self, frameData: FrameData) -> None:
+        """
+        Start transformation with the frst transformer in the pipeline.
+        """
         if len(self.transformers) > 0:
             self.transformers[0].transform(frameData)
     

@@ -13,7 +13,8 @@ from pose_estimation.transform_widgets import BackgroundRemoverWidget, \
         PoseFeedbackWidget, QCameraSourceWidget, RecorderTransformerWidget, \
             ScalerWidget, SkeletonDrawerWidget, TransformerWidget, \
                 VideoSourceWidget
-from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, QImageProvider, Transformer
+from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
+    QImageProvider, Transformer
 
 class PipelineWidget(QWidget):
     """
@@ -22,7 +23,6 @@ class PipelineWidget(QWidget):
     """
     modelManager: ModelManager
     lastFrameData: FrameData
-    transformerWidgets: list[TransformerWidget]
     pipeline: Pipeline
 
     def __init__(self,
@@ -37,12 +37,14 @@ class PipelineWidget(QWidget):
 
         self.frameDataProvider = FrameDataProvider()
         self.imageProvider = QImageProvider()
-        self.transformerWidgets = []
         self.modelManager = modelManager
         self.qThreadPool = QThreadPool.globalInstance()
         self.pipeline = Pipeline()
         self.pipeline.setNextTransformer(self.imageProvider)
         self.imageProvider.setNextTransformer(self.frameDataProvider)
+
+        self.hTransformerLayout = QHBoxLayout()
+        self.hLayout.addLayout(self.hTransformerLayout)
 
         self.transformerSelector = QComboBox(self)
         self.transformerSelector.addItem("Camera Source")
@@ -96,8 +98,7 @@ class PipelineWidget(QWidget):
 
         if widget is not None:
             self.pipeline.append(widget.transformer)
-            self.transformerWidgets.append(widget)
-            self.hLayout.insertWidget(len(self.transformerWidgets) - 1, widget)
+            self.hTransformerLayout.addWidget(widget)
             widget.removed.connect(lambda: self.removeTransformerWidget(widget))
 
     @Slot(TransformerWidget)
@@ -105,15 +106,14 @@ class PipelineWidget(QWidget):
         """
         Remove a transformer widget from the ui and from the pipeline.
         """
-        self.transformerWidgets.remove(widget)
-        self.pipeline.remove(widget.transformer) #TODO
-        self.hLayout.removeWidget(widget)
+        self.pipeline.remove(widget.transformer)
+        self.hTransformerLayout.removeWidget(widget)
         widget.deleteLater()
 
 
 class FrameProcessor(QRunnable, QObject):
     """
-    Thread runnable that grabs one frame from a source and transforms it.
+    Thread runnable that runs one transform.
     """
 
     def __init__(self, transformer: Transformer, dryRun: bool = False) -> None:
@@ -155,18 +155,23 @@ class ModularPoseProcessorWidget(QWidget):
         self.setLayout(self.vLayout)
 
         self.displayLabel = QLabel()
-        self.vLayout.addWidget(self.displayLabel, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.vLayout.addWidget(self.displayLabel,
+                               alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.frameRateLabel = QLabel()
-        self.vLayout.addWidget(self.frameRateLabel, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.vLayout.addWidget(self.frameRateLabel,
+                               alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.buttonHLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.buttonHLayout)
 
         self.linkButton = QPushButton("Link", self)
         self.linkButton.clicked.connect(self.dryRun)
-        self.vLayout.addWidget(self.linkButton)
+        self.buttonHLayout.addWidget(self.linkButton)
 
         self.startButton = QPushButton("Start", self)
         self.startButton.clicked.connect(self.toggleRunning)
-        self.vLayout.addWidget(self.startButton)
+        self.buttonHLayout.addWidget(self.startButton)
 
         self.pipelineWidget = PipelineWidget(modelManager, self)
         self.vLayout.addWidget(self.pipelineWidget)

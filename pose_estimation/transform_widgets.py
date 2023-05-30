@@ -27,7 +27,9 @@ class TransformerWidget(QGroupBox):
     vLayout: QVBoxLayout
     transformer: Transformer
 
-    def __init__(self, title: str="Transformer", parent: Optional[QWidget] = None) -> None:
+    def __init__(self,
+                 title: str="Transformer",
+                 parent: Optional[QWidget] = None) -> None:
         """
         Initialize the TransformerWidget.
         """
@@ -112,7 +114,9 @@ class ModelRunnerWidget(TransformerWidget):
     """
     transformer: ModelRunner
 
-    def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
+    def __init__(self,
+                 modelManager: ModelManager,
+                 parent: Optional[QWidget] = None) -> None:
         """
         Initialize the ModelRunnerWidget.
         """
@@ -210,7 +214,11 @@ class RecorderLoader(QRunnable, QObject):
     height: int
     selectedFile: str
 
-    def __init__(self, frameRate: int, width: int, height: int, selectedFile: str) -> None:
+    def __init__(self,
+                 frameRate: int,
+                 width: int,
+                 height: int,
+                 selectedFile: str) -> None:
         """
         Initialize the loader to load the selected file.
         """
@@ -380,7 +388,8 @@ class QCameraSourceWidget(TransformerWidget):
         
         self.cameraSelector = CameraSelector(self)
         self.cameraSelector.selected.connect(self.videoSource.setCamera)
-        self.vLayout.addWidget(self.cameraSelector, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.vLayout.addWidget(self.cameraSelector,
+                               alignment=Qt.AlignmentFlag.AlignCenter)
 
     def close(self) -> None:
         self.videoSource.close() 
