@@ -13,9 +13,9 @@ from pose_estimation.transform_widgets import BackgroundRemoverWidget, \
         PoseFeedbackWidget, QCameraSourceWidget, RecorderTransformerWidget, \
             ScalerWidget, SkeletonDrawerWidget, TransformerWidget, \
                 VideoSourceWidget
-from pose_estimation.transforms import FrameData, QImageProvider, Transformer
+from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, QImageProvider, Transformer
 
-class PipelineWidget(QWidget, Transformer):
+class PipelineWidget(QWidget):
     """
     Show a pipeline of transformer widgets and provide an interface to the
     full pipeline as if it was one transformer.
@@ -23,6 +23,7 @@ class PipelineWidget(QWidget, Transformer):
     modelManager: ModelManager
     lastFrameData: FrameData
     transformerWidgets: list[TransformerWidget]
+    pipeline: Pipeline
 
     def __init__(self,
                  modelManager: ModelManager,
@@ -31,15 +32,17 @@ class PipelineWidget(QWidget, Transformer):
         Initialize the PipelineWidget by adding
         """
         QWidget.__init__(self, parent)
-        Transformer.__init__(self, True, None)
         self.hLayout = QHBoxLayout()
         self.setLayout(self.hLayout)
 
+        self.frameDataProvider = FrameDataProvider()
+        self.imageProvider = QImageProvider()
         self.transformerWidgets = []
         self.modelManager = modelManager
         self.qThreadPool = QThreadPool.globalInstance()
-
-        self.imageProvider = QImageProvider()
+        self.pipeline = Pipeline()
+        self.pipeline.setNextTransformer(self.imageProvider)
+        self.imageProvider.setNextTransformer(self.frameDataProvider)
 
         self.transformerSelector = QComboBox(self)
         self.transformerSelector.addItem("Camera Source")
@@ -61,18 +64,6 @@ class PipelineWidget(QWidget, Transformer):
         self.lastFrameData = FrameData()
 
         self.hLayout.addStretch()
-
-    def transform(self, frameData: FrameData) -> FrameData:
-        """
-        Apply all transforms.
-        """
-        for t in self.transformerWidgets:
-            frameData = t.transformer.transform(frameData)
-
-        frameData = self.imageProvider.transform(frameData)
-        self.lastFrameData = frameData
-
-        return frameData
     
     @Slot()
     def onAdd(self) -> None:
@@ -104,6 +95,7 @@ class PipelineWidget(QWidget, Transformer):
             widget = None
 
         if widget is not None:
+            self.pipeline.append(widget.transformer)
             self.transformerWidgets.append(widget)
             self.hLayout.insertWidget(len(self.transformerWidgets) - 1, widget)
             widget.removed.connect(lambda: self.removeTransformerWidget(widget))
@@ -114,6 +106,7 @@ class PipelineWidget(QWidget, Transformer):
         Remove a transformer widget from the ui and from the pipeline.
         """
         self.transformerWidgets.remove(widget)
+        self.pipeline.remove(widget.transformer) #TODO
         self.hLayout.removeWidget(widget)
         widget.deleteLater()
 
@@ -180,8 +173,13 @@ class ModularPoseProcessorWidget(QWidget):
         self.qThreadPool = QThreadPool.globalInstance()
 
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
+        self.pipelineWidget.frameDataProvider.frameDataReady.connect(self.setFrameData)
         self.lastFrameRate = 0
         self.isRunning = False
+        self.frameData = FrameData()
+
+    def setFrameData(self, frameData) -> None:
+        self.frameData = frameData
 
     def toggleRunning(self) -> None:
         """
@@ -200,14 +198,14 @@ class ModularPoseProcessorWidget(QWidget):
         """
         Perform a dry run to set resolutions and framerates for recorders.
         """
-        processor = FrameProcessor(self.pipelineWidget, dryRun=True)
+        processor = FrameProcessor(self.pipelineWidget.pipeline, dryRun=True)
         self.qThreadPool.start(processor)
 
     def processNextFrame(self) -> None:
         """
         Process the next frame that is available.
         """
-        processor = FrameProcessor(self.pipelineWidget)
+        processor = FrameProcessor(self.pipelineWidget.pipeline)
         self.qThreadPool.start(processor)
 
     @Slot(np.ndarray)
@@ -218,8 +216,8 @@ class ModularPoseProcessorWidget(QWidget):
         if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
-            nextFrameRate = self.pipelineWidget.lastFrameData.frameRate
-            if self.pipelineWidget.lastFrameData.streamEnded:
+            nextFrameRate = self.frameData.frameRate
+            if self.frameData.streamEnded:
                 self.toggleRunning()
             if nextFrameRate != self.lastFrameRate:
                 self.lastFrameRate = nextFrameRate

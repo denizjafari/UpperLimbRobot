@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Callable
+from typing import Optional
 
 import math
 import io
@@ -9,7 +9,7 @@ import tensorflow as tf
 import cv2
 from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QMutex
 from PySide6.QtGui import QImage
 
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
@@ -96,7 +96,7 @@ class Transformer:
     previous layers in later layers.
     """
     _isActive: bool
-    next: Callable[[np.ndarray, KeypointSet], np.ndarray]
+    _next: Optional[Transformer]
 
     def __init__(self,
                  isActive: bool = True,
@@ -106,9 +106,7 @@ class Transformer:
         optionally setting the next transformer in the chain.
         """
         self._isActive = isActive
-        self.next = lambda x: x
-        if previous is not None:
-            previous.next = self.transform
+        self._next = None if previous is None else previous._next
 
     def active(self) -> bool:
         """
@@ -122,12 +120,24 @@ class Transformer:
         """
         self._isActive = isActive
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def next(self, frameData: FrameData) -> None:
+        if self._next is not None:
+            self._next.lock()
+        self.unlock()
+        return self._next.transform(frameData) \
+            if self._next is not None else frameData
+
+    def lock(self) -> None:
+        raise NotImplementedError
+
+    def unlock(self) -> None:
+        raise NotImplementedError
+
+    def transform(self, frameData: FrameData) -> None:
         """
-        Transform the input image. This can occur in place or as a copy.
-        Therefore, always respect the return value.
+        Transform the input image. This occurs in place.
         """
-        return self.next(frameData)
+        self.next(frameData)
     
     def setNextTransformer(self,
                            nextTransformer: Optional[Transformer]) -> None:
@@ -137,12 +147,67 @@ class Transformer:
         nextTransformer - the next transformer, can be None to make the
         pipeline end with this transformer
         """
-        if nextTransformer is None:
-            self.next = lambda x: x
-        else:
-            self.next = nextTransformer.transform
+        self._next = nextTransformer
+
+class TransformerStage(Transformer):
+    def __init__(self,
+                 isActive: bool = True,
+                 previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, isActive, previous)
+
+        self._mutex = QMutex()
+
+    def lock(self) -> None:
+        self._mutex.lock()
+
+    def unlock(self) -> None:
+        self._mutex.unlock()
     
-class ImageMirror(Transformer):
+class Pipeline(Transformer):
+    transformers: list[Transformer]
+
+    def __init__(self,
+                 isActive: bool = True,
+                 previous: Optional[Transformer] = None) -> None:
+        Transformer.__init__(self, isActive, previous)
+        self.transformers = []
+
+    def append(self, transformer: Transformer) -> None:
+        if len(self.transformers) > 0:
+            self.transformers[-1].setNextTransformer(transformer)
+        self.transformers.append(transformer)
+        transformer.setNextTransformer(self._next)
+
+    """def remove(self, transformer: Transformer) -> None:
+        index = self.transformers.index(transformer)
+        transformer.setNextTransformer(None)
+        if index > 0:
+    """     
+
+    def setNextTransformer(self, nextTransformer: Transformer | None) -> None:
+        if len(self.transformers) > 0:
+            self.transformers[-1].setNextTransformer(nextTransformer)
+        super().setNextTransformer(nextTransformer)
+
+    def start(self, frameData: FrameData) -> None:
+        self.lock()
+        return self.transform(frameData)
+
+    def lock(self) -> None:
+        if len(self.transformers) > 0:
+            self.transformers[0].lock()
+
+    def unlock(self) -> None:
+        pass
+
+    def next(self, frameData: FrameData) -> None:
+        pass
+    
+    def transform(self, frameData: FrameData) -> None:
+        if len(self.transformers) > 0:
+            self.transformers[0].transform(frameData)
+    
+class ImageMirror(TransformerStage):
     """
     A transformer which mirrors the image along the y-axis. Useful when dealing
     with front cameras.
@@ -151,9 +216,9 @@ class ImageMirror(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
     
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Transform the image by flipping it.
         """
@@ -162,9 +227,9 @@ class ImageMirror(Transformer):
             for s in frameData.keypointSets:
                 for keypoint in s.getKeypoints():
                     keypoint[1] = 1.0 - keypoint[1]
-        return self.next(frameData)
+        self.next(frameData)
 
-class LandmarkDrawer(Transformer):
+class LandmarkDrawer(TransformerStage):
     """
     Draws the landmarks to the image.
 
@@ -177,7 +242,7 @@ class LandmarkDrawer(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.markerRadius = 1
         self.color = (255, 255, 255)
@@ -202,7 +267,7 @@ class LandmarkDrawer(Transformer):
         """
         return (self.color[2], self.color[1], self.color[0])
     
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Transform the image by adding circles to highlight the landmarks.
         """
@@ -217,9 +282,9 @@ class LandmarkDrawer(Transformer):
                                color=self.color,
                                thickness=-1)
 
-        return self.next(frameData)
+        self.next(frameData)
     
-class SkeletonDrawer(Transformer):
+class SkeletonDrawer(TransformerStage):
     """
     Draw the skeleton detected by some model.
     """
@@ -230,7 +295,7 @@ class SkeletonDrawer(Transformer):
         """
         Initialize the Drawer.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.lineThickness = 1
         self.color = (0, 0, 255)
@@ -255,7 +320,7 @@ class SkeletonDrawer(Transformer):
         """
         return (self.color[2], self.color[1], self.color[0])
     
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Transform the image by connectin the body joints with straight lines.
         """
@@ -278,9 +343,9 @@ class SkeletonDrawer(Transformer):
                 for l in s.getSkeletonLinesBody():
                     drawSequence(*l)
 
-        return self.next(frameData)
+        self.next(frameData)
     
-class Scaler(Transformer):
+class Scaler(TransformerStage):
     """
     Scales the image up.
     """
@@ -294,7 +359,7 @@ class Scaler(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.targetWidth = width
         self.targetHeight = height
@@ -306,7 +371,7 @@ class Scaler(Transformer):
         self.targetWidth = targetSize
         self.targetHeight = targetSize
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Transform the image by scaling it up to the target dimensions.
         """
@@ -319,10 +384,10 @@ class Scaler(Transformer):
                 frameData.setWidth(self.targetWidth)
                 frameData.setHeight(self.targetHeight)
 
-        return self.next(frameData)
+        self.next(frameData)
     
 
-class ModelRunner(Transformer):
+class ModelRunner(TransformerStage):
     """
     Runs a model on the image and adds the keypoints to the list.
     """
@@ -333,7 +398,7 @@ class ModelRunner(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.model = None
 
@@ -343,7 +408,7 @@ class ModelRunner(Transformer):
         """
         self.model = model
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Let the model detect the keypoints and add them as a new set of
         keypoints.
@@ -352,10 +417,9 @@ class ModelRunner(Transformer):
             and frameData.image is not None:
             frameData.keypointSets.append(self.model.detect(frameData.image))
         
-        return self.next(frameData)
-        
+        self.next(frameData)
     
-class CsvImporter(Transformer):
+class CsvImporter(TransformerStage):
     """
     Imports the keypoints frame by frame from a separate file. Currently only
     supports BlazePose-type model keypoints.
@@ -369,7 +433,7 @@ class CsvImporter(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.csvReader = None
         self.keypointCount = keypointCount
@@ -381,7 +445,7 @@ class CsvImporter(Transformer):
         """
         self.csvReader = iter(csv.reader(file)) if file is not None else None
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Import the keypoints for the current image from a file if the
         transformer is active and the file is set.
@@ -398,9 +462,9 @@ class CsvImporter(Transformer):
 
             frameData.keypointSets.append(BlazePose.KeypointSet(keypoints))
         
-        return self.next(frameData)
+        self.next(frameData)
     
-class CsvExporter(Transformer):
+class CsvExporter(TransformerStage):
     """
     Exports the keypoints frame by frame to a separate file.
     """
@@ -413,7 +477,7 @@ class CsvExporter(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.csvWriter = None
         self.index = index
@@ -425,7 +489,7 @@ class CsvExporter(Transformer):
         """
         self.csvWriter = csv.writer(file) if file is not None else None
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Export the first set of keypoints from the list of keypoint sets. This
         set is subsequently popped from the list.
@@ -436,9 +500,9 @@ class CsvExporter(Transformer):
             for k in frameData.keypointSets[self.index].getKeypoints():
                 self.csvWriter.writerow(k)
         
-        return self.next(frameData)
+        self.next(frameData)
     
-class QImageProvider(Transformer, QObject):
+class QImageProvider(TransformerStage, QObject):
     """
     Emits a signal with the np.ndarray image converted to a QImage.
     """
@@ -448,10 +512,10 @@ class QImageProvider(Transformer, QObject):
         """
         Initialize the image provider
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
         QObject.__init__(self)
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Convert the image into a QImage and emit it with the signal.
         """
@@ -462,9 +526,31 @@ class QImageProvider(Transformer, QObject):
                 qImage = None
             self.frameReady.emit(qImage)
 
-        return self.next(frameData)
+        self.next(frameData)
 
-class RecorderTransformer(Transformer):
+class FrameDataProvider(TransformerStage, QObject):
+    """
+    Emits a signal with the np.ndarray image converted to a QImage.
+    """
+    frameDataReady = Signal(FrameData)
+
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize the image provider
+        """
+        TransformerStage.__init__(self, True, previous)
+        QObject.__init__(self)
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Convert the image into a QImage and emit it with the signal.
+        """
+        if self.active():
+            self.frameDataReady.emit(frameData)
+
+        self.next(frameData)
+
+class RecorderTransformer(TransformerStage):
     """
     Records the image.
     """
@@ -477,7 +563,7 @@ class RecorderTransformer(Transformer):
         """
         Initialize the image provider
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.recorder = None
         self.width = 0
@@ -489,7 +575,7 @@ class RecorderTransformer(Transformer):
         """
         self.recorder = recorder
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Record the current frame if the transformer is active and the recorder
         is initialized.
@@ -505,10 +591,10 @@ class RecorderTransformer(Transformer):
                         and frameData.image is not None:
             self.recorder.addFrame(frameData.image)
 
-        return self.next(frameData)
+        self.next(frameData)
     
 
-class PoseFeedbackTransformer(Transformer):
+class PoseFeedbackTransformer(TransformerStage):
     """
     Adds feedback on compensation to the image. Measures the angle between a
     straight line connecting the two shoulder joints and the horizontal axis.
@@ -528,7 +614,7 @@ class PoseFeedbackTransformer(Transformer):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
 
         self.keypointSetIndex = keypointSetIndex
         self.angleLimit = 10
@@ -539,7 +625,7 @@ class PoseFeedbackTransformer(Transformer):
         """
         self.angleLimit = angleLimit
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Determine the angle between the straight line connecting the two
         shoulder joints and the horizontal line. Then draw the border in
@@ -568,30 +654,27 @@ class PoseFeedbackTransformer(Transformer):
                               color,
                               thickness=10)
 
-        return self.next(frameData)
-    
+        self.next(frameData)
 
-class BackgroundRemover(Transformer):
+class BackgroundRemover(TransformerStage):
     def __init__(self,
                  previous: Optional[Transformer] = None) -> None:
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
         self.segmentation = SelfiSegmentation(0)
 
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Remove the background
         """
         if self.active() and not frameData.dryRun:
            frameData.image = self.segmentation.removeBG(frameData.image.astype(np.uint8))
-        
-        return frameData
     
 
-class VideoSourceTransformer(Transformer, QObject):
+class VideoSourceTransformer(TransformerStage, QObject):
     """
     Grabs the next frame from the video source and puts it in the pipeline.
     """
@@ -603,7 +686,7 @@ class VideoSourceTransformer(Transformer, QObject):
         """
         Initialize it.
         """
-        Transformer.__init__(self, True, previous)
+        TransformerStage.__init__(self, True, previous)
         QObject.__init__(self)
 
         self.videoSource = None
@@ -614,7 +697,7 @@ class VideoSourceTransformer(Transformer, QObject):
         """
         self.videoSource = videoSource
 
-    def transform(self, frameData: FrameData) -> FrameData:
+    def transform(self, frameData: FrameData) -> None:
         """
         Add the frame rate property to the frameData object and process the
         next frame.
@@ -628,6 +711,4 @@ class VideoSourceTransformer(Transformer, QObject):
                     frameData.image = self.videoSource.nextFrame()
                 except NoMoreFrames:
                     frameData.streamEnded = True
-            return self.next(frameData)
-        
-        return frameData
+            self.next(frameData)
