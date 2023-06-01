@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional
+from enum import Enum
 
 import math
 import io
@@ -9,7 +10,7 @@ import tensorflow as tf
 import cv2
 from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
-from PySide6.QtCore import QObject, Signal, QMutex
+from PySide6.QtCore import QObject, Signal, QMutex, QRunnable, QThreadPool
 from PySide6.QtGui import QImage
 
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
@@ -247,7 +248,7 @@ class Pipeline(Transformer):
         transformation.
         """
         self.lock()
-        return self.transform(frameData)
+        self.transform(frameData)
 
     def lock(self) -> None:
         """
@@ -742,6 +743,8 @@ class BackgroundRemover(TransformerStage):
         """
         if self.active() and not frameData.dryRun:
            frameData.image = self.segmentation.removeBG(frameData.image.astype(np.uint8))
+
+        self.next(frameData)
     
 
 class VideoSourceTransformer(TransformerStage, QObject):
@@ -782,3 +785,114 @@ class VideoSourceTransformer(TransformerStage, QObject):
                 except NoMoreFrames:
                     frameData.streamEnded = True
             self.next(frameData)
+
+class TransformerRunner(QRunnable, QObject):
+    """
+    Runs the transformer and emits a signal when the next thread can start
+    execution.
+    """
+    transformerStarted = Signal()
+    transformerCompleted = Signal()
+    _transformer: Transformer
+
+    def __init__(self, transformer: Transformer) -> None:
+        """
+        Initialize the Runner with the transformer it should execute.
+        """
+        QRunnable.__init__(self)
+        QObject.__init__(self)
+        self._transformer = transformer
+
+    def run(self) -> None:
+        """
+        Acquire the lock of the transformer. As soon as the lock could be acquired,
+        the stage cleared signal is emitted and the first transformer stage starts
+        executing.
+        """
+        self._transformer.lock()
+        self.transformerStarted.emit()
+        self._transformer.transform(FrameData())
+        self.transformerCompleted.emit()
+
+class TransformerHead:
+    """
+    The Transformer head managing the creation of new runners for the
+    transformer.
+    """
+    _isRunning: bool
+    _transformer: Transformer
+    _threadingModel: MultiThreading
+
+    class MultiThreading(Enum):
+        """
+        How the transformers use multiple threads.
+        PER_FRAME - one thread processes the frame from beginning to end
+        before another thread is spawned.
+        PER_STAGE - one thread is spawned every time there is an empty stage.
+        """
+        PER_FRAME = 0
+        PER_STAGE = 1
+
+
+    def __init__(self,
+                 transformer: Transformer,
+                 threadingModel: MultiThreading = MultiThreading.PER_FRAME,
+                 qThreadPool: QThreadPool = QThreadPool.globalInstance()) -> None:
+        """
+        Initialize the TransformerHead.
+        """
+        self._transformer = transformer
+        self._isRunning = False
+        self._qThreadPool = qThreadPool
+        self._threadingModel = threadingModel
+
+    def start(self) -> None:
+        """
+        Start execution of the transformer
+        """
+        self._isRunning = True
+        self.startNext()
+    
+    def stop(self) -> None:
+        """
+        Stop execution of the transformer. This stops the creation of new
+        runners. Existing runners will continue to run until completion, however.
+        """
+        self._isRunning = False
+
+    def isRunning(self) -> bool:
+        return self._isRunning
+    
+    def threadingModel(self) -> MultiThreading:
+        return self._threadingModel
+    
+    def setThreadingModel(self, threadingModel: MultiThreading) -> MultiThreading:
+        self._threadingModel = threadingModel
+
+    def onStageCleared(self) -> None:
+        """
+        Called when the first stage in the transformer is cleared.
+        The next transformer will be run if the threading model is per stage
+        and the execution has not been stopped.
+        """
+        if self._isRunning \
+            and self.threadingModel() \
+                == TransformerHead.MultiThreading.PER_STAGE:
+            self.startNext()
+
+    def onTransformCompleted(self) -> None:
+        """
+        Called when the transformer is completed.
+        The next transformer will be run if the threading model is per frame
+        and the execution has not been stopped.
+        """
+        if self._isRunning \
+            and self.threadingModel() \
+                == TransformerHead.MultiThreading.PER_FRAME:
+            self.startNext()
+
+    def startNext(self) -> None:
+        runner = TransformerRunner(self._transformer)
+        runner.transformerStarted.connect(self.onStageCleared)
+        runner.transformerCompleted.connect(self.onTransformCompleted)
+        self._qThreadPool.start(runner)

@@ -258,7 +258,7 @@ class ModelManager(QObject):
     models: list[PoseModel]
     threadpool: QThreadPool
 
-    def __init__(self, models: list[type], threadpool=QThreadPool()) -> None:
+    def __init__(self, models: list[type], threadpool=QThreadPool.globalInstance()) -> None:
         QObject.__init__(self)
 
         self.threadPool = threadpool

@@ -14,7 +14,7 @@ from pose_estimation.transform_widgets import BackgroundRemoverWidget, \
             ScalerWidget, SkeletonDrawerWidget, TransformerWidget, \
                 VideoSourceWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
-    QImageProvider, Transformer
+    QImageProvider, Transformer, TransformerHead
 
 class PipelineWidget(QWidget):
     """
@@ -177,10 +177,11 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout.addWidget(self.pipelineWidget)
         self.qThreadPool = QThreadPool.globalInstance()
 
+        self.transformerHead = TransformerHead(self.pipelineWidget.pipeline)
+
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
         self.pipelineWidget.frameDataProvider.frameDataReady.connect(self.setFrameData)
         self.lastFrameRate = 0
-        self.isRunning = False
         self.frameData = FrameData()
 
     def setFrameData(self, frameData) -> None:
@@ -191,26 +192,18 @@ class ModularPoseProcessorWidget(QWidget):
         Toggle between the pipeline running and processing images and not
         running.
         """
-        if not self.isRunning:
-            self.processNextFrame()
+        if not self.transformerHead.isRunning():
+            self.transformerHead.start()
             self.startButton.setText("Stop")
         else:
+            self.transformerHead.stop()
             self.startButton.setText("Start")
-        
-        self.isRunning = not self.isRunning
 
     def dryRun(self) -> None:
         """
         Perform a dry run to set resolutions and framerates for recorders.
         """
         processor = FrameProcessor(self.pipelineWidget.pipeline, dryRun=True)
-        self.qThreadPool.start(processor)
-
-    def processNextFrame(self) -> None:
-        """
-        Process the next frame that is available.
-        """
-        processor = FrameProcessor(self.pipelineWidget.pipeline)
         self.qThreadPool.start(processor)
 
     @Slot(np.ndarray)
@@ -227,9 +220,6 @@ class ModularPoseProcessorWidget(QWidget):
             if nextFrameRate != self.lastFrameRate:
                 self.lastFrameRate = nextFrameRate
                 self.onFrameRateUpdate(self.lastFrameRate)
-        
-        if self.isRunning:
-            self.processNextFrame()
 
     @Slot(int)
     def onFrameRateUpdate(self, frameRate: int) -> None:
