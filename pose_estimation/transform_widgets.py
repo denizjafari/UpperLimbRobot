@@ -9,7 +9,7 @@ from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from pose_estimation.Models import ModelManager
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
-    CsvImporter, ImageMirror, LandmarkDrawer, ModelRunner, \
+    CsvImporter, ImageMirror, LandmarkDrawer, ModelRunner, Pipeline, \
         PoseFeedbackTransformer, RecorderTransformer, Scaler, SkeletonDrawer, \
             Transformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
@@ -247,7 +247,7 @@ class RecorderTransformerWidget(TransformerWidget):
     outputFiles: list[TextIOBase]
     videoRecorder: Optional[VideoRecorder]
     isRecording: bool
-    transformer: RecorderTransformer
+    transformer: Pipeline
 
     def __init__(self,
                  parent: Optional[QWidget] = None, ) -> None:
@@ -256,11 +256,14 @@ class RecorderTransformerWidget(TransformerWidget):
         """
         TransformerWidget.__init__(self, "Recorder", parent)
 
-        self.transformer = RecorderTransformer()
+        self.transformer = Pipeline()
+        self.exporters = []
         self.selectors = []
         self.outputFiles = []
         self.videoRecorder = None
         self.isRecording = False
+        self.recorderTransformer = RecorderTransformer()
+        self.transformer.append(self.recorderTransformer)
 
         self.outputFileSelector = FileSelector(self,
                                                mode=FileSelector.MODE_SAVE,
@@ -288,7 +291,10 @@ class RecorderTransformerWidget(TransformerWidget):
         """
         Add a csv exporter to the widget and pipeline.
         """
-        selector = FileSelector(self, title="CSV output",removable=True)
+        selector = FileSelector(self,
+                                title="CSV output",
+                                mode=FileSelector.MODE_SAVE,
+                                removable=True)
         self.selectors.append(selector)
 
         def remove() -> None:
@@ -310,7 +316,7 @@ class RecorderTransformerWidget(TransformerWidget):
             self.videoRecorder.close()
 
         self.videoRecorder = videoRecorder
-        self.transformer.setVideoRecorder(videoRecorder)
+        self.recorderTransformer.setVideoRecorder(videoRecorder)
         buttonText = ("Stop" if self.isRecording else "Start") + " Recording"
         self.recordingButton.setText(buttonText)
 
@@ -319,26 +325,28 @@ class RecorderTransformerWidget(TransformerWidget):
         """
         Toggle the recording between start and stop.
         """
-        self.transformer.setNextTransformer(None)
 
         if self.isRecording:
             for file in self.outputFiles:
                 file.close()
+            for exporter in self.exporters:
+                self.transformer.remove(exporter)
             self.outputFiles = []
+            self.exporters = []
             self.onRecordingToggled(None)
         else:
-            loader = RecorderLoader(self.transformer.frameRate,
-                                    self.transformer.width,
-                                    self.transformer.height,
+            loader = RecorderLoader(self.recorderTransformer.frameRate,
+                                    self.recorderTransformer.width,
+                                    self.recorderTransformer.height,
                                     self.outputFileSelector.selectedFile())
             
-            previousExporter = self.transformer
             for index, selector in enumerate(self.selectors):
-                exporter = CsvExporter(index, previousExporter)
+                exporter = CsvExporter(index)
                 file = open(selector.selectedFile(), "w", newline="")
                 exporter.setFile(file)
                 self.outputFiles.append(file)
-                previousExporter = exporter
+                self.exporters.append(exporter)
+                self.transformer.append(exporter)
 
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
@@ -414,7 +422,8 @@ class VideoSourceWidget(TransformerWidget):
     Selects a video file as source.
     """
     videoSource: CVVideoFileSource
-    transformer: VideoSourceTransformer
+    transformer: Pipeline
+    videoSourceTransformer: VideoSourceTransformer
     selectors: list[FileSelector]
 
     def __init__(self,
@@ -424,7 +433,10 @@ class VideoSourceWidget(TransformerWidget):
         """
         TransformerWidget.__init__(self, "Video Source", parent)
 
-        self.transformer = VideoSourceTransformer()
+        self.importers = []
+        self.transformer = Pipeline()
+        self.videoSourceTransformer = VideoSourceTransformer()
+        self.transformer.append(self.videoSourceTransformer)
 
         self.fileSelector = FileSelector(self, title="Video Source")
         self.vLayout.addWidget(self.fileSelector)
@@ -441,7 +453,7 @@ class VideoSourceWidget(TransformerWidget):
 
         self.loadButton = QPushButton("Load", self)
         self.loadButton.clicked.connect(self.load)
-        self.vLayout.addWidget(self.loadButton)
+        self.hButtonLayout.addWidget(self.loadButton)
 
         self.selectors = []
 
@@ -467,19 +479,25 @@ class VideoSourceWidget(TransformerWidget):
         and setting it in the transformer.
         """
         self.videoSource = CVVideoFileSource(self.fileSelector.selectedFile())
-        if self.transformer.videoSource is not None:
-            self.transformer.videoSource.close()
-        self.transformer.setVideoSource(self.videoSource)
+        if self.videoSourceTransformer.videoSource is not None:
+            self.videoSourceTransformer.videoSource.close()
+        self.videoSourceTransformer.setVideoSource(self.videoSource)
 
-        previousImporter = self.transformer
-        self.transformer.setNextTransformer(None)
+        for importer in self.importers:
+            self.transformer.remove(importer)
+
+        self.importers = []
+
         for selector in self.selectors:
-            importer = CsvImporter(33, previousImporter)
+            importer = CsvImporter(33)
             file = open(selector.selectedFile(), "r", newline="")
             importer.setFile(file)
-            previousImporter = importer
-
+            self.transformer.append(importer)
+            self.importers.append(importer)
     
     def close(self) -> None:
-        if self.transformer.videoSource:
-            self.transformer.videoSource.close()
+        """
+        Close the video source if it is set.
+        """
+        if self.videoSourceTransformer.videoSource:
+            self.videoSourceTransformer.videoSource.close()

@@ -129,8 +129,8 @@ class Transformer:
         if self._next is not None:
             self._next.lock()
         self.unlock()
-        return self._next.transform(frameData) \
-            if self._next is not None else frameData
+        if self._next is not None:
+            self._next.transform(frameData)
 
     def lock(self) -> None:
         """
@@ -275,7 +275,7 @@ class Pipeline(Transformer):
         """
         Start transformation with the frst transformer in the pipeline.
         """
-        if len(self.transformers) > 0:
+        if self.active() and len(self.transformers) > 0:
             self.transformers[0].transform(frameData)
     
 class ImageMirror(TransformerStage):
