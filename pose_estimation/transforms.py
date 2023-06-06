@@ -300,6 +300,9 @@ class ImageMirror(TransformerStage):
                     keypoint[1] = 1.0 - keypoint[1]
         self.next(frameData)
 
+    def __str__(self) -> str:
+        return "Mirror"
+
 class LandmarkDrawer(TransformerStage):
     """
     Draws the landmarks to the image.
@@ -354,6 +357,9 @@ class LandmarkDrawer(TransformerStage):
                                thickness=-1)
 
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Landmarks"
     
 class SkeletonDrawer(TransformerStage):
     """
@@ -416,6 +422,9 @@ class SkeletonDrawer(TransformerStage):
 
         self.next(frameData)
     
+    def __str__(self) -> str:
+        return "Skeleton"
+    
 class Scaler(TransformerStage):
     """
     Scales the image up.
@@ -456,6 +465,9 @@ class Scaler(TransformerStage):
                 frameData.setHeight(self.targetHeight)
 
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Scaler"
     
 
 class ModelRunner(TransformerStage):
@@ -489,6 +501,9 @@ class ModelRunner(TransformerStage):
             frameData.keypointSets.append(self.model.detect(frameData.image))
         
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Model"
     
 class CsvImporter(TransformerStage):
     """
@@ -534,6 +549,10 @@ class CsvImporter(TransformerStage):
             frameData.keypointSets.append(BlazePose.KeypointSet(keypoints))
         
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Importer"
+    
     
 class CsvExporter(TransformerStage):
     """
@@ -572,6 +591,9 @@ class CsvExporter(TransformerStage):
                 self.csvWriter.writerow(k)
         
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Exporter"
     
 class QImageProvider(TransformerStage, QObject):
     """
@@ -599,6 +621,9 @@ class QImageProvider(TransformerStage, QObject):
 
         self.next(frameData)
 
+    def __str__(self) -> str:
+        return "Preview Image Provder"
+
 class FrameDataProvider(TransformerStage, QObject):
     """
     Emits a signal with the np.ndarray image converted to a QImage.
@@ -620,6 +645,9 @@ class FrameDataProvider(TransformerStage, QObject):
             self.frameDataReady.emit(frameData)
 
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Frame Data Provider"
 
 class RecorderTransformer(TransformerStage):
     """
@@ -663,6 +691,9 @@ class RecorderTransformer(TransformerStage):
             self.recorder.addFrame(frameData.image)
 
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Recorder"
     
 
 class PoseFeedbackTransformer(TransformerStage):
@@ -727,6 +758,9 @@ class PoseFeedbackTransformer(TransformerStage):
 
         self.next(frameData)
 
+    def __str__(self) -> str:
+        return "Feedback"
+
 class BackgroundRemover(TransformerStage):
     def __init__(self,
                  previous: Optional[Transformer] = None) -> None:
@@ -745,6 +779,9 @@ class BackgroundRemover(TransformerStage):
            frameData.image = self.segmentation.removeBG(frameData.image.astype(np.uint8))
 
         self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Background Remover"
     
 
 class VideoSourceTransformer(TransformerStage, QObject):
@@ -785,6 +822,9 @@ class VideoSourceTransformer(TransformerStage, QObject):
                 except NoMoreFrames:
                     frameData.streamEnded = True
             self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Video Source"
 
 class TransformerRunner(QRunnable, QObject):
     """

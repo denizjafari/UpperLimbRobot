@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from pose_estimation.Models import ModelManager
 from pose_estimation.transform_widgets import BackgroundRemoverWidget, \
     ImageMirrorWidget, LandmarkDrawerWidget, ModelRunnerWidget, \
         PoseFeedbackWidget, QCameraSourceWidget, RecorderTransformerWidget, \
-            ScalerWidget, SkeletonDrawerWidget, TransformerWidget, \
+            ScalerWidget, SkeletonDrawerWidget, TransformerWidget, TransformerWidgetsRegistry, \
                 VideoSourceWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Transformer, TransformerHead
@@ -24,9 +24,10 @@ class PipelineWidget(QWidget):
     modelManager: ModelManager
     lastFrameData: FrameData
     pipeline: Pipeline
+    transformerWidgets: list[tuple[str, Callable[[QWidget], TransformerWidget]]]
 
     def __init__(self,
-                 modelManager: ModelManager,
+                 transformerWidgetsRegistry: TransformerWidgetsRegistry,
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the PipelineWidget by adding
@@ -37,7 +38,6 @@ class PipelineWidget(QWidget):
 
         self.frameDataProvider = FrameDataProvider()
         self.imageProvider = QImageProvider()
-        self.modelManager = modelManager
         self.qThreadPool = QThreadPool.globalInstance()
         self.pipeline = Pipeline()
         self.pipeline.setNextTransformer(self.imageProvider)
@@ -47,16 +47,6 @@ class PipelineWidget(QWidget):
         self.hLayout.addLayout(self.hTransformerLayout)
 
         self.transformerSelector = QComboBox(self)
-        self.transformerSelector.addItem("Camera Source")
-        self.transformerSelector.addItem("Video Source")
-        self.transformerSelector.addItem("Scaler")
-        self.transformerSelector.addItem("Mirror")
-        self.transformerSelector.addItem("Model")
-        self.transformerSelector.addItem("Landmarks")
-        self.transformerSelector.addItem("Skeleton")
-        self.transformerSelector.addItem("Recorder")
-        self.transformerSelector.addItem("Feedback")
-        self.transformerSelector.addItem("Background Remover")
         self.hLayout.addWidget(self.transformerSelector)
 
         self.addButton = QPushButton("Add Transformer", self)
@@ -66,6 +56,9 @@ class PipelineWidget(QWidget):
         self.lastFrameData = FrameData()
 
         self.hLayout.addStretch()
+
+        transformerWidgetsRegistry.transformerWidgetsChanged.connect(self.onTransformerWidgetsChanged)
+        self.onTransformerWidgetsChanged(transformerWidgetsRegistry.transformerWidgets())
     
     @Slot()
     def onAdd(self) -> None:
@@ -73,33 +66,11 @@ class PipelineWidget(QWidget):
         When the add button is clicked to add a transformer
         """
         index = self.transformerSelector.currentIndex()
-        if index == 0:
-            widget = QCameraSourceWidget(self)
-        elif index == 1:
-            widget = VideoSourceWidget(self)
-        elif index == 2:
-            widget = ScalerWidget(self)
-        elif index == 3:
-            widget = ImageMirrorWidget(self)
-        elif index == 4:
-            widget = ModelRunnerWidget(self.modelManager, self)
-        elif index == 5:
-            widget = LandmarkDrawerWidget(self)
-        elif index == 6:
-            widget = SkeletonDrawerWidget(self)
-        elif index == 7:
-            widget = RecorderTransformerWidget(self)
-        elif index == 8:
-            widget = PoseFeedbackWidget(self)
-        elif index == 9:
-            widget = BackgroundRemoverWidget(self)
-        else:
-            widget = None
+        widget = self.transformerWidgets[index][1](self)
 
-        if widget is not None:
-            self.pipeline.append(widget.transformer)
-            self.hTransformerLayout.addWidget(widget)
-            widget.removed.connect(lambda: self.removeTransformerWidget(widget))
+        self.pipeline.append(widget.transformer)
+        self.hTransformerLayout.addWidget(widget)
+        widget.removed.connect(lambda: self.removeTransformerWidget(widget))
 
     @Slot(TransformerWidget)
     def removeTransformerWidget(self, widget: TransformerWidget) -> None:
@@ -110,6 +81,17 @@ class PipelineWidget(QWidget):
         self.hTransformerLayout.removeWidget(widget)
         widget.deleteLater()
 
+    @Slot(object)
+    def onTransformerWidgetsChanged(self, transformerWidgets: list[tuple[str, Callable]]) -> None:
+        newTransformerSelector = QComboBox(self)
+        self.hLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
+        self.transformerSelector.deleteLater()
+        self.transformerSelector = newTransformerSelector
+
+        self.transformerWidgets = transformerWidgets.copy()
+
+        for tw in self.transformerWidgets:
+            self.transformerSelector.addItem(tw[0])
 
 class FrameProcessor(QRunnable, QObject):
     """
@@ -144,7 +126,7 @@ class ModularPoseProcessorWidget(QWidget):
     pipelineWidget: PipelineWidget
 
     def __init__(self,
-                 modelManager: ModelManager,
+                 transformerWidgetRegistry: TransformerWidgetsRegistry,
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the ModularProcessorWidget.
@@ -173,7 +155,7 @@ class ModularPoseProcessorWidget(QWidget):
         self.startButton.clicked.connect(self.toggleRunning)
         self.buttonHLayout.addWidget(self.startButton)
 
-        self.pipelineWidget = PipelineWidget(modelManager, self)
+        self.pipelineWidget = PipelineWidget(transformerWidgetRegistry, self)
         self.vLayout.addWidget(self.pipelineWidget)
         self.qThreadPool = QThreadPool.globalInstance()
 

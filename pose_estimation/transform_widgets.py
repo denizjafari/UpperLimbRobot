@@ -1,4 +1,5 @@
-from typing import Optional
+from __future__ import annotations
+from typing import Callable, Optional
 
 from io import TextIOBase
 
@@ -61,6 +62,20 @@ class TransformerWidget(QGroupBox):
     def close(self) -> None:
         pass
 
+class TransformerWidgetsRegistry(QObject):
+    transformerWidgetsChanged = Signal(object)
+
+    def __init__(self) -> None:
+        QObject.__init__(self)
+        self._transformerWidgets = []
+
+    def addTransformerWidget(self, initializer: Callable[[QWidget], TransformerWidget], name: str):
+        self._transformerWidgets.append((name, initializer))
+        self.transformerWidgetsChanged.emit(self._transformerWidgets)
+
+    def transformerWidgets(self) -> list[tuple[str, Callable[[QWidget], TransformerWidget]]]:
+        return self._transformerWidgets
+
 
 class ScalerWidget(TransformerWidget):
     """
@@ -92,6 +107,9 @@ class ScalerWidget(TransformerWidget):
         """
         self.transformer.setTargetSize(int(self.heightSelector.text()))
 
+    def __str__(self) -> str:
+        return "Scaler"
+
 
 class ImageMirrorWidget(TransformerWidget):
     """
@@ -107,6 +125,9 @@ class ImageMirrorWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Mirror", parent)
 
         self.transformer = ImageMirror()
+    
+    def __str__(self) -> str:
+        return "Mirror"
 
 
 class ModelRunnerWidget(TransformerWidget):
@@ -127,6 +148,9 @@ class ModelRunnerWidget(TransformerWidget):
         self.modelSelector = ModelSelector(modelManager, self)
         self.modelSelector.modelSelected.connect(self.transformer.setModel)
         self.vLayout.addWidget(self.modelSelector)
+
+    def __str__(self) -> str:
+        return "Model"
 
 
 class LandmarkDrawerWidget(TransformerWidget):
@@ -163,6 +187,9 @@ class LandmarkDrawerWidget(TransformerWidget):
         self.chooseColorButton = QPushButton("Change color...", self)
         self.chooseColorButton.clicked.connect(self.colorDialog.open)
         self.vLayout.addWidget(self.chooseColorButton)
+    
+    def __str__(self) -> str:
+        return "Landmarks"
 
 
 class SkeletonDrawerWidget(TransformerWidget):
@@ -199,6 +226,9 @@ class SkeletonDrawerWidget(TransformerWidget):
         self.chooseColorButton = QPushButton("Change color...", self)
         self.chooseColorButton.clicked.connect(self.colorDialog.open)
         self.vLayout.addWidget(self.chooseColorButton)
+    
+    def __str__(self) -> str:
+        return "Skeleton"
 
 
 class RecorderLoader(QRunnable, QObject):
@@ -239,7 +269,6 @@ class RecorderLoader(QRunnable, QObject):
 class RecorderTransformerWidget(TransformerWidget):
     """
     Widget for the recorder and csv exporter widgets
-    TODO: Fix mess with csv exporters when not recordin / inactive
     """
     videoRecorder: VideoRecorder
     csvExporter: Optional[CsvExporter]
@@ -351,6 +380,9 @@ class RecorderTransformerWidget(TransformerWidget):
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
 
+    def __str__(self) -> str:
+        return "Recorder"
+
 
 class PoseFeedbackWidget(TransformerWidget):
     """
@@ -378,6 +410,8 @@ class PoseFeedbackWidget(TransformerWidget):
         self.angleLimitSlider.valueChanged.connect(self.transformer.setAngleLimit)
         self.vLayout.addWidget(self.angleLimitSlider)
 
+    def __str__(self) -> str:
+        return "Feedback"
 
 class QCameraSourceWidget(TransformerWidget):
     videoSource: QVideoSource
@@ -400,7 +434,10 @@ class QCameraSourceWidget(TransformerWidget):
                                alignment=Qt.AlignmentFlag.AlignCenter)
 
     def close(self) -> None:
-        self.videoSource.close() 
+        self.videoSource.close()
+    
+    def __str__(self) -> str:
+        return "Camera Source"
 
 
 class BackgroundRemoverWidget(TransformerWidget):
@@ -415,6 +452,9 @@ class BackgroundRemoverWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Background Remover", parent)
         
         self.transformer = BackgroundRemover()
+    
+    def __str__(self) -> str:
+        return "BackgroundRemover"
 
 
 class VideoSourceWidget(TransformerWidget):
@@ -501,3 +541,6 @@ class VideoSourceWidget(TransformerWidget):
         """
         if self.videoSourceTransformer.videoSource:
             self.videoSourceTransformer.videoSource.close()
+
+    def __str__(self) -> str:
+        return "Video Source"
