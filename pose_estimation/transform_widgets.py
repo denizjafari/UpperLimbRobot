@@ -398,17 +398,33 @@ class PoseFeedbackWidget(TransformerWidget):
 
         self.transformer = PoseFeedbackTransformer()
 
-        self.sliderLabel = QLabel("Angle Limit", self)
-        self.vLayout.addWidget(self.sliderLabel)
+        self.elevSliderLabel = QLabel("Max Shoulder Elevation Angle", self)
+        self.vLayout.addWidget(self.elevSliderLabel)
 
-        self.angleLimitSlider = LabeledQSlider(self,
+        self.elevAngleLimitSlider = LabeledQSlider(self,
                                           orientation=Qt.Orientation.Horizontal)
-        self.angleLimitSlider.setMinimum(0)
-        self.angleLimitSlider.setMaximum(40)
-        self.angleLimitSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.angleLimitSlider.setTickInterval(5)
-        self.angleLimitSlider.valueChanged.connect(self.transformer.setAngleLimit)
-        self.vLayout.addWidget(self.angleLimitSlider)
+        self.elevAngleLimitSlider.setMinimum(0)
+        self.elevAngleLimitSlider.setMaximum(40)
+        self.elevAngleLimitSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.elevAngleLimitSlider.setTickInterval(5)
+        self.elevAngleLimitSlider.valueChanged.connect(self.transformer.setAngleLimit)
+        self.vLayout.addWidget(self.elevAngleLimitSlider)
+
+        self.lfSliderLabel = QLabel("Max Lean Forward", self)
+        self.vLayout.addWidget(self.lfSliderLabel)
+
+        self.lfLimitSlider = LabeledQSlider(self,
+                                          orientation=Qt.Orientation.Horizontal)
+        self.lfLimitSlider.setMinimum(0)
+        self.lfLimitSlider.setMaximum(20)
+        self.lfLimitSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.lfLimitSlider.setTickInterval(5)
+        self.lfLimitSlider.valueChanged.connect(self.transformer.setLeanForwardLimit)
+        self.vLayout.addWidget(self.lfLimitSlider)
+
+        self.shoulderDistanceButton = QPushButton("Set Shoulder Distance Baseline", self)
+        self.shoulderDistanceButton.clicked.connect(self.transformer.captureShoulderBaseDistance)
+        self.vLayout.addWidget(self.shoulderDistanceButton)
 
     def __str__(self) -> str:
         return "Feedback"

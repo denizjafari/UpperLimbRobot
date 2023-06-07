@@ -8,11 +8,8 @@ from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
-from pose_estimation.transform_widgets import BackgroundRemoverWidget, \
-    ImageMirrorWidget, LandmarkDrawerWidget, ModelRunnerWidget, \
-        PoseFeedbackWidget, QCameraSourceWidget, RecorderTransformerWidget, \
-            ScalerWidget, SkeletonDrawerWidget, TransformerWidget, TransformerWidgetsRegistry, \
-                VideoSourceWidget
+from pose_estimation.transform_widgets import TransformerWidget, \
+    TransformerWidgetsRegistry
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Transformer, TransformerHead
 

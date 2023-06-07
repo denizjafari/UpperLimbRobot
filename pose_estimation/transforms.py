@@ -708,7 +708,10 @@ class PoseFeedbackTransformer(TransformerStage):
     angleLimit - the maximum angle (in degrees) that is accepted.
     """
     keypointSetIndex: int
-    angleLimit: int
+    elevAngleLimit: int
+    leanForwardLimit: int
+    shoulderBaseDistance: float
+    lastShoulderDistance: float
 
     def __init__(self,
                  keypointSetIndex: int = 0,
@@ -719,13 +722,52 @@ class PoseFeedbackTransformer(TransformerStage):
         TransformerStage.__init__(self, True, previous)
 
         self.keypointSetIndex = keypointSetIndex
-        self.angleLimit = 10
+        self.elevAngleLimit = 10
+        self.leanForwardLimit = 1
+        self.shoulderBaseDistance = 1
 
     def setAngleLimit(self, angleLimit: int) -> None:
         """
         Set the angleLimit to this angle (in degrees).
         """
-        self.angleLimit = angleLimit
+        self.elevAngleLimit = angleLimit
+
+    def setLeanForwardLimit(self, lfLimit: int) -> None:
+        """
+        Set the lf limit to (1 + lfLimit / 10).
+        """
+        self.leanForwardLimit = 1 + (lfLimit / 10)
+
+    def captureShoulderBaseDistance(self) -> None:
+        self.shoulderBaseDistance = self.lastShoulderDistance
+
+    def _checkShoulderElevation(self, keypointSet: KeypointSet) -> bool:
+        leftShoulder = keypointSet.getLeftShoulder()
+        rightShoulder = keypointSet.getRightShoulder()
+
+        delta_x = abs(rightShoulder[1] - leftShoulder[1])
+        delta_y = abs(rightShoulder[0] - leftShoulder[0])
+
+        if delta_x != 0:
+            angle_rad = math.atan(delta_y / delta_x)
+            angle_deg = math.degrees(angle_rad)
+        else:
+            angle_deg = 0
+
+        return angle_deg <= self.elevAngleLimit
+    
+    def _checkLeanForward(self, keypointSet: KeypointSet) -> bool:
+        leftShoulder = keypointSet.getLeftShoulder()
+        rightShoulder = keypointSet.getRightShoulder()
+
+        delta_x = abs(rightShoulder[1] - leftShoulder[1])
+        delta_y = abs(rightShoulder[0] - leftShoulder[0])
+
+        delta = math.sqrt(delta_x ** 2 + delta_y ** 2)
+
+        self.lastShoulderDistance = delta
+
+        return delta / self.shoulderBaseDistance <= self.leanForwardLimit
 
     def transform(self, frameData: FrameData) -> None:
         """
@@ -735,26 +777,18 @@ class PoseFeedbackTransformer(TransformerStage):
         """
         if self.active() and not frameData.dryRun:
             keypointSet = frameData.keypointSets[self.keypointSetIndex]
-            leftShoulder = keypointSet.getLeftShoulder()
-            rightShoulder = keypointSet.getRightShoulder()
 
-            delta_x = abs(rightShoulder[1] - leftShoulder[1])
-            delta_y = abs(rightShoulder[0] - leftShoulder[0])
-
-            if delta_x != 0:
-                angle_rad = math.atan(delta_y / delta_x)
-                angle_deg = math.degrees(angle_rad)
-
-                if angle_deg > self.angleLimit:
-                    color = (0, 0, 255)
-                else:
-                    color = (0, 255, 0)
-                
-                cv2.rectangle(frameData.image,
-                              (0,0),
-                              (frameData.width(), frameData.height()),
-                              color,
-                              thickness=10)
+            if self._checkLeanForward(keypointSet) \
+                and self._checkShoulderElevation(keypointSet):
+                color = (0, 255, 0)
+            else:
+                color = (0, 0, 255)
+            
+            cv2.rectangle(frameData.image,
+                            (0,0),
+                            (frameData.width(), frameData.height()),
+                            color,
+                            thickness=10)
 
         self.next(frameData)
 

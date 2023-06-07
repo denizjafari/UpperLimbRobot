@@ -188,7 +188,7 @@ class BlazePose(PoseModel):
                 self.keypoints = output
             else:
                 self.keypoints = [
-                    [output[i].y, output[i].x, output[i].visibility]
+                    [output[i].y, output[i].x, output[i].z, output[i].visibility]
                     for i in range(33)
                     ]
 
