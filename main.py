@@ -1,6 +1,9 @@
+import logging
 import sys
+
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt, QThreadPool
+from PySide6.QtCore import Qt
+
 from pose_estimation.Models import BlazePose, FeedThroughModel, ModelManager
 from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
 from pose_estimation.transform_widgets import BackgroundRemoverWidget, ImageMirrorWidget, \
@@ -12,8 +15,7 @@ from pose_estimation.transform_widgets import BackgroundRemoverWidget, ImageMirr
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    threadpool = QThreadPool.globalInstance()
-    modelManager = ModelManager([FeedThroughModel, BlazePose], threadpool)
+    modelManager = ModelManager([FeedThroughModel, BlazePose])
     widgetRegistry = TransformerWidgetsRegistry()
     
     widgetRegistry.addTransformerWidget(lambda parent: VideoSourceWidget(parent), "Video Source")
@@ -28,6 +30,8 @@ if __name__ == "__main__":
     widgetRegistry.addTransformerWidget(lambda parent: BackgroundRemoverWidget(parent), "Background Remover")
 
     window = ModularPoseProcessorWidget(widgetRegistry)
+
+    logging.basicConfig(stream=sys.stdout)
 
     window.setWindowState(Qt.WindowState.WindowMaximized)
     window.show()

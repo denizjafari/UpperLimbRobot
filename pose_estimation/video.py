@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional
+import logging
 
 import numpy as np
 import cv2
@@ -9,6 +10,8 @@ from PySide6.QtMultimedia import QCamera, QMediaCaptureSession, QVideoSink, QVid
 from PySide6.QtGui import QImage
 from PySide6.QtCore import Slot, Signal, QObject, QTimer
 
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 def qImageToNpArray(image: QImage) -> np.ndarray:
     """
@@ -298,7 +301,7 @@ class CVVideoRecorder(VideoRecorder):
         width - the width of each frame in pixels
         height - the height of each fram in pixels
         """
-        print(f"Recording to {outputFile} with {width}x{height}@{frameRate}")
+        module_logger.info(f"Recording to {outputFile} with {width}x{height}@{frameRate}")
         self.recorder = cv2.VideoWriter(outputFile,
                                         cv2.VideoWriter_fourcc(*"mp4v"),
                                         frameRate,

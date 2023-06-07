@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from typing import Optional
 from enum import Enum
 
@@ -16,6 +17,9 @@ from PySide6.QtGui import QImage
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
 from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
     npArrayToQImage
+
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 class FrameData:
     """
@@ -210,7 +214,7 @@ class Pipeline(Transformer):
         """
         Append a Transformer to the end of the pipeline.
         """
-        print(f"Appended transformer {transformer} to the pipeline")
+        module_logger.debug(f"Appended transformer {transformer} to the pipeline")
         if len(self.transformers) > 0:
             self.transformers[-1].setNextTransformer(transformer)
         self.transformers.append(transformer)
@@ -220,7 +224,7 @@ class Pipeline(Transformer):
         """
         Remove the given transformer from the pipeline.
         """
-        print(f"Removed transformer {transformer} from the pipeline")
+        module_logger.debug(f"Removed transformer {transformer} from the pipeline")
         index = self.transformers.index(transformer)
         if index > 0:
             self.transformers[index - 1].setNextTransformer(transformer.getNextTransformer())
@@ -726,6 +730,9 @@ class PoseFeedbackTransformer(TransformerStage):
         self.leanForwardLimit = 1
         self.shoulderBaseDistance = 1
 
+        self.wasLeaningTooFar = False
+        self.shouldersWereNotLevel = False
+
     def setAngleLimit(self, angleLimit: int) -> None:
         """
         Set the angleLimit to this angle (in degrees).
@@ -778,16 +785,30 @@ class PoseFeedbackTransformer(TransformerStage):
         if self.active() and not frameData.dryRun:
             keypointSet = frameData.keypointSets[self.keypointSetIndex]
 
-            if self._checkLeanForward(keypointSet) \
-                and self._checkShoulderElevation(keypointSet):
-                color = (0, 255, 0)
-            else:
-                color = (0, 0, 255)
+            correct = True
+
+            if correct and not self._checkLeanForward(keypointSet):
+                if not self.wasLeaningTooFar:
+                    module_logger.info("User is leaning too far forward")
+                    self.wasLeaningTooFar = True
+                correct = False
+            elif self.wasLeaningTooFar:
+                module_logger.info("User corrected leaning too far forward")
+                self.wasLeaningTooFar = False
+
+            if correct and not self._checkShoulderElevation(keypointSet):
+                if not self.shouldersWereNotLevel:
+                    module_logger.info("User is not keeping their shoulders level enough")
+                    self.shouldersWereNotLevel = True
+                correct = False
+            elif self.shouldersWereNotLevel:
+                module_logger.info("User corrected not keeping their shoulder level enough")
+                self.shouldersWereNotLevel = False
             
             cv2.rectangle(frameData.image,
                             (0,0),
                             (frameData.width(), frameData.height()),
-                            color,
+                            (0, 255, 0) if correct else (0, 0, 255),
                             thickness=10)
 
         self.next(frameData)

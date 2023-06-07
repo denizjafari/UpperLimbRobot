@@ -1,10 +1,12 @@
+from __future__ import annotations
+import logging
 from typing import Callable, Optional
 
 import numpy as np
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
     QLabel, QVBoxLayout, QComboBox
-from PySide6.QtCore import Slot, QRunnable, QObject, QThreadPool, Qt
+from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
@@ -12,6 +14,35 @@ from pose_estimation.transform_widgets import TransformerWidget, \
     TransformerWidgetsRegistry
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Transformer, TransformerHead
+
+class StatusLogHandler(QObject):
+    """
+    Log handler that makes the logged messages available to Qt slots.
+    """
+    messageEmitted = Signal(str)
+
+    class Log(logging.Handler):
+        def __init__(self, logHandler: StatusLogHandler) -> None:
+            logging.Handler.__init__(self)
+            self.logHandler = logHandler
+            self.setLevel(logging.INFO)
+
+        def emit(self, record: logging.LogRecord) -> None:
+            self.logHandler.messageEmitted.emit(record.msg)
+    
+    def __init__(self) -> None:
+        """
+        Initialize the StatusLogHandler.
+        """
+        QObject.__init__(self)
+        self._logHandler = StatusLogHandler.Log(self)
+
+    def logHandler(self) -> StatusLogHandler.Log:
+        """
+        Return the log handler that interfaces with the Python logging module.
+        """
+        return self._logHandler
+
 
 class PipelineWidget(QWidget):
     """
@@ -127,6 +158,9 @@ class ModularPoseProcessorWidget(QWidget):
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the ModularProcessorWidget.
+
+        transformerWidgetRegistry - the registry of all the transfomer widgets
+        parent - the parent of this widget
         """
         QWidget.__init__(self, parent)
 
@@ -154,14 +188,21 @@ class ModularPoseProcessorWidget(QWidget):
 
         self.pipelineWidget = PipelineWidget(transformerWidgetRegistry, self)
         self.vLayout.addWidget(self.pipelineWidget)
-        self.qThreadPool = QThreadPool.globalInstance()
 
+        self.statusBar = QLabel(self)
+        self.vLayout.addWidget(self.statusBar)
+
+        self.qThreadPool = QThreadPool.globalInstance()
         self.transformerHead = TransformerHead(self.pipelineWidget.pipeline)
 
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
         self.pipelineWidget.frameDataProvider.frameDataReady.connect(self.setFrameData)
         self.lastFrameRate = 0
         self.frameData = FrameData()
+
+        handler = StatusLogHandler()
+        handler.messageEmitted.connect(self.statusBar.setText)
+        logging.basicConfig(handlers=(handler.logHandler(),))
 
     def setFrameData(self, frameData) -> None:
         self.frameData = frameData

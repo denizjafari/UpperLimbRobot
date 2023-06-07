@@ -1,5 +1,7 @@
 from typing import Optional
 
+import logging
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
     QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QSlider, \
     QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip
@@ -14,6 +16,8 @@ TARGET_FRAME_WIDTH = 296
 TARGET_FRAME_HEIGHT = 296
 TARGET_FRAME_RATE = 25
 
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 class CameraSelectorButton(QRadioButton):
     """
@@ -49,10 +53,10 @@ class CameraSelectorButton(QRadioButton):
                               and f.resolution().height() >= TARGET_FRAME_HEIGHT
                               and f.maxFrameRate() >= TARGET_FRAME_RATE]
             if len(usable_formats) == 0:
-                print("No suitable video format exists")
+                module_logger.warn("No suitable video format exists")
             else:
                 format = usable_formats[0]
-                print(f"Recording in {format.resolution().width()}x{format.resolution().height()}@{format.maxFrameRate()}")
+                module_logger.info(f"Recording in {format.resolution().width()}x{format.resolution().height()}@{format.maxFrameRate()}")
                 camera.setCameraFormat(format)
 
             self.selected.emit(camera)
