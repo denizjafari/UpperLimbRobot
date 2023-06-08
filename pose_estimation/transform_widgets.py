@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Callable, Optional
 
 from io import TextIOBase
+import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
     QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout, QColorDialog
@@ -17,6 +18,9 @@ from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
+
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 class TransformerWidget(QGroupBox):
     """
@@ -105,7 +109,9 @@ class ScalerWidget(TransformerWidget):
         """
         Apply the entered target size.
         """
-        self.transformer.setTargetSize(int(self.heightSelector.text()))
+        dim = int(self.heightSelector.text())
+        self.transformer.setTargetSize(dim)
+        module_logger.info(f"Applied dimensions {dim}x{dim} to Scaler")
 
     def __str__(self) -> str:
         return "Scaler"
@@ -363,6 +369,7 @@ class RecorderTransformerWidget(TransformerWidget):
             self.outputFiles = []
             self.exporters = []
             self.onRecordingToggled(None)
+            module_logger.info("Stopped recording")
         else:
             loader = RecorderLoader(self.recorderTransformer.frameRate,
                                     self.recorderTransformer.width,
@@ -379,6 +386,7 @@ class RecorderTransformerWidget(TransformerWidget):
 
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
+            module_logger.info("Started recording")
 
     def __str__(self) -> str:
         return "Recorder"
@@ -388,6 +396,7 @@ class PoseFeedbackWidget(TransformerWidget):
     """
     Widget for the pose feedback transformer.
     """
+    transformer: PoseFeedbackTransformer
 
     def __init__(self,
                  parent: Optional[QWidget] = None, ) -> None:
@@ -423,8 +432,12 @@ class PoseFeedbackWidget(TransformerWidget):
         self.vLayout.addWidget(self.lfLimitSlider)
 
         self.shoulderDistanceButton = QPushButton("Set Shoulder Distance Baseline", self)
-        self.shoulderDistanceButton.clicked.connect(self.transformer.captureShoulderBaseDistance)
+        self.shoulderDistanceButton.clicked.connect(self.captureShoulderBaseDistance)
         self.vLayout.addWidget(self.shoulderDistanceButton)
+
+    def captureShoulderBaseDistance(self) -> None:
+        self.transformer.captureShoulderBaseDistance()
+        module_logger.info("Captured shoulder base distance")
 
     def __str__(self) -> str:
         return "Feedback"
@@ -534,7 +547,8 @@ class VideoSourceWidget(TransformerWidget):
         Load the video by creating the appropriate video file source object
         and setting it in the transformer.
         """
-        self.videoSource = CVVideoFileSource(self.fileSelector.selectedFile())
+        filename = self.fileSelector.selectedFile()
+        self.videoSource = CVVideoFileSource(filename)
         if self.videoSourceTransformer.videoSource is not None:
             self.videoSourceTransformer.videoSource.close()
         self.videoSourceTransformer.setVideoSource(self.videoSource)
@@ -550,6 +564,8 @@ class VideoSourceWidget(TransformerWidget):
             importer.setFile(file)
             self.transformer.append(importer)
             self.importers.append(importer)
+
+        module_logger.info(f"Loaded video file {filename}")
     
     def close(self) -> None:
         """

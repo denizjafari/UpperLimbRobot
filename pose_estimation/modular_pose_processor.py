@@ -1,7 +1,7 @@
 from __future__ import annotations
-import logging
 from typing import Callable, Optional
 
+import logging
 import numpy as np
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
@@ -193,7 +193,9 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout.addWidget(self.statusBar)
 
         self.qThreadPool = QThreadPool.globalInstance()
-        self.transformerHead = TransformerHead(self.pipelineWidget.pipeline)
+        self.transformerHead = TransformerHead(
+            self.pipelineWidget.pipeline,
+            threadingModel=TransformerHead.MultiThreading.PER_STAGE)
 
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
         self.pipelineWidget.frameDataProvider.frameDataReady.connect(self.setFrameData)
@@ -202,7 +204,7 @@ class ModularPoseProcessorWidget(QWidget):
 
         handler = StatusLogHandler()
         handler.messageEmitted.connect(self.statusBar.setText)
-        logging.basicConfig(handlers=(handler.logHandler(),))
+        logging.getLogger().addHandler(handler.logHandler())
 
     def setFrameData(self, frameData) -> None:
         self.frameData = frameData

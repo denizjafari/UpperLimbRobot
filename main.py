@@ -12,6 +12,9 @@ from pose_estimation.transform_widgets import BackgroundRemoverWidget, ImageMirr
             SkeletonDrawerWidget, TransformerWidgetsRegistry, VideoSourceWidget
 
 
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
@@ -31,8 +34,10 @@ if __name__ == "__main__":
 
     window = ModularPoseProcessorWidget(widgetRegistry)
 
-    logging.basicConfig(stream=sys.stdout)
+    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     window.setWindowState(Qt.WindowState.WindowMaximized)
     window.show()
+
+    module_logger.info("Ready")
     sys.exit(app.exec())
