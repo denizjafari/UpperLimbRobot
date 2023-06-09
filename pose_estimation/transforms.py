@@ -93,13 +93,13 @@ class FrameData:
         """
         self._height = height
 
-    def __get__(self, key: str) -> object:
+    def __getitem__(self, key: str) -> object:
         """
         Get the value for a key in the additional dictionary.
         """
         return self._additional[key]
 
-    def __set__(self, key: str, val: object) -> None:
+    def __setitem__(self, key: str, val: object) -> None:
         """
         Set the value for a key in the additional dictionary.
         """
@@ -711,123 +711,6 @@ class RecorderTransformer(TransformerStage):
 
     def __str__(self) -> str:
         return "Recorder"
-    
-
-class PoseFeedbackTransformer(TransformerStage):
-    """
-    Adds feedback on compensation to the image. Measures the angle between a
-    straight line connecting the two shoulder joints and the horizontal axis.
-    If the angle is within the defined angleLimit, a green border is added to
-    the image, otherwise a red border is drawn.
-
-    keypointSetIndex - the index into the keypointSet list from which the
-    shoulder joint coordinates should be taken.
-    angleLimit - the maximum angle (in degrees) that is accepted.
-    """
-    keypointSetIndex: int
-    elevAngleLimit: int
-    leanForwardLimit: int
-    shoulderBaseDistance: float
-    lastShoulderDistance: float
-
-    def __init__(self,
-                 keypointSetIndex: int = 0,
-                 previous: Optional[Transformer] = None) -> None:
-        """
-        Initialize it.
-        """
-        TransformerStage.__init__(self, True, previous)
-
-        self.keypointSetIndex = keypointSetIndex
-        self.elevAngleLimit = 10
-        self.leanForwardLimit = 1
-        self.shoulderBaseDistance = 1
-
-        self.wasLeaningTooFar = False
-        self.shouldersWereNotLevel = False
-
-    def setAngleLimit(self, angleLimit: int) -> None:
-        """
-        Set the angleLimit to this angle (in degrees).
-        """
-        self.elevAngleLimit = angleLimit
-
-    def setLeanForwardLimit(self, lfLimit: int) -> None:
-        """
-        Set the lf limit to (1 + lfLimit / 10).
-        """
-        self.leanForwardLimit = 1 + (lfLimit / 10)
-
-    def captureShoulderBaseDistance(self) -> None:
-        self.shoulderBaseDistance = self.lastShoulderDistance
-
-    def _checkShoulderElevation(self, keypointSet: KeypointSet) -> bool:
-        leftShoulder = keypointSet.getLeftShoulder()
-        rightShoulder = keypointSet.getRightShoulder()
-
-        delta_x = abs(rightShoulder[1] - leftShoulder[1])
-        delta_y = abs(rightShoulder[0] - leftShoulder[0])
-
-        if delta_x != 0:
-            angle_rad = math.atan(delta_y / delta_x)
-            angle_deg = math.degrees(angle_rad)
-        else:
-            angle_deg = 0
-
-        return angle_deg <= self.elevAngleLimit
-    
-    def _checkLeanForward(self, keypointSet: KeypointSet) -> bool:
-        leftShoulder = keypointSet.getLeftShoulder()
-        rightShoulder = keypointSet.getRightShoulder()
-
-        delta_x = abs(rightShoulder[1] - leftShoulder[1])
-        delta_y = abs(rightShoulder[0] - leftShoulder[0])
-
-        delta = math.sqrt(delta_x ** 2 + delta_y ** 2)
-
-        self.lastShoulderDistance = delta
-
-        return delta / self.shoulderBaseDistance <= self.leanForwardLimit
-
-    def transform(self, frameData: FrameData) -> None:
-        """
-        Determine the angle between the straight line connecting the two
-        shoulder joints and the horizontal line. Then draw the border in
-        the correct color.
-        """
-        if self.active() and not frameData.dryRun:
-            keypointSet = frameData.keypointSets[self.keypointSetIndex]
-
-            correct = True
-
-            if correct and not self._checkLeanForward(keypointSet):
-                if not self.wasLeaningTooFar:
-                    module_logger.info("User is leaning too far forward")
-                    self.wasLeaningTooFar = True
-                correct = False
-            elif self.wasLeaningTooFar:
-                module_logger.info("User corrected leaning too far forward")
-                self.wasLeaningTooFar = False
-
-            if correct and not self._checkShoulderElevation(keypointSet):
-                if not self.shouldersWereNotLevel:
-                    module_logger.info("User is not keeping their shoulders level enough")
-                    self.shouldersWereNotLevel = True
-                correct = False
-            elif self.shouldersWereNotLevel:
-                module_logger.info("User corrected not keeping their shoulder level enough")
-                self.shouldersWereNotLevel = False
-            
-            cv2.rectangle(frameData.image,
-                            (0,0),
-                            (frameData.width(), frameData.height()),
-                            (0, 255, 0) if correct else (0, 0, 255),
-                            thickness=10)
-
-        self.next(frameData)
-
-    def __str__(self) -> str:
-        return "Feedback"
 
 class BackgroundRemover(TransformerStage):
     def __init__(self,

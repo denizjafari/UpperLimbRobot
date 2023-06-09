@@ -12,7 +12,7 @@ from pose_estimation.Models import ModelManager
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
     CsvImporter, ImageMirror, LandmarkDrawer, ModelRunner, Pipeline, \
-        PoseFeedbackTransformer, RecorderTransformer, Scaler, SkeletonDrawer, \
+        RecorderTransformer, Scaler, SkeletonDrawer, \
             Transformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
@@ -390,57 +390,7 @@ class RecorderTransformerWidget(TransformerWidget):
 
     def __str__(self) -> str:
         return "Recorder"
-
-
-class PoseFeedbackWidget(TransformerWidget):
-    """
-    Widget for the pose feedback transformer.
-    """
-    transformer: PoseFeedbackTransformer
-
-    def __init__(self,
-                 parent: Optional[QWidget] = None, ) -> None:
-        """
-        Initialize the RecorderTransformerWidget.
-        """
-        TransformerWidget.__init__(self, "Feedback", parent)
-
-        self.transformer = PoseFeedbackTransformer()
-
-        self.elevSliderLabel = QLabel("Max Shoulder Elevation Angle", self)
-        self.vLayout.addWidget(self.elevSliderLabel)
-
-        self.elevAngleLimitSlider = LabeledQSlider(self,
-                                          orientation=Qt.Orientation.Horizontal)
-        self.elevAngleLimitSlider.setMinimum(0)
-        self.elevAngleLimitSlider.setMaximum(40)
-        self.elevAngleLimitSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.elevAngleLimitSlider.setTickInterval(5)
-        self.elevAngleLimitSlider.valueChanged.connect(self.transformer.setAngleLimit)
-        self.vLayout.addWidget(self.elevAngleLimitSlider)
-
-        self.lfSliderLabel = QLabel("Max Lean Forward", self)
-        self.vLayout.addWidget(self.lfSliderLabel)
-
-        self.lfLimitSlider = LabeledQSlider(self,
-                                          orientation=Qt.Orientation.Horizontal)
-        self.lfLimitSlider.setMinimum(0)
-        self.lfLimitSlider.setMaximum(20)
-        self.lfLimitSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.lfLimitSlider.setTickInterval(5)
-        self.lfLimitSlider.valueChanged.connect(self.transformer.setLeanForwardLimit)
-        self.vLayout.addWidget(self.lfLimitSlider)
-
-        self.shoulderDistanceButton = QPushButton("Set Shoulder Distance Baseline", self)
-        self.shoulderDistanceButton.clicked.connect(self.captureShoulderBaseDistance)
-        self.vLayout.addWidget(self.shoulderDistanceButton)
-
-    def captureShoulderBaseDistance(self) -> None:
-        self.transformer.captureShoulderBaseDistance()
-        module_logger.info("Captured shoulder base distance")
-
-    def __str__(self) -> str:
-        return "Feedback"
+    
 
 class QCameraSourceWidget(TransformerWidget):
     videoSource: QVideoSource
