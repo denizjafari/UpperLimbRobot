@@ -243,12 +243,32 @@ class ChickenWingGameTransformer(TransformerStage):
         """
         if self.active():
             keypointSet = frameData.keypointSets[0]
+            defaultMeasurements: PoseMeasurements = frameData["default_measurements"]
             shoulderHeight = round(frameData.height() * (keypointSet.getLeftShoulder()[0]
                              + keypointSet.getRightShoulder()[0]) / 2)
+            lineHeight = shoulderHeight - self.lineDistance()
+
             cv2.line(frameData.image,
-                     (0, shoulderHeight - self.lineDistance()),
-                     (frameData.width(), shoulderHeight - self.lineDistance()),
+                     (0, lineHeight),
+                     (frameData.width(), lineHeight),
                      color=(0, 255, 0), thickness=3)
+            
+            if defaultMeasurements is not None:
+                length = defaultMeasurements.upperArmLength()
+                circle_lx = round((keypointSet.getLeftShoulder()[1] + length)
+                                  * frameData.width())
+                circle_rx = round((keypointSet.getRightShoulder()[1] - length)
+                                  * frameData.width())
+                cv2.circle(frameData.image,
+                        (circle_lx, lineHeight),
+                        20,
+                        (0, 255, 0),
+                        thickness=-1)
+                cv2.circle(frameData.image,
+                        (circle_rx, lineHeight),
+                        20,
+                        (0, 255, 0),
+                        thickness=-1)
             
         self.next(frameData)
             
