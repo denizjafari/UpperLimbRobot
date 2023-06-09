@@ -5,7 +5,7 @@ import logging
 import numpy as np
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
-    QLabel, QVBoxLayout, QComboBox
+    QLabel, QVBoxLayout, QComboBox, QSizePolicy
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
@@ -84,6 +84,7 @@ class PipelineWidget(QWidget):
         self.lastFrameData = FrameData()
 
         self.hLayout.addStretch()
+        self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
 
         transformerWidgetsRegistry.transformerWidgetsChanged.connect(self.onTransformerWidgetsChanged)
         self.onTransformerWidgetsChanged(transformerWidgetsRegistry.transformerWidgets())
@@ -191,6 +192,7 @@ class ModularPoseProcessorWidget(QWidget):
 
         self.statusBar = QLabel(self)
         self.vLayout.addWidget(self.statusBar)
+        self.statusBar.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
 
         self.qThreadPool = QThreadPool.globalInstance()
         self.transformerHead = TransformerHead(
