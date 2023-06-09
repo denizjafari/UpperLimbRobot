@@ -61,6 +61,7 @@ class FrameData:
         self.frameRate = frameRate
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
+        self._additional = {}
 
     def width(self) -> int:
         """
@@ -91,6 +92,18 @@ class FrameData:
         If the image is None, set the proposed image height.
         """
         self._height = height
+
+    def __get__(self, key: str) -> object:
+        """
+        Get the value for a key in the additional dictionary.
+        """
+        return self._additional[key]
+
+    def __set__(self, key: str, val: object) -> None:
+        """
+        Set the value for a key in the additional dictionary.
+        """
+        self._additional[key] = val
 
 
 class Transformer:
@@ -956,12 +969,21 @@ class TransformerHead:
         self._isRunning = False
 
     def isRunning(self) -> bool:
+        """
+        Return whether this transformer head is running or in a pause.
+        """
         return self._isRunning
     
     def threadingModel(self) -> MultiThreading:
+        """
+        Return the threading model that is used.
+        """
         return self._threadingModel
     
     def setThreadingModel(self, threadingModel: MultiThreading) -> MultiThreading:
+        """
+        Set the threshold model
+        """
         self._threadingModel = threadingModel
 
     def onStageCleared(self) -> None:
@@ -987,6 +1009,9 @@ class TransformerHead:
             self.startNext()
 
     def startNext(self) -> None:
+        """
+        Start the next TransformerRunner and connect to its signals.
+        """
         runner = TransformerRunner(self._transformer)
         runner.transformerStarted.connect(self.onStageCleared)
         runner.transformerCompleted.connect(self.onTransformCompleted)

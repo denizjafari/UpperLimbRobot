@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
 from pose_estimation.Models import BlazePose, FeedThroughModel, ModelManager
+from pose_estimation.games_widgets import ChickenWingWidget
 from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
 from pose_estimation.transform_widgets import BackgroundRemoverWidget, ImageMirrorWidget, \
     LandmarkDrawerWidget, ModelRunnerWidget, PoseFeedbackWidget, \
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     widgetRegistry.addTransformerWidget(lambda parent: RecorderTransformerWidget(parent), "Recorder")
     widgetRegistry.addTransformerWidget(lambda parent: PoseFeedbackWidget(parent), "Feedback")
     widgetRegistry.addTransformerWidget(lambda parent: BackgroundRemoverWidget(parent), "Background Remover")
+    widgetRegistry.addTransformerWidget(lambda parent: ChickenWingWidget(parent), "Chicken Wings")
 
     window = ModularPoseProcessorWidget(widgetRegistry)
 
