@@ -98,4 +98,11 @@ class ChickenWingWidget(TransformerWidget):
         self.selectorSlider.setMaximum(20)
         self.selectorSlider.setValue(0)
         self.selectorHLayout.addWidget(self.selectorSlider)
-        self.selectorSlider.valueChanged.connect(self.transformer.setLineDistance)
+        self.selectorSlider.valueChanged.connect(self.transformer.setUpperLineDistance)
+
+        self.selectorSlider = LabeledQSlider(self, orientation=Qt.Orientation.Horizontal)
+        self.selectorSlider.setMinimum(-40)
+        self.selectorSlider.setMaximum(20)
+        self.selectorSlider.setValue(0)
+        self.selectorHLayout.addWidget(self.selectorSlider)
+        self.selectorSlider.valueChanged.connect(self.transformer.setLowerLineDistance)

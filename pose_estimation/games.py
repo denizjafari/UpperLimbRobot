@@ -222,35 +222,57 @@ class ChickenWingGameTransformer(TransformerStage):
     """
     def __init__(self) -> None:
         TransformerStage.__init__(self)
-        self._lineDistance = 0
+        self._upperLineDistance = 0
+        self._lowerLineDistance = 0
 
-    def setLineDistance(self, distance: int) -> None:
+    def setUpperLineDistance(self, distance: int) -> None:
         """
         Set the distance between the elbow line and the average height of the shoulders.
         Negative values move the line down, positive values move it up.
         """
-        self._lineDistance = distance
+        self._upperLineDistance = distance
 
-    def lineDistance(self) -> int:
+    def setLowerLineDistance(self, distance: int) -> None:
+        """
+        Set the distance between the elbow line and the average height of the shoulders.
+        Negative values move the line down, positive values move it up.
+        """
+        self._lowerLineDistance = distance
+
+    def upperLineDistance(self) -> int:
         """
         Get the line distance.
         """
-        return self._lineDistance
+        return self._upperLineDistance
+    
+    def lowerLineDistance(self) -> int:
+        """
+        Get the lower line distance.
+        """
+        return self._lowerLineDistance
     
     def transform(self, frameData: FrameData) -> None:
         """
-        If this transformer is active, the line is drawn.
+        If this transformer is active, the line is drawn with two circles indicating
+        where the shoulders are. Drawing circles only works if the default
+        measurements are available.
         """
         if self.active():
             keypointSet = frameData.keypointSets[0]
             defaultMeasurements: PoseMeasurements = frameData["default_measurements"]
             shoulderHeight = round(frameData.height() * (keypointSet.getLeftShoulder()[0]
                              + keypointSet.getRightShoulder()[0]) / 2)
-            lineHeight = shoulderHeight - self.lineDistance()
+            upperLineHeight = shoulderHeight - self.upperLineDistance()
+            lowerLineHeight = shoulderHeight - self.lowerLineDistance()
 
             cv2.line(frameData.image,
-                     (0, lineHeight),
-                     (frameData.width(), lineHeight),
+                     (0, upperLineHeight),
+                     (frameData.width(), upperLineHeight),
+                     color=(0, 255, 0), thickness=3)
+            
+            cv2.line(frameData.image,
+                     (0, lowerLineHeight),
+                     (frameData.width(), lowerLineHeight),
                      color=(0, 255, 0), thickness=3)
             
             if defaultMeasurements is not None:
@@ -260,13 +282,24 @@ class ChickenWingGameTransformer(TransformerStage):
                 circle_rx = round((keypointSet.getRightShoulder()[1] - length)
                                   * frameData.width())
                 cv2.circle(frameData.image,
-                        (circle_lx, lineHeight),
-                        20,
+                        (circle_lx, upperLineHeight),
+                        10,
                         (0, 255, 0),
                         thickness=-1)
                 cv2.circle(frameData.image,
-                        (circle_rx, lineHeight),
-                        20,
+                        (circle_rx, upperLineHeight),
+                        10,
+                        (0, 255, 0),
+                        thickness=-1)
+
+                cv2.circle(frameData.image,
+                        (circle_lx, lowerLineHeight),
+                        10,
+                        (0, 255, 0),
+                        thickness=-1)
+                cv2.circle(frameData.image,
+                        (circle_rx, lowerLineHeight),
+                        10,
                         (0, 255, 0),
                         thickness=-1)
             
