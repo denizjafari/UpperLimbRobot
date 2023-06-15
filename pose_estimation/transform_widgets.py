@@ -11,11 +11,11 @@ from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from pose_estimation.Models import ModelManager
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
-    CsvImporter, ImageMirror, LandmarkDrawer, ModelRunner, Pipeline, \
+    CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, ModelRunner, Pipeline, \
         RecorderTransformer, Scaler, SkeletonDrawer, \
             Transformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
-    LabeledQSlider, ModelSelector
+    LabeledQSlider, ModelSelector, WidgetCreator
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 
@@ -26,6 +26,7 @@ class TransformerWidget(QGroupBox):
     """
     The base transformer widget including the title label and remove logic.
     """
+    childWidgetCreated = Signal(WidgetCreator)
     removed = Signal()
 
     titleLabel: QLabel
@@ -526,3 +527,19 @@ class VideoSourceWidget(TransformerWidget):
 
     def __str__(self) -> str:
         return "Video Source"
+    
+
+class MetricViewWidget(TransformerWidget):
+    """
+    A widget to view the metrics.
+    """
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerWidget.__init__(self, "Metric View", parent)
+        self.transformer = MetricTransformer()
+    
+    def __str__(self) -> str:
+        return "Metric View"

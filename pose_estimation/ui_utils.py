@@ -250,3 +250,8 @@ class LabeledQSlider(QSlider):
             QToolTip.showText(
                 self.mapToGlobal(QPoint(bottomRight.x(), bottomRight.y())),
                 str(self.value()))
+            
+
+class WidgetCreator:
+    def widget(self) -> QWidget:
+        raise NotImplementedError()

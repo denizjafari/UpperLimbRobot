@@ -67,10 +67,6 @@ class PoseFeedbackWidget(TransformerWidget):
         self.lfLimitSlider.valueChanged.connect(self.transformer.setLeanForwardLimit)
         self.vLayout.addWidget(self.lfLimitSlider)
 
-    def captureShoulderBaseDistance(self) -> None:
-        self.transformer.captureShoulderBaseDistance()
-        module_logger.info("Captured shoulder base distance")
-
     def __str__(self) -> str:
         return "Feedback"
 

@@ -3,7 +3,7 @@ import logging
 from typing import Optional
 from enum import Enum
 
-import math
+import pandas as pd
 import io
 import csv
 import numpy as np
@@ -13,7 +13,9 @@ from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
 from PySide6.QtCore import QObject, Signal, QMutex, QRunnable, QThreadPool
 from PySide6.QtGui import QImage
+from PySide6.QtWidgets import QWidget
 
+from pose_estimation.metric_widgets import MPLMetricWidget, MetricWidget, PyQtMetricWidget
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
 from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
     npArrayToQImage
@@ -40,6 +42,7 @@ class FrameData:
     _height: int
 
     streamEnded: bool
+    metrics: dict[str, MetricWidget]
     image: Optional[np.ndarray]
     keypointSets: list[KeypointSet]
 
@@ -62,6 +65,7 @@ class FrameData:
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
         self._additional = {}
+        self.metrics = {}
 
     def width(self) -> int:
         """
@@ -782,17 +786,18 @@ class TransformerRunner(QRunnable, QObject):
     Runs the transformer and emits a signal when the next thread can start
     execution.
     """
-    transformerStarted = Signal()
-    transformerCompleted = Signal()
+    transformerStarted = Signal(FrameData)
+    transformerCompleted = Signal(FrameData)
     _transformer: Transformer
 
-    def __init__(self, transformer: Transformer) -> None:
+    def __init__(self, transformer: Transformer, frameData: FrameData) -> None:
         """
         Initialize the Runner with the transformer it should execute.
         """
         QRunnable.__init__(self)
         QObject.__init__(self)
         self._transformer = transformer
+        self.frameData = frameData
 
     def run(self) -> None:
         """
@@ -801,9 +806,9 @@ class TransformerRunner(QRunnable, QObject):
         executing.
         """
         self._transformer.lock()
-        self.transformerStarted.emit()
-        self._transformer.transform(FrameData())
-        self.transformerCompleted.emit()
+        self.transformerStarted.emit(self.frameData)
+        self._transformer.transform(self.frameData)
+        self.transformerCompleted.emit(self.frameData)
 
 class TransformerHead:
     """
@@ -842,7 +847,7 @@ class TransformerHead:
         Start execution of the transformer
         """
         self._isRunning = True
-        self.startNext()
+        self.startNext(FrameData())
     
     def stop(self) -> None:
         """
@@ -869,7 +874,7 @@ class TransformerHead:
         """
         self._threadingModel = threadingModel
 
-    def onStageCleared(self) -> None:
+    def onStageCleared(self, frameData: FrameData) -> None:
         """
         Called when the first stage in the transformer is cleared.
         The next transformer will be run if the threading model is per stage
@@ -878,9 +883,9 @@ class TransformerHead:
         if self._isRunning \
             and self.threadingModel() \
                 == TransformerHead.MultiThreading.PER_STAGE:
-            self.startNext()
+            self.startNext(frameData)
 
-    def onTransformCompleted(self) -> None:
+    def onTransformCompleted(self, frameData: FrameData) -> None:
         """
         Called when the transformer is completed.
         The next transformer will be run if the threading model is per frame
@@ -889,13 +894,35 @@ class TransformerHead:
         if self._isRunning \
             and self.threadingModel() \
                 == TransformerHead.MultiThreading.PER_FRAME:
-            self.startNext()
+            self.startNext(frameData)
 
-    def startNext(self) -> None:
+    def startNext(self, lastFrameData: FrameData) -> None:
         """
         Start the next TransformerRunner and connect to its signals.
         """
-        runner = TransformerRunner(self._transformer)
+        frameData = FrameData()
+        frameData.metrics = lastFrameData.metrics
+        runner = TransformerRunner(self._transformer, frameData)
         runner.transformerStarted.connect(self.onStageCleared)
         runner.transformerCompleted.connect(self.onTransformCompleted)
         self._qThreadPool.start(runner)
+
+class MetricTransformer(TransformerStage):
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True, previous)
+
+    def transform(self, frameData: FrameData) -> None:
+        if self.active():
+            metrics = frameData.metrics
+            keypoints = frameData.keypointSets[0]
+
+            if "shoulder_distance" not in metrics:
+                metrics["shoulder_distance"] = []
+            metrics["shoulder_distance"].append(
+                abs(keypoints.getLeftShoulder()[1] - keypoints.getRightShoulder()[1]))
+
+        self.next(frameData)

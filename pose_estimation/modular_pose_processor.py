@@ -10,6 +10,7 @@ from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
+from pose_estimation.metric_widgets import MPLMetricWidget, PyQtMetricWidget
 from pose_estimation.transform_widgets import TransformerWidget, \
     TransformerWidgetsRegistry
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -51,7 +52,7 @@ class PipelineWidget(QWidget):
     """
     modelManager: ModelManager
     lastFrameData: FrameData
-    pipeline: Pipeline
+    _pipeline: Pipeline
     transformerWidgets: list[tuple[str, Callable[[QWidget], TransformerWidget]]]
 
     def __init__(self,
@@ -67,8 +68,8 @@ class PipelineWidget(QWidget):
         self.frameDataProvider = FrameDataProvider()
         self.imageProvider = QImageProvider()
         self.qThreadPool = QThreadPool.globalInstance()
-        self.pipeline = Pipeline()
-        self.pipeline.setNextTransformer(self.imageProvider)
+        self._pipeline = Pipeline()
+        self._pipeline.setNextTransformer(self.imageProvider)
         self.imageProvider.setNextTransformer(self.frameDataProvider)
 
         self.hTransformerLayout = QHBoxLayout()
@@ -97,7 +98,7 @@ class PipelineWidget(QWidget):
         index = self.transformerSelector.currentIndex()
         widget = self.transformerWidgets[index][1](self)
 
-        self.pipeline.append(widget.transformer)
+        self._pipeline.append(widget.transformer)
         self.hTransformerLayout.addWidget(widget)
         widget.removed.connect(lambda: self.removeTransformerWidget(widget))
 
@@ -106,7 +107,7 @@ class PipelineWidget(QWidget):
         """
         Remove a transformer widget from the ui and from the pipeline.
         """
-        self.pipeline.remove(widget.transformer)
+        self._pipeline.remove(widget.transformer)
         self.hTransformerLayout.removeWidget(widget)
         widget.deleteLater()
 
@@ -121,6 +122,12 @@ class PipelineWidget(QWidget):
 
         for tw in self.transformerWidgets:
             self.transformerSelector.addItem(tw[0])
+
+    def pipeline(self) -> Pipeline:
+        """
+        Return the pipeline of transformers.
+        """
+        return self._pipeline
 
 class FrameProcessor(QRunnable, QObject):
     """
@@ -168,9 +175,17 @@ class ModularPoseProcessorWidget(QWidget):
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
 
+        self.hCenterLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.hCenterLayout)
+
         self.displayLabel = QLabel()
-        self.vLayout.addWidget(self.displayLabel,
+        self.hCenterLayout.addWidget(self.displayLabel,
                                alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        self.vSideLayout = QVBoxLayout()
+        self.hCenterLayout.addLayout(self.vSideLayout)
+
+        self.metricViews = {}
 
         self.frameRateLabel = QLabel()
         self.vLayout.addWidget(self.frameRateLabel,
@@ -196,7 +211,7 @@ class ModularPoseProcessorWidget(QWidget):
 
         self.qThreadPool = QThreadPool.globalInstance()
         self.transformerHead = TransformerHead(
-            self.pipelineWidget.pipeline,
+            self.pipelineWidget.pipeline(),
             threadingModel=TransformerHead.MultiThreading.PER_STAGE)
 
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
@@ -208,8 +223,12 @@ class ModularPoseProcessorWidget(QWidget):
         handler.messageEmitted.connect(self.statusBar.setText)
         logging.getLogger().addHandler(handler.logHandler())
 
-    def setFrameData(self, frameData) -> None:
+    def setFrameData(self, frameData: FrameData) -> None:
+        """
+        Set the frame data to be used by the transformer head.
+        """
         self.frameData = frameData
+        self.onMetricsUpdated(frameData.metrics)
 
     def toggleRunning(self) -> None:
         """
@@ -227,13 +246,13 @@ class ModularPoseProcessorWidget(QWidget):
         """
         Perform a dry run to set resolutions and framerates for recorders.
         """
-        processor = FrameProcessor(self.pipelineWidget.pipeline, dryRun=True)
+        processor = FrameProcessor(self.pipelineWidget.pipeline(), dryRun=True)
         self.qThreadPool.start(processor)
 
     @Slot(np.ndarray)
     def showFrame(self, qImage: Optional[QImage]) -> None:
         """
-        IF the qImage is not None, draw it to the application window.
+        If the qImage is not None, draw it to the application window.
         """
         if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
@@ -244,6 +263,7 @@ class ModularPoseProcessorWidget(QWidget):
             if nextFrameRate != self.lastFrameRate:
                 self.lastFrameRate = nextFrameRate
                 self.onFrameRateUpdate(self.lastFrameRate)
+                
 
     @Slot(int)
     def onFrameRateUpdate(self, frameRate: int) -> None:
@@ -251,3 +271,14 @@ class ModularPoseProcessorWidget(QWidget):
         Update the label displaying the current frame rate.
         """
         self.frameRateLabel.setText(f"FPS: {frameRate}")
+
+    @Slot(QWidget)
+    def onMetricsUpdated(self, metrics: dict[str, list[float]]) -> None:
+        for col in metrics:
+            if col not in self.metricViews:
+                widget = PyQtMetricWidget()
+                self.metricViews[col] = widget
+                self.vSideLayout.addWidget(widget)
+            else:
+                widget = self.metricViews[col]
+            self.metricViews[col].update(metrics[col])
