@@ -56,6 +56,12 @@ class KeypointSet:
         Return the coordinates and confidence for the right ellbow
         """
         raise NotImplementedError
+    
+    def getNose(self) -> list[float]:
+        """
+        Return the coordinates and confidence for the nose.
+        """
+        raise NotImplementedError
 
 class PoseModel:
     """
@@ -88,16 +94,19 @@ class SimpleKeypointSet(KeypointSet):
         return self.skeletonLines
 
     def getLeftShoulder(self) -> list[float]:
-        return [0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0]
     
     def getRightShoulder(self) -> list[float]:
-        return [0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0]
     
     def getLeftElbow(self) -> list[float]:
-        return [0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0]
     
     def getRightElbow(self) -> list[float]:
-        return [0.0, 0.0, 0.0]
+        return [0.0, 0.0, 0.0, 0.0]
+    
+    def getNose(self) -> list[float]:
+        return [0.0, 0.0, 0.0, 0.0]
     
 
 class MoveNetLightning(PoseModel):
@@ -235,6 +244,9 @@ class BlazePose(PoseModel):
         
         def getRightElbow(self) -> list[float]:
             return self.getKeypoints()[14]
+        
+        def getNose(self) -> list[float]:
+            return self.getKeypoints()[0]
     
 class FeedThroughModel(PoseModel):
     def detect(self, image: np.ndarray) -> KeypointSet:

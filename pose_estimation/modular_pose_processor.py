@@ -10,7 +10,7 @@ from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
-from pose_estimation.metric_widgets import MPLMetricWidget, PyQtMetricWidget
+from pose_estimation.metric_widgets import PyQtMetricWidget
 from pose_estimation.transform_widgets import TransformerWidget, \
     TransformerWidgetsRegistry
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -276,7 +276,7 @@ class ModularPoseProcessorWidget(QWidget):
     def onMetricsUpdated(self, metrics: dict[str, list[float]]) -> None:
         for col in metrics:
             if col not in self.metricViews:
-                widget = PyQtMetricWidget()
+                widget = PyQtMetricWidget(col)
                 self.metricViews[col] = widget
                 self.vSideLayout.addWidget(widget)
             else:

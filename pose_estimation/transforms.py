@@ -1,21 +1,21 @@
 from __future__ import annotations
+from collections import defaultdict
 import logging
 from typing import Optional
 from enum import Enum
 
-import pandas as pd
 import io
 import csv
 import numpy as np
 import tensorflow as tf
 import cv2
+import math
 from cvzone.SelfiSegmentationModule import SelfiSegmentation
 
 from PySide6.QtCore import QObject, Signal, QMutex, QRunnable, QThreadPool
 from PySide6.QtGui import QImage
-from PySide6.QtWidgets import QWidget
 
-from pose_estimation.metric_widgets import MPLMetricWidget, MetricWidget, PyQtMetricWidget
+from pose_estimation.metric_widgets import MetricWidget
 from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
 from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
     npArrayToQImage
@@ -45,6 +45,7 @@ class FrameData:
     metrics: dict[str, MetricWidget]
     image: Optional[np.ndarray]
     keypointSets: list[KeypointSet]
+    metrics: defaultdict[str, list[float]]
 
     def __init__(self,
                  width: int = -1,
@@ -65,7 +66,7 @@ class FrameData:
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
         self._additional = {}
-        self.metrics = {}
+        self.metrics = defaultdict(lambda: [])
 
     def width(self) -> int:
         """
@@ -919,10 +920,22 @@ class MetricTransformer(TransformerStage):
         if self.active():
             metrics = frameData.metrics
             keypoints = frameData.keypointSets[0]
+            leftShoulder = keypoints.getLeftShoulder()
+            rightShoulder = keypoints.getRightShoulder()
 
-            if "shoulder_distance" not in metrics:
-                metrics["shoulder_distance"] = []
+            metrics["nose_distance"].append(keypoints.getNose()[2])
             metrics["shoulder_distance"].append(
-                abs(keypoints.getLeftShoulder()[1] - keypoints.getRightShoulder()[1]))
+                abs(leftShoulder[1] - rightShoulder[1]))
+
+            delta_x = abs(rightShoulder[1] - leftShoulder[1])
+            delta_y = abs(rightShoulder[0] - leftShoulder[0])
+
+            if delta_x != 0:
+                angle_rad = math.atan(delta_y / delta_x)
+                angle_deg = math.degrees(angle_rad)
+            else:
+                angle_deg = 0
+
+            metrics["shoulder_elevation_angle"].append(angle_deg)
 
         self.next(frameData)

@@ -27,12 +27,12 @@ class MPLMetricWidget(MetricWidget, FigureCanvasQTAgg):
         
         self.axes.plot(values)
         self.draw()
-        
+
 
 class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
-    def __init__(self) -> None:
+    def __init__(self, name: str) -> None:
         MetricWidget.__init__(self)
-        pg.PlotWidget.__init__(self)
+        pg.PlotWidget.__init__(self, background="white", title=name)
         self.line = None
     
     def update(self, values: list[float]) -> None:
