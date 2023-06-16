@@ -61,8 +61,7 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
         MetricWidget.__init__(self)
         pg.PlotWidget.__init__(self, background="white", title=name)
         self.line = None
-        self.values = []
-        self.cutoff_length = max_datapoints
+        self.values = [0] * max_datapoints
     
     def addValue(self, value: float) -> None:
         """
@@ -70,8 +69,7 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
         point in the timeline.
         """
         self.values.append(value)
-        while len(self.values) > self.cutoff_length:
-            self.values.pop(0)
+        self.values.pop(0)
         if self.line is None:
             self.line = self.plot(self.values)
         else:

@@ -290,12 +290,10 @@ class Snake(TransformerStage, QObject):
         self.leftChickenWingDetector = LeftChickenWingDetector()
         self.rightChickenWingDetector = RightChickenWingDetector()
 
-        """
         self.game = SnakeGame()
-        QThreadPool.globalInstance().start(self.game)
-        self.leftChickenWing.connect(lambda: self.game.change(-10, 0))
-        self.rightChickenWing.connect(lambda: self.game.change(10, 0))
-        """
+        self.leftChickenWing.connect(self.game.turnLeft)
+        self.rightChickenWing.connect(self.game.turnRight)
+        self.game.show()
 
     def transform(self, frameData: FrameData) -> None:
         """
