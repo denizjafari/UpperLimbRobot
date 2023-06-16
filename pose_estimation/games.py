@@ -4,7 +4,10 @@ import math
 
 import cv2
 
+from PySide6.QtCore import QObject, Signal, QThreadPool
+
 from pose_estimation.Models import KeypointSet
+from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
 
 
@@ -96,6 +99,63 @@ class DefaultMeasurementsTransformer(TransformerStage):
             frameData["default_measurements"] = self.baselineMeasurements
 
         self.next(frameData)
+
+class GestureDetector:
+    """
+    Interface for all GestureDetectors.
+    """
+    def detect(self, metrics: dict[str, float]) -> None:
+        raise NotImplementedError
+
+class ChickenWingDetector(GestureDetector):
+    """
+    Abstract class for chicken wing detection. Detects whether a chicken wing
+    is performed.
+    """
+    def __init__(self):
+        """
+        Initialize the detector.
+        """
+        self.has_recovered = False
+
+    def elbowHeight(self, metrics: dict):
+        """
+        Return the elbow height from the metrics. Needs to be implemented by
+        the subclass to return the left or right elbow height.
+        """
+        raise NotImplementedError
+    
+    def shoulderHeight(self, metrics: dict):
+        """
+        Return the shoulder height from the metrics.
+        """
+        return metrics["shoulder_height"]
+
+    def detect(self, metrics: dict):
+        """
+        Detect whether a chicken wing is performed.
+        """
+        over_threshold = self.elbowHeight(metrics) > self.shoulderHeight(metrics)
+        if over_threshold and self.has_recovered:
+            module_logger.info("Chicken wing detected")
+            self.has_recovered = False
+            return True
+        elif not self.has_recovered and \
+                self.elbowHeight(metrics) < self.shoulderHeight(metrics) - 0.1:
+            module_logger.info("Chicken wing recovered")
+            self.has_recovered = True
+            return False
+        else:
+            return False
+        
+class LeftChickenWingDetector(ChickenWingDetector):
+    def elbowHeight(self, metrics: dict):
+        return metrics["left_elbow_height"]
+    
+class RightChickenWingDetector(ChickenWingDetector):
+    def elbowHeight(self, metrics: dict):
+        return metrics["right_elbow_height"]
+
 
 class PoseFeedbackTransformer(TransformerStage):
     """
@@ -214,94 +274,40 @@ class PoseFeedbackTransformer(TransformerStage):
         return "Feedback"
 
 
-class ChickenWingGameTransformer(TransformerStage):
+class Snake(TransformerStage, QObject):
     """
-    The chicken wing game: The player has their fist close to their shoulder
-    and their elbow stretched out. The goal is to raise their elbow aboe a line
-    parallel to their shoulders.
+    The snake game. The snake is controlled by the user's body. A right chicken
+    wing turns the snake to the right, a left chicken wing turns the snake to
+    left.
     """
-    def __init__(self) -> None:
-        TransformerStage.__init__(self)
-        self._upperLineDistance = 0
-        self._lowerLineDistance = 0
+    leftChickenWing = Signal()
+    rightChickenWing = Signal()
 
-    def setUpperLineDistance(self, distance: int) -> None:
-        """
-        Set the distance between the elbow line and the average height of the shoulders.
-        Negative values move the line down, positive values move it up.
-        """
-        self._upperLineDistance = distance
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        TransformerStage.__init__(self, True, previous)
+        QObject.__init__(self)
 
-    def setLowerLineDistance(self, distance: int) -> None:
-        """
-        Set the distance between the elbow line and the average height of the shoulders.
-        Negative values move the line down, positive values move it up.
-        """
-        self._lowerLineDistance = distance
+        self.leftChickenWingDetector = LeftChickenWingDetector()
+        self.rightChickenWingDetector = RightChickenWingDetector()
 
-    def upperLineDistance(self) -> int:
         """
-        Get the line distance.
+        self.game = SnakeGame()
+        QThreadPool.globalInstance().start(self.game)
+        self.leftChickenWing.connect(lambda: self.game.change(-10, 0))
+        self.rightChickenWing.connect(lambda: self.game.change(10, 0))
         """
-        return self._upperLineDistance
-    
-    def lowerLineDistance(self) -> int:
-        """
-        Get the lower line distance.
-        """
-        return self._lowerLineDistance
-    
+
     def transform(self, frameData: FrameData) -> None:
         """
-        If this transformer is active, the line is drawn with two circles indicating
-        where the shoulders are. Drawing circles only works if the default
-        measurements are available.
+        Check wether the user has performed a chicken wing. If so, emit the
+        corresponding signal. The signal is emitted when the elbow is above the
+        shoulder. Before the signal is emitted, the elbow must be below the shoulder
+        plus some margin.
         """
-        if self.active():
-            keypointSet = frameData.keypointSets[0]
-            defaultMeasurements: PoseMeasurements = frameData["default_measurements"]
-            shoulderHeight = round(frameData.height() * (keypointSet.getLeftShoulder()[0]
-                             + keypointSet.getRightShoulder()[0]) / 2)
-            upperLineHeight = shoulderHeight - self.upperLineDistance()
-            lowerLineHeight = shoulderHeight - self.lowerLineDistance()
+        if self.active() and not frameData.dryRun and "metrics" in frameData:
+            if self.leftChickenWingDetector.detect(frameData["metrics"]):
+                self.leftChickenWing.emit()
+            if self.rightChickenWingDetector.detect(frameData["metrics"]):
+                self.rightChickenWing.emit()
 
-            cv2.line(frameData.image,
-                     (0, upperLineHeight),
-                     (frameData.width(), upperLineHeight),
-                     color=(0, 255, 0), thickness=3)
-            
-            cv2.line(frameData.image,
-                     (0, lowerLineHeight),
-                     (frameData.width(), lowerLineHeight),
-                     color=(0, 255, 0), thickness=3)
-            
-            if defaultMeasurements is not None:
-                length = defaultMeasurements.upperArmLength()
-                circle_lx = round((keypointSet.getLeftShoulder()[1] + length)
-                                  * frameData.width())
-                circle_rx = round((keypointSet.getRightShoulder()[1] - length)
-                                  * frameData.width())
-                cv2.circle(frameData.image,
-                        (circle_lx, upperLineHeight),
-                        10,
-                        (0, 255, 0),
-                        thickness=-1)
-                cv2.circle(frameData.image,
-                        (circle_rx, upperLineHeight),
-                        10,
-                        (0, 255, 0),
-                        thickness=-1)
-
-                cv2.circle(frameData.image,
-                        (circle_lx, lowerLineHeight),
-                        10,
-                        (0, 255, 0),
-                        thickness=-1)
-                cv2.circle(frameData.image,
-                        (circle_rx, lowerLineHeight),
-                        10,
-                        (0, 255, 0),
-                        thickness=-1)
-            
         self.next(frameData)
-            

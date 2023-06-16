@@ -26,6 +26,10 @@ module_logger.setLevel(logging.DEBUG)
 class FrameData:
     """
     Contains image, keypoints and metadata to pass between transformers.
+    This object is passed between transformers in the pipeline. The state
+    of one frame data object should never directly affect the state of
+    another frame data object. All persistence or tracking of data should
+    occur in the transfomers themselves, or in UI Widgets.
 
     dryRun - whether this run is a dry run. If true, no complex processing
     should take place. Instead, format changes like image resolution
@@ -947,5 +951,10 @@ class MetricTransformer(TransformerStage):
                 angle_deg = 0
 
             metrics["shoulder_elevation_angle"] = angle_deg
+
+            metrics["shoulder_height"] = 1 - (keypoints.getLeftShoulder()[0]
+                 + keypoints.getRightShoulder()[0]) / 2
+            metrics["left_elbow_height"] = 1 - keypoints.getLeftElbow()[0]
+            metrics["right_elbow_height"] = 1 - keypoints.getRightElbow()[0]
 
         self.next(frameData)

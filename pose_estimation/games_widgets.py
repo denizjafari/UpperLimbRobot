@@ -1,12 +1,11 @@
 from typing import Optional
 import logging
 
-from PySide6.QtWidgets import QWidget, QLabel, QHBoxLayout, QSlider, QPushButton
+from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton
 from PySide6.QtCore import Qt
 
 from pose_estimation.ui_utils import LabeledQSlider
-from pose_estimation.games import ChickenWingGameTransformer, \
-    DefaultMeasurementsTransformer, PoseFeedbackTransformer
+from pose_estimation.games import DefaultMeasurementsTransformer, PoseFeedbackTransformer, Snake
 from pose_estimation.transform_widgets import TransformerWidget
 
 
@@ -70,35 +69,10 @@ class PoseFeedbackWidget(TransformerWidget):
     def __str__(self) -> str:
         return "Feedback"
 
+class SnakeWidget(TransformerWidget):
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        TransformerWidget.__init__(self, "Snake Game", parent)
+        self.transformer = Snake()
 
-class ChickenWingWidget(TransformerWidget):
-    """
-    Widget for the chicken wing game transformer.
-    """
-    def __init__(self,
-                 parent: Optional[QWidget] = None) -> None:
-        """
-        Initialize the ChickenWingWidget.
-        """
-        TransformerWidget.__init__(self, "Chicken Wing Game", parent)
-        self.transformer = ChickenWingGameTransformer()
-
-        self.selectorHLayout = QHBoxLayout()
-        self.vLayout.addLayout(self.selectorHLayout)
-
-        self.selectorLabel = QLabel("Height", self)
-        self.selectorHLayout.addWidget(self.selectorLabel)
-
-        self.selectorSlider = LabeledQSlider(self, orientation=Qt.Orientation.Horizontal)
-        self.selectorSlider.setMinimum(-20)
-        self.selectorSlider.setMaximum(20)
-        self.selectorSlider.setValue(0)
-        self.selectorHLayout.addWidget(self.selectorSlider)
-        self.selectorSlider.valueChanged.connect(self.transformer.setUpperLineDistance)
-
-        self.selectorSlider = LabeledQSlider(self, orientation=Qt.Orientation.Horizontal)
-        self.selectorSlider.setMinimum(-40)
-        self.selectorSlider.setMaximum(20)
-        self.selectorSlider.setValue(0)
-        self.selectorHLayout.addWidget(self.selectorSlider)
-        self.selectorSlider.valueChanged.connect(self.transformer.setLowerLineDistance)
+    def __str__(self) -> str:
+        return "Snake"
