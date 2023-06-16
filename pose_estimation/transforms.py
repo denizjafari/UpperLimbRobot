@@ -45,7 +45,6 @@ class FrameData:
     metrics: dict[str, MetricWidget]
     image: Optional[np.ndarray]
     keypointSets: list[KeypointSet]
-    metrics: defaultdict[str, list[float]]
 
     def __init__(self,
                  width: int = -1,
@@ -66,7 +65,6 @@ class FrameData:
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
         self._additional = {}
-        self.metrics = defaultdict(lambda: [])
 
     def width(self) -> int:
         """
@@ -110,6 +108,11 @@ class FrameData:
         """
         self._additional[key] = val
 
+    def __contains__(self, key: str) -> bool:
+        """
+        Check if a key is in the additional dictionary.
+        """
+        return key in self._additional
 
 class Transformer:
     """
@@ -791,12 +794,14 @@ class TransformerRunner(QRunnable, QObject):
     transformerCompleted = Signal(FrameData)
     _transformer: Transformer
 
-    def __init__(self, transformer: Transformer, frameData: FrameData) -> None:
+    def __init__(self, transformer: Transformer, frameData: Optional[FrameData] = None) -> None:
         """
         Initialize the Runner with the transformer it should execute.
         """
         QRunnable.__init__(self)
         QObject.__init__(self)
+        if frameData is None:
+            frameData = FrameData()
         self._transformer = transformer
         self.frameData = frameData
 
@@ -848,7 +853,7 @@ class TransformerHead:
         Start execution of the transformer
         """
         self._isRunning = True
-        self.startNext(FrameData())
+        self.startNext()
     
     def stop(self) -> None:
         """
@@ -875,7 +880,7 @@ class TransformerHead:
         """
         self._threadingModel = threadingModel
 
-    def onStageCleared(self, frameData: FrameData) -> None:
+    def onStageCleared(self) -> None:
         """
         Called when the first stage in the transformer is cleared.
         The next transformer will be run if the threading model is per stage
@@ -884,9 +889,9 @@ class TransformerHead:
         if self._isRunning \
             and self.threadingModel() \
                 == TransformerHead.MultiThreading.PER_STAGE:
-            self.startNext(frameData)
+            self.startNext()
 
-    def onTransformCompleted(self, frameData: FrameData) -> None:
+    def onTransformCompleted(self) -> None:
         """
         Called when the transformer is completed.
         The next transformer will be run if the threading model is per frame
@@ -895,15 +900,13 @@ class TransformerHead:
         if self._isRunning \
             and self.threadingModel() \
                 == TransformerHead.MultiThreading.PER_FRAME:
-            self.startNext(frameData)
+            self.startNext()
 
-    def startNext(self, lastFrameData: FrameData) -> None:
+    def startNext(self) -> None:
         """
         Start the next TransformerRunner and connect to its signals.
         """
-        frameData = FrameData()
-        frameData.metrics = lastFrameData.metrics
-        runner = TransformerRunner(self._transformer, frameData)
+        runner = TransformerRunner(self._transformer)
         runner.transformerStarted.connect(self.onStageCleared)
         runner.transformerCompleted.connect(self.onTransformCompleted)
         self._qThreadPool.start(runner)
@@ -917,15 +920,22 @@ class MetricTransformer(TransformerStage):
         TransformerStage.__init__(self, True, previous)
 
     def transform(self, frameData: FrameData) -> None:
+        """
+        Add the metrics to the frame data object.
+        """
         if self.active():
-            metrics = frameData.metrics
+            if "metrics" not in frameData:
+                metrics = {}
+                frameData["metrics"] = metrics
+            else:
+                metrics = frameData["metrics"]
+
             keypoints = frameData.keypointSets[0]
             leftShoulder = keypoints.getLeftShoulder()
             rightShoulder = keypoints.getRightShoulder()
 
-            metrics["nose_distance"].append(keypoints.getNose()[2])
-            metrics["shoulder_distance"].append(
-                abs(leftShoulder[1] - rightShoulder[1]))
+            metrics["nose_distance"] = keypoints.getNose()[2]
+            metrics["shoulder_distance"] = abs(leftShoulder[1] - rightShoulder[1])
 
             delta_x = abs(rightShoulder[1] - leftShoulder[1])
             delta_y = abs(rightShoulder[0] - leftShoulder[0])
@@ -936,6 +946,6 @@ class MetricTransformer(TransformerStage):
             else:
                 angle_deg = 0
 
-            metrics["shoulder_elevation_angle"].append(angle_deg)
+            metrics["shoulder_elevation_angle"] = angle_deg
 
         self.next(frameData)

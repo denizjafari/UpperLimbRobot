@@ -10,7 +10,7 @@ from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.Models import ModelManager
-from pose_estimation.metric_widgets import PyQtMetricWidget
+from pose_estimation.metric_widgets import MetricWidget, PyQtMetricWidget
 from pose_estimation.transform_widgets import TransformerWidget, \
     TransformerWidgetsRegistry
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -51,7 +51,6 @@ class PipelineWidget(QWidget):
     full pipeline as if it was one transformer.
     """
     modelManager: ModelManager
-    lastFrameData: FrameData
     _pipeline: Pipeline
     transformerWidgets: list[tuple[str, Callable[[QWidget], TransformerWidget]]]
 
@@ -81,8 +80,6 @@ class PipelineWidget(QWidget):
         self.addButton = QPushButton("Add Transformer", self)
         self.addButton.clicked.connect(self.onAdd)
         self.hLayout.addWidget(self.addButton)
-
-        self.lastFrameData = FrameData()
 
         self.hLayout.addStretch()
         self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
@@ -160,6 +157,7 @@ class ModularPoseProcessorWidget(QWidget):
     vLayout: QVBoxLayout
     displayLabel: QLabel
     pipelineWidget: PipelineWidget
+    metricViews: dict[str, MetricWidget]
 
     def __init__(self,
                  transformerWidgetRegistry: TransformerWidgetsRegistry,
@@ -228,7 +226,8 @@ class ModularPoseProcessorWidget(QWidget):
         Set the frame data to be used by the transformer head.
         """
         self.frameData = frameData
-        self.onMetricsUpdated(frameData.metrics)
+        if "metrics" in frameData:
+            self.onMetricsUpdated(frameData["metrics"])
 
     def toggleRunning(self) -> None:
         """
@@ -281,4 +280,4 @@ class ModularPoseProcessorWidget(QWidget):
                 self.vSideLayout.addWidget(widget)
             else:
                 widget = self.metricViews[col]
-            self.metricViews[col].update(metrics[col])
+            self.metricViews[col].addValue(metrics[col])
