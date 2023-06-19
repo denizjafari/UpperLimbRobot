@@ -73,6 +73,15 @@ class SnakeWidget(TransformerWidget):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         TransformerWidget.__init__(self, "Snake Game", parent)
         self.transformer = Snake()
+        
+        self.timerIntervalSlider = LabeledQSlider(self, orientation=Qt.Orientation.Horizontal)
+        self.timerIntervalSlider.setMinimum(100)
+        self.timerIntervalSlider.setMaximum(3000)
+        self.timerIntervalSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.timerIntervalSlider.setTickInterval(500)
+        self.timerIntervalSlider.valueChanged.connect(self.transformer.setTimerInterval)
+        self.vLayout.addWidget(self.timerIntervalSlider)
+
 
     def __str__(self) -> str:
         return "Snake"

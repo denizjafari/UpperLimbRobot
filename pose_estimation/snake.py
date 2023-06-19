@@ -1,10 +1,9 @@
 from typing import Optional
 from random import randrange
 
-from freegames import vector
-from PySide6.QtCore import QTimer, Qt, QRect, QPoint, QSize
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QWidget, QLabel
-from PySide6.QtGui import QPaintEvent, QPixmap, QPainter
+from PySide6.QtGui import QPaintEvent, QPainter
 
 
 SQUARE_SIZE = 30
@@ -19,58 +18,63 @@ class SnakeGame(QLabel):
         self.sideLength = SQUARE_SIZE * SQUARE_COUNT
         center = self.sideLength // 2
 
-        self.food = vector(center, center)
-        self.snake = [vector(center, center)]
-        self.aim = vector(0, -SQUARE_SIZE)
+        self.food = center, center
+        self.snake = [(center, center)]
+        self.aim = 0, -SQUARE_SIZE
 
         self.setFixedSize(self.sideLength, self.sideLength)
         self.lostGame = False
 
-        self.timer = QTimer(self)
-        self.timer.setInterval(1000)
-        self.timer.timeout.connect(self.move)
-        self.timer.start()
+        self._timer = QTimer(self)
+        self._timer.setInterval(1000)
+        self._timer.timeout.connect(self.move)
+        self._timer.start()
 
     def turnLeft(self) -> None:
         """
         Turn the snake left.
         """
-        if self.aim.x == 0 and self.aim.y == SQUARE_SIZE:
+        if self.aim[0] == 0 and self.aim[1] == SQUARE_SIZE:
             self.change(SQUARE_SIZE, 0)
-        elif self.aim.x == 0 and self.aim.y == -SQUARE_SIZE:
+        elif self.aim[0] == 0 and self.aim[1] == -SQUARE_SIZE:
             self.change(-SQUARE_SIZE, 0)
-        elif self.aim.x == SQUARE_SIZE and self.aim.y == 0:
+        elif self.aim[0] == SQUARE_SIZE and self.aim[1] == 0:
             self.change(0, -SQUARE_SIZE)
-        elif self.aim.x == -SQUARE_SIZE and self.aim.y == 0:
+        elif self.aim[0] == -SQUARE_SIZE and self.aim[1] == 0:
             self.change(0, SQUARE_SIZE)
     
     def turnRight(self) -> None:
         """
         Turn the snake right.
         """
-        if self.aim.x == 0 and self.aim.y == SQUARE_SIZE:
+        if self.aim[0] == 0 and self.aim[1] == SQUARE_SIZE:
             self.change(-SQUARE_SIZE, 0)
-        elif self.aim.x == 0 and self.aim.y == -SQUARE_SIZE:
+        elif self.aim[0] == 0 and self.aim[1] == -SQUARE_SIZE:
             self.change(SQUARE_SIZE, 0)
-        elif self.aim.x == SQUARE_SIZE and self.aim.y == 0:
+        elif self.aim[0] == SQUARE_SIZE and self.aim[1] == 0:
             self.change(0, SQUARE_SIZE)
-        elif self.aim.x == -SQUARE_SIZE and self.aim.y == 0:
+        elif self.aim[0] == -SQUARE_SIZE and self.aim[1] == 0:
             self.change(0, -SQUARE_SIZE)
+
+    def setTimerInterval(self, timerInterval: int) -> None:
+        """
+        Set the wait interval between snake movements.
+        """
+        self._timer.setInterval(timerInterval)
 
     def change(self, x, y):
         """
         Change snake direction.
         """
-        self.aim.x = x
-        self.aim.y = y
+        self.aim = (x, y)
 
     def inside(self, head):
-        """R
-        eturn True if head inside boundaries.
         """
-        return 0 <= head.x <= self.sideLength and 0 <= head.y <= self.sideLength
+        Return True if head inside boundaries.
+        """
+        return 0 <= head[0] <= self.sideLength and 0 <= head[1] <= self.sideLength
     
-    def head(self) -> vector:
+    def head(self) -> tuple[int, int]:
         """
         Return the head of the snake.
         """
@@ -84,12 +88,12 @@ class SnakeGame(QLabel):
         painter = QPainter(self)
 
         for body in self.snake:
-            painter.fillRect(body.x, body.y, SQUARE_SIZE, SQUARE_SIZE, Qt.black)
+            painter.fillRect(body[0], body[1], SQUARE_SIZE, SQUARE_SIZE, Qt.black)
 
         if self.lostGame:
-            painter.fillRect(self.head().x, self.head().y, SQUARE_SIZE, SQUARE_SIZE,  Qt.red)
+            painter.fillRect(self.head()[0], self.head()[1], SQUARE_SIZE, SQUARE_SIZE,  Qt.red)
         else:
-            painter.fillRect(self.food.x, self.food.y, SQUARE_SIZE, SQUARE_SIZE,  Qt.green)
+            painter.fillRect(self.food[0], self.food[1], SQUARE_SIZE, SQUARE_SIZE,  Qt.green)
         
         painter.end()
 
@@ -97,21 +101,18 @@ class SnakeGame(QLabel):
         """
         Move snake forward one segment.
         """
-        if self.lostGame:
-            return
-        
-        head = self.snake[-1].copy()
-        head.move(self.aim)
+        if not self.lostGame:
+            head = self.head()[0] + self.aim[0], self.head()[1] + self.aim[1]
 
-        if not self.inside(head) or head in self.snake:
-            self.lostGame = True
-        else:
-            self.snake.append(head)
-
-            if head == self.food:
-                self.food.x = randrange(1, SQUARE_COUNT) * SQUARE_SIZE
-                self.food.y = randrange(1, SQUARE_COUNT) * SQUARE_SIZE
+            if not self.inside(head) or head in self.snake:
+                self.lostGame = True
             else:
-                self.snake.pop(0)
+                self.snake.append(head)
+
+                if head == self.food:
+                    self.food = randrange(1, SQUARE_COUNT) * SQUARE_SIZE, \
+                        randrange(1, SQUARE_COUNT) * SQUARE_SIZE
+                else:
+                    self.snake.pop(0)
 
         self.repaint()

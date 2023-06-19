@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Signal, QThreadPool
 from pose_estimation.Models import KeypointSet
 from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
+from pose_estimation.ui_utils import LabeledQSlider
 
 
 module_logger = logging.getLogger(__name__)
@@ -282,6 +283,7 @@ class Snake(TransformerStage, QObject):
     """
     leftChickenWing = Signal()
     rightChickenWing = Signal()
+    timeIntervalChanged = Signal(int)
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         TransformerStage.__init__(self, True, previous)
@@ -294,6 +296,12 @@ class Snake(TransformerStage, QObject):
         self.leftChickenWing.connect(self.game.turnLeft)
         self.rightChickenWing.connect(self.game.turnRight)
         self.game.show()
+
+    def setTimerInterval(self, timerInterval) -> None:
+        """
+        Set the timer interval between the snake moves.
+        """
+        self.game.setTimerInterval(timerInterval)
 
     def transform(self, frameData: FrameData) -> None:
         """
