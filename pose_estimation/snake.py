@@ -1,3 +1,10 @@
+"""
+The snake game adopted from https://github.com/grantjenks/free-python-games.
+Qt is used via the PySide6 library, instead of the Python turtle library.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from typing import Optional
 from random import randrange
 

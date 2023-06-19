@@ -1,5 +1,9 @@
+"""
+Transforms for modifying images, landmarks, and metadata in the pipeline via
+the frame data object.
+"""
+
 from __future__ import annotations
-from collections import defaultdict
 import logging
 from typing import Optional
 from enum import Enum

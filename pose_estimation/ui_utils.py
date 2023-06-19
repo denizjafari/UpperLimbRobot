@@ -1,3 +1,9 @@
+"""
+Unitility classes for the UI. Selector Buttons, loads of Selector Buttons. 
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from typing import Optional
 
 import logging
@@ -154,7 +160,7 @@ class ModelSelector(QGroupBox):
         """
         for item in self.layout().children():
             item.deleteLater()
-            
+
         for model in MODEL_REGISTRY.items():
             self.addModel(model)
 
@@ -258,8 +264,3 @@ class LabeledQSlider(QSlider):
             QToolTip.showText(
                 self.mapToGlobal(QPoint(bottomRight.x(), bottomRight.y())),
                 str(self.value()))
-            
-
-class WidgetCreator:
-    def widget(self) -> QWidget:
-        raise NotImplementedError()

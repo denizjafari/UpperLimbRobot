@@ -1,3 +1,9 @@
+"""
+Widgets for the game transformers.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from typing import Optional
 import logging
 

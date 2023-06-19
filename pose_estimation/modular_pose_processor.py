@@ -1,5 +1,11 @@
+"""
+The core of the application. Contains the main window and pipeline building ui.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from __future__ import annotations
-from typing import Callable, Optional
+from typing import  Optional
 
 import logging
 import numpy as np
@@ -11,8 +17,7 @@ from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.metric_widgets import MetricWidget, PyQtMetricWidget
 from pose_estimation.registry import WIDGET_REGISTRY
-from pose_estimation.transform_widgets import TransformerWidget, \
-    TransformerWidgetsRegistry
+from pose_estimation.transform_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Transformer, TransformerHead
 
@@ -163,7 +168,6 @@ class ModularPoseProcessorWidget(QWidget):
         """
         Initialize the ModularProcessorWidget.
 
-        transformerWidgetRegistry - the registry of all the transfomer widgets
         parent - the parent of this widget
         """
         QWidget.__init__(self, parent)

@@ -1,3 +1,9 @@
+"""
+Video sources and sinks for capturing webcam frames and videos.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from __future__ import annotations
 from typing import Optional
 import logging

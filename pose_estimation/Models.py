@@ -1,9 +1,17 @@
+"""
+Machine Learning models used for pose estimation. Includes full support for the
+MediaPipe BlazePose model and partial support for MoveNet. A model inteface is
+provided alongside an interface for keypoint sets.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 import mediapipe.python.solutions.pose as mp_pose
 
-from PySide6.QtCore import QRunnable, QObject, Signal, Slot, QThreadPool
+from PySide6.QtCore import QRunnable, QObject, Signal, Slot
 
 from pose_estimation.registry import MODEL_REGISTRY
 

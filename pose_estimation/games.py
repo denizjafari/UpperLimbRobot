@@ -1,15 +1,21 @@
+"""
+Games transformers that are used to start and manage games, passing information
+from the frame data objects to the games.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from typing import Optional
 import logging
 import math
 
 import cv2
 
-from PySide6.QtCore import QObject, Signal, QThreadPool
+from PySide6.QtCore import QObject, Signal
 
 from pose_estimation.Models import KeypointSet
 from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
-from pose_estimation.ui_utils import LabeledQSlider
 
 
 module_logger = logging.getLogger(__name__)

@@ -1,5 +1,12 @@
-import matplotlib
+"""
+Widgets to display metrics. Matplotlib and pqygraph are used to display graphs.
+However, matplotlib is very slow and basically unusable for real-time display.
+Pyqtpgrapg is much faster.
 
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
+import matplotlib
 matplotlib.use('QtAgg')
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg

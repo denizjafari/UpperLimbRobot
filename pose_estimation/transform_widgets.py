@@ -15,7 +15,7 @@ from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
         RecorderTransformer, Scaler, SkeletonDrawer, \
             Transformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
-    LabeledQSlider, ModelSelector, WidgetCreator
+    LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 
@@ -26,7 +26,6 @@ class TransformerWidget(QGroupBox):
     """
     The base transformer widget including the title label and remove logic.
     """
-    childWidgetCreated = Signal(WidgetCreator)
     removed = Signal()
 
     titleLabel: QLabel
@@ -66,20 +65,6 @@ class TransformerWidget(QGroupBox):
 
     def close(self) -> None:
         pass
-
-class TransformerWidgetsRegistry(QObject):
-    transformerWidgetsChanged = Signal(object)
-
-    def __init__(self) -> None:
-        QObject.__init__(self)
-        self._transformerWidgets = []
-
-    def addTransformerWidget(self, initializer: Callable[[QWidget], TransformerWidget], name: str):
-        self._transformerWidgets.append((name, initializer))
-        self.transformerWidgetsChanged.emit(self._transformerWidgets)
-
-    def transformerWidgets(self) -> list[tuple[str, Callable[[QWidget], TransformerWidget]]]:
-        return self._transformerWidgets
 
 
 class ScalerWidget(TransformerWidget):
