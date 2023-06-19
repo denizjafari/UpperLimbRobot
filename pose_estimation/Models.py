@@ -5,6 +5,8 @@ import mediapipe.python.solutions.pose as mp_pose
 
 from PySide6.QtCore import QRunnable, QObject, Signal, Slot, QThreadPool
 
+from pose_estimation.registry import MODEL_REGISTRY
+
 class KeypointSet:
     """
     A set to store all keypoint sets recognized from a model / imported.
@@ -285,27 +287,6 @@ class ModelLoader(QRunnable, QObject):
         """
         self.modelReady.emit(self.modelClass())
 
-class ModelManager(QObject):
-    """
-    A class to instantiate a predefined set of models.
-    """
-    modelAdded = Signal(PoseModel)
 
-    models: list[PoseModel]
-    threadpool: QThreadPool
-
-    def __init__(self, models: list[type], threadpool=QThreadPool.globalInstance()) -> None:
-        QObject.__init__(self)
-
-        self.threadPool = threadpool
-        self.models = []
-
-        for modelClass in models:
-            loader = ModelLoader(modelClass)
-            loader.modelReady.connect(self.modelReadySlot)
-            self.threadPool.start(loader)
-
-    @Slot(PoseModel)
-    def modelReadySlot(self, model: PoseModel) -> None:
-        self.models.append(model)
-        self.modelAdded.emit(model)
+MODEL_REGISTRY.register(FeedThroughModel, "None")
+MODEL_REGISTRY.register(BlazePose, "BlazePose")

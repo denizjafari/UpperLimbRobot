@@ -9,8 +9,8 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
-from pose_estimation.Models import ModelManager
 from pose_estimation.metric_widgets import MetricWidget, PyQtMetricWidget
+from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transform_widgets import TransformerWidget, \
     TransformerWidgetsRegistry
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -50,12 +50,9 @@ class PipelineWidget(QWidget):
     Show a pipeline of transformer widgets and provide an interface to the
     full pipeline as if it was one transformer.
     """
-    modelManager: ModelManager
     _pipeline: Pipeline
-    transformerWidgets: list[tuple[str, Callable[[QWidget], TransformerWidget]]]
 
     def __init__(self,
-                 transformerWidgetsRegistry: TransformerWidgetsRegistry,
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the PipelineWidget by adding
@@ -84,19 +81,20 @@ class PipelineWidget(QWidget):
         self.hLayout.addStretch()
         self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
 
-        transformerWidgetsRegistry.transformerWidgetsChanged.connect(self.onTransformerWidgetsChanged)
-        self.onTransformerWidgetsChanged(transformerWidgetsRegistry.transformerWidgets())
+        WIDGET_REGISTRY.itemsChanged.connect(self.onTransformerWidgetsChanged)
+        self.onTransformerWidgetsChanged()
     
     @Slot()
     def onAdd(self) -> None:
         """
         When the add button is clicked to add a transformer
         """
-        index = self.transformerSelector.currentIndex()
-        widget = self.transformerWidgets[index][1](self)
+        text = self.transformerSelector.currentText()
+        widget: TransformerWidget = WIDGET_REGISTRY.createItem(text)
 
         self._pipeline.append(widget.transformer)
         self.hTransformerLayout.addWidget(widget)
+        widget.setParent(self)
         widget.removed.connect(lambda: self.removeTransformerWidget(widget))
 
     @Slot(TransformerWidget)
@@ -109,16 +107,17 @@ class PipelineWidget(QWidget):
         widget.deleteLater()
 
     @Slot(object)
-    def onTransformerWidgetsChanged(self, transformerWidgets: list[tuple[str, Callable]]) -> None:
+    def onTransformerWidgetsChanged(self) -> None:
+        items = WIDGET_REGISTRY.items()
         newTransformerSelector = QComboBox(self)
         self.hLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
         self.transformerSelector.deleteLater()
         self.transformerSelector = newTransformerSelector
 
-        self.transformerWidgets = transformerWidgets.copy()
+        self.transformerWidgets = items.copy()
 
-        for tw in self.transformerWidgets:
-            self.transformerSelector.addItem(tw[0])
+        for i in items:
+            self.transformerSelector.addItem(i)
 
     def pipeline(self) -> Pipeline:
         """
@@ -160,7 +159,6 @@ class ModularPoseProcessorWidget(QWidget):
     metricViews: dict[str, MetricWidget]
 
     def __init__(self,
-                 transformerWidgetRegistry: TransformerWidgetsRegistry,
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the ModularProcessorWidget.
@@ -200,7 +198,7 @@ class ModularPoseProcessorWidget(QWidget):
         self.startButton.clicked.connect(self.toggleRunning)
         self.buttonHLayout.addWidget(self.startButton)
 
-        self.pipelineWidget = PipelineWidget(transformerWidgetRegistry, self)
+        self.pipelineWidget = PipelineWidget(self)
         self.vLayout.addWidget(self.pipelineWidget)
 
         self.statusBar = QLabel(self)

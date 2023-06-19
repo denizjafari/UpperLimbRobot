@@ -8,7 +8,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
 
-from pose_estimation.Models import FeedThroughModel, ModelManager, PoseModel
+from pose_estimation.Models import PoseModel
+from pose_estimation.registry import MODEL_REGISTRY
 
 
 # The frame dimensions and rate for which a suitable format is selected.
@@ -112,13 +113,13 @@ class ModelSelectorButton(QRadioButton):
     model: PoseModel
     selected = Signal(PoseModel)
 
-    def __init__(self, model: PoseModel) -> None:
+    def __init__(self, modelName: str) -> None:
         """
         Initialize the selector for a given pose model.
         """
-        QRadioButton.__init__(self, str(model))
+        QRadioButton.__init__(self, modelName)
 
-        self.model = model
+        self.model = MODEL_REGISTRY.createItem(modelName)
         self.toggled.connect(self.slotSelected)
 
     @Slot()
@@ -135,7 +136,7 @@ class ModelSelector(QGroupBox):
     """
     modelSelected = Signal(PoseModel)
 
-    def __init__(self, modelManager: ModelManager, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Initialize the selector
         """
@@ -144,15 +145,22 @@ class ModelSelector(QGroupBox):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        modelManager.modelAdded.connect(self.addModel)
-        for model in modelManager.models:
+        MODEL_REGISTRY.itemsChanged.connect(self.addAllModels)
+        self.addAllModels()
+
+    def addAllModels(self) -> None:
+        """
+        Add all available models to the selector.
+        """
+        for item in self.layout().children():
+            item.deleteLater()
+            
+        for model in MODEL_REGISTRY.items():
             self.addModel(model)
 
     @Slot(PoseModel)
-    def addModel(self, model: PoseModel) -> None:
-        button = ModelSelectorButton(model)
-        if isinstance(model, FeedThroughModel):
-            button.setChecked(True)
+    def addModel(self, modelName: str) -> None:
+        button = ModelSelectorButton(modelName)
         button.selected.connect(self.modelSelected)
         self.layout().addWidget(button)
 
