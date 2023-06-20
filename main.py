@@ -24,7 +24,9 @@ def import_from(dir):
         __import__(dir + "." + module[:-3], locals(), globals())
 
 if __name__ == "__main__":
-    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
+    loggingHandler = logging.StreamHandler(sys.stdout)
+    loggingHandler.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(loggingHandler)
 
     import_from("widgets")
     import_from("models")

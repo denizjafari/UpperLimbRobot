@@ -7,7 +7,8 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from typing import Optional
-import PySide6.QtCore
+import logging
+
 import matplotlib
 matplotlib.use('QtAgg')
 
@@ -19,7 +20,10 @@ from matplotlib.figure import Figure
 import PySide6
 import pyqtgraph as pg
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGridLayout
+
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 class MetricWidget:    
     """
@@ -50,7 +54,7 @@ class VetricalMetricWidgetGroup(MetricWidgetGroup):
     """
     A metric widget group that displays the metric widgets vertically.
     """
-    _metricsViews: dict[str, MetricWidget]
+    _metricViews: dict[str, MetricWidget]
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
@@ -71,6 +75,39 @@ class VetricalMetricWidgetGroup(MetricWidgetGroup):
                 widget = PyQtMetricWidget(col)
                 self._metricViews[col] = widget
                 self.vLayout.addWidget(widget)
+            else:
+                widget = self._metricViews[col]
+            self._metricViews[col].addValue(metrics[col])
+
+class GridMetricWidgetGroup(MetricWidgetGroup):
+    """
+    A metric widget group that displays the metric widgets vertically.
+    """
+    _metricViews: dict[str, MetricWidget]
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the vertical metric widget group.
+        """
+        MetricWidgetGroup.__init__(self, parent)
+        self._metricViews = {}
+
+        self.gridLayout = QGridLayout()
+        self.setLayout(self.gridLayout)
+
+    def updateMetrics(self, metrics: dict[str, list[float]]) -> None:
+       """
+       Update the metric views.
+       """
+       for col in metrics:
+            if col not in self._metricViews:
+                widget = PyQtMetricWidget(col)
+                length = len(self._metricViews)
+                self._metricViews[col] = widget
+                row = length % 3
+                column = length // 3
+                module_logger.debug(f"Adding metric view {col} at row {row} and column {column}")
+                self.gridLayout.addWidget(widget, row, column)
             else:
                 widget = self._metricViews[col]
             self._metricViews[col].addValue(metrics[col])

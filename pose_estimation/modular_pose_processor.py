@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
-from pose_estimation.metric_widgets import MetricWidgetGroup, VetricalMetricWidgetGroup
+from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup, VetricalMetricWidgetGroup
 from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -182,7 +182,7 @@ class ModularPoseProcessorWidget(QWidget):
         self.hCenterLayout.addWidget(self.displayLabel,
                                alignment=Qt.AlignmentFlag.AlignCenter)
         
-        self.metricWidgets = VetricalMetricWidgetGroup(self)
+        self.metricWidgets = GridMetricWidgetGroup(self)
         self.hCenterLayout.addWidget(self.metricWidgets)
 
         self.frameRateLabel = QLabel()
