@@ -15,7 +15,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage
 
-from pose_estimation.metric_widgets import MetricWidget, PyQtMetricWidget
+from pose_estimation.metric_widgets import MetricWidgetGroup, VetricalMetricWidgetGroup
 from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -161,7 +161,7 @@ class ModularPoseProcessorWidget(QWidget):
     vLayout: QVBoxLayout
     displayLabel: QLabel
     pipelineWidget: PipelineWidget
-    metricViews: dict[str, MetricWidget]
+    metricWidgets: MetricWidgetGroup
 
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
@@ -182,10 +182,8 @@ class ModularPoseProcessorWidget(QWidget):
         self.hCenterLayout.addWidget(self.displayLabel,
                                alignment=Qt.AlignmentFlag.AlignCenter)
         
-        self.vSideLayout = QVBoxLayout()
-        self.hCenterLayout.addLayout(self.vSideLayout)
-
-        self.metricViews = {}
+        self.metricWidgets = VetricalMetricWidgetGroup(self)
+        self.hCenterLayout.addWidget(self.metricWidgets)
 
         self.frameRateLabel = QLabel()
         self.vLayout.addWidget(self.frameRateLabel,
@@ -229,7 +227,7 @@ class ModularPoseProcessorWidget(QWidget):
         """
         self.frameData = frameData
         if "metrics" in frameData:
-            self.onMetricsUpdated(frameData["metrics"])
+            self.metricWidgets.updateMetrics(frameData["metrics"])
 
     def toggleRunning(self) -> None:
         """
@@ -272,14 +270,3 @@ class ModularPoseProcessorWidget(QWidget):
         Update the label displaying the current frame rate.
         """
         self.frameRateLabel.setText(f"FPS: {frameRate}")
-
-    @Slot(QWidget)
-    def onMetricsUpdated(self, metrics: dict[str, list[float]]) -> None:
-        for col in metrics:
-            if col not in self.metricViews:
-                widget = PyQtMetricWidget(col)
-                self.metricViews[col] = widget
-                self.vSideLayout.addWidget(widget)
-            else:
-                widget = self.metricViews[col]
-            self.metricViews[col].addValue(metrics[col])

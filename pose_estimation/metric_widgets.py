@@ -6,6 +6,8 @@ Pyqtpgrapg is much faster.
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
+from typing import Optional
+import PySide6.QtCore
 import matplotlib
 matplotlib.use('QtAgg')
 
@@ -17,8 +19,9 @@ from matplotlib.figure import Figure
 import PySide6
 import pyqtgraph as pg
 
+from PySide6.QtWidgets import QWidget, QVBoxLayout
 
-class MetricWidget():
+class MetricWidget:    
     """
     Interface for metric widgets. Metric widgets display metrics on the screen.
     """
@@ -28,6 +31,50 @@ class MetricWidget():
         point in the timeline.
         """
         raise NotImplementedError
+
+class MetricWidgetGroup(QWidget):
+    """
+    Abstract class for a metric widget group. A metric widget group displays
+    multiple metrics widgets.
+    """
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        QWidget.__init__(self, parent)
+
+    def updateMetrics(self, metrics: dict[str, list[float]]) -> None:
+        """
+        Update the metric widgets based on the metrics info.
+        """
+        raise NotImplementedError
+
+class VetricalMetricWidgetGroup(MetricWidgetGroup):
+    """
+    A metric widget group that displays the metric widgets vertically.
+    """
+    _metricsViews: dict[str, MetricWidget]
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the vertical metric widget group.
+        """
+        MetricWidgetGroup.__init__(self, parent)
+        self._metricViews = {}
+
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
+
+    def updateMetrics(self, metrics: dict[str, list[float]]) -> None:
+       """
+       Update the metric views.
+       """
+       for col in metrics:
+            if col not in self._metricViews:
+                widget = PyQtMetricWidget(col)
+                self._metricViews[col] = widget
+                self.vLayout.addWidget(widget)
+            else:
+                widget = self._metricViews[col]
+            self._metricViews[col].addValue(metrics[col])
+    
 
 class MPLMetricWidget(MetricWidget, FigureCanvasQTAgg):
     """
