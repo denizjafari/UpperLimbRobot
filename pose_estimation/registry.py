@@ -6,6 +6,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from __future__ import annotations
+from typing import Union, Callable
 
 from PySide6.QtCore import QObject, Signal
 
@@ -23,9 +24,13 @@ class Registry(QObject):
         QObject.__init__(self)
         self._items = {}
     
-    def register(self, itemClass: type, name: str) -> None:
+    def register(self,
+                 itemClass: Union[type, Callable[[], object]],
+                 name: str) -> None:
         """
-        Register an item class with a name for app-wide access.
+        Register an item with a name for app-wide access. This item can be a
+        class which will be instantiated on createItem() or a function which
+        will be called.
         """
         self._items[name] = itemClass
         self.itemsChanged.emit()
@@ -38,7 +43,8 @@ class Registry(QObject):
     
     def createItem(self, key: str) -> object:
         """
-        Create an item by name.
+        Create an item by name. Either instantiate the class or calls the
+        registered function.
         """
         return self._items[key]()
 
