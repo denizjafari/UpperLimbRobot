@@ -13,7 +13,7 @@ import cv2
 
 from PySide6.QtCore import QObject, Signal
 
-from pose_estimation.Models import KeypointSet
+from models.models import KeypointSet
 from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
 

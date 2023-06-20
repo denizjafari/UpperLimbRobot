@@ -20,7 +20,7 @@ from PySide6.QtCore import QObject, Signal, QMutex, QRunnable, QThreadPool
 from PySide6.QtGui import QImage
 
 from pose_estimation.metric_widgets import MetricWidget
-from pose_estimation.Models import BlazePose, KeypointSet, PoseModel
+from models.models import BlazePose, KeypointSet, PoseModel
 from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
     npArrayToQImage
 

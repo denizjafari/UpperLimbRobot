@@ -1,19 +1,25 @@
+"""
+Widgets for the default transformers.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 from __future__ import annotations
-from typing import Callable, Optional
+from typing import Optional
 
 from io import TextIOBase
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
-    QPushButton, QCheckBox, QSlider, QGroupBox, QHBoxLayout, QColorDialog
+    QPushButton, QSlider, QHBoxLayout, QColorDialog
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from pose_estimation.registry import WIDGET_REGISTRY
+from pose_estimation.transformer_widgets import TransformerWidget
 
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
     CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, ModelRunner, Pipeline, \
-        RecorderTransformer, Scaler, SkeletonDrawer, \
-            Transformer, VideoSourceTransformer
+        RecorderTransformer, Scaler, SkeletonDrawer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
@@ -21,50 +27,6 @@ from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
-
-class TransformerWidget(QGroupBox):
-    """
-    The base transformer widget including the title label and remove logic.
-    """
-    removed = Signal()
-
-    titleLabel: QLabel
-    vSliderLayout: QVBoxLayout
-    transformer: Transformer
-
-    def __init__(self,
-                 title: str="Transformer",
-                 parent: Optional[QWidget] = None) -> None:
-        """
-        Initialize the TransformerWidget.
-        """
-        QGroupBox.__init__(self, parent)
-        self.setTitle(title)
-
-        self.vSliderLayout = QVBoxLayout()
-        self.setLayout(self.vSliderLayout)
-
-        self.headLayout = QHBoxLayout()
-        self.vSliderLayout.addLayout(self.headLayout)
-
-        self.activeCheckBox = QCheckBox("Active")
-        self.activeCheckBox.setChecked(True)
-        self.activeCheckBox.clicked.connect(self.onActiveToggle)
-        self.headLayout.addWidget(self.activeCheckBox)
-
-        self.removeButton = QPushButton("Remove", self)
-        self.removeButton.clicked.connect(self.onRemove)
-        self.headLayout.addWidget(self.removeButton)
-
-    def onActiveToggle(self) -> None:
-        self.transformer.setActive(self.activeCheckBox.isChecked())
-    
-    def onRemove(self) -> None:
-        self.close()
-        self.removed.emit()
-
-    def close(self) -> None:
-        pass
 
 
 class ScalerWidget(TransformerWidget):

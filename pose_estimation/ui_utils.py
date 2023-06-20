@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
 
-from pose_estimation.Models import PoseModel
+from models.models import PoseModel
 from pose_estimation.registry import MODEL_REGISTRY
 
 

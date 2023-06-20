@@ -13,8 +13,7 @@ from pose_estimation.registry import WIDGET_REGISTRY
 
 from pose_estimation.ui_utils import LabeledQSlider
 from pose_estimation.games import DefaultMeasurementsTransformer, PoseFeedbackTransformer, Snake
-from pose_estimation.transform_widgets import TransformerWidget
-
+from widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

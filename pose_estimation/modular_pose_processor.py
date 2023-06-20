@@ -17,7 +17,7 @@ from PySide6.QtGui import QPixmap, QImage
 
 from pose_estimation.metric_widgets import MetricWidget, PyQtMetricWidget
 from pose_estimation.registry import WIDGET_REGISTRY
-from pose_estimation.transform_widgets import TransformerWidget
+from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Transformer, TransformerHead
 
