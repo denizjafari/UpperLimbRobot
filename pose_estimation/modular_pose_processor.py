@@ -227,7 +227,9 @@ class ModularPoseProcessorWidget(QWidget):
         """
         self.frameData = frameData
         if "metrics" in frameData:
-            self.metricWidgets.updateMetrics(frameData["metrics"])
+            self.metricWidgets.updateMetrics(frameData["metrics"],
+                                             minimumMetrics=frameData["metrics_min"] if "metrics_min" in frameData else None,
+                                             maximumMetrics=frameData["metrics_max"] if "metrics_max" in frameData else None)
 
     def toggleRunning(self) -> None:
         """

@@ -119,26 +119,26 @@ class ChickenWingDetector(GestureDetector):
     Abstract class for chicken wing detection. Detects whether a chicken wing
     is performed.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the detector.
         """
         self.has_recovered = False
 
-    def elbowHeight(self, metrics: dict):
+    def elbowHeight(self, metrics: dict) -> float:
         """
         Return the elbow height from the metrics. Needs to be implemented by
         the subclass to return the left or right elbow height.
         """
         raise NotImplementedError
     
-    def shoulderHeight(self, metrics: dict):
+    def shoulderHeight(self, metrics: dict) -> float:
         """
         Return the shoulder height from the metrics.
         """
         return metrics["shoulder_height"]
 
-    def detect(self, metrics: dict):
+    def detect(self, metrics: dict) -> bool:
         """
         Detect whether a chicken wing is performed.
         """
@@ -248,6 +248,13 @@ class PoseFeedbackTransformer(TransformerStage):
             and isinstance(frameData["default_measurements"], PoseMeasurements):
             keypointSet = frameData.keypointSets[self.keypointSetIndex]
 
+            if "metrics_max" not in frameData:
+                metricsMax = {}
+                frameData["metrics_max"] = metricsMax
+            else:
+                metricsMax = frameData["metrics_max"]
+
+            metricsMax["shoulder_elevation_angle"] = self.elevAngleLimit
             correct = True
 
             if correct and not self._checkLeanForward(keypointSet,

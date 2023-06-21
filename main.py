@@ -40,3 +40,4 @@ if __name__ == "__main__":
     module_logger.info("Ready")
 
     sys.exit(app.exec())
+    

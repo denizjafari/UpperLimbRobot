@@ -29,6 +29,20 @@ class MetricWidget:
     """
     Interface for metric widgets. Metric widgets display metrics on the screen.
     """
+    def setMinimum(self, value: float) -> None:
+        """
+        Set the minimum allowed value for the metric. This will display a red bar
+        at the specified value.
+        """
+        raise NotImplementedError
+    
+    def setMaximum(self, value: float) -> None:
+        """
+        Set the maximum allowed value for the metric. This will display a red bar
+        at the specified value.
+        """
+        raise NotImplementedError
+
     def addValue(self, value: float) -> None:
         """
         Add a value to the graph. This corresponds to the y value of the next
@@ -95,7 +109,10 @@ class GridMetricWidgetGroup(MetricWidgetGroup):
         self.gridLayout = QGridLayout()
         self.setLayout(self.gridLayout)
 
-    def updateMetrics(self, metrics: dict[str, list[float]]) -> None:
+    def updateMetrics(self,
+                      metrics: dict[str, list[float]],
+                      minimumMetrics: Optional[dict[str, list[float]]] = None,
+                      maximumMetrics: Optional[dict[str, list[float]]] = None) -> None:
        """
        Update the metric views.
        """
@@ -111,6 +128,11 @@ class GridMetricWidgetGroup(MetricWidgetGroup):
             else:
                 widget = self._metricViews[col]
             self._metricViews[col].addValue(metrics[col])
+
+            if minimumMetrics is not None and col in minimumMetrics:
+                self._metricViews[col].setMinimum(minimumMetrics[col])
+            if maximumMetrics is not None and col in maximumMetrics:
+                self._metricViews[col].setMaximum(maximumMetrics[col])
     
 
 class MPLMetricWidget(MetricWidget, FigureCanvasQTAgg):
@@ -145,14 +167,41 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
     """
     A metric widget that uses pyqtpgraph to display a graph.
     """
+    _minimumLine: Optional[pg.InfiniteLine]
+    _maximumLine: Optional[pg.InfiniteLine]
+
     def __init__(self, name: str, max_datapoints=500) -> None:
         """
         Create a new metric widget that displays the metric labelled by name.
         """
         MetricWidget.__init__(self)
         pg.PlotWidget.__init__(self, background="white", title=name)
+        self._minimum = 0
+        self._maximum = 0
+        self._minimumLine = None
+        self._maximumLine = None
         self.line = None
         self.values = [0] * max_datapoints
+
+    def setMinimum(self, value: Optional[float]) -> None:
+        if value == self._minimum:
+            return
+        elif value is None and self._minimumLine is not None:
+            self.removeItem(self._minimumLine)
+        elif self._minimumLine is None:
+            self._minimumLine = self.getPlotItem().addLine(y=value, pen=pg.mkPen('r', width=1))
+        else:
+            self._minimumLine.setPos(value)
+
+    def setMaximum(self, value: Optional[float]) -> None:
+        if value == self._maximum:
+            return
+        elif value is None and self._maximumLine is not None:
+            self.removeItem(self._maximumLine)
+        elif self._maximumLine is None:
+            self._maximumLine = self.getPlotItem().addLine(y=value, pen=pg.mkPen('r', width=1))
+        else:
+            self._maximumLine.setPos(value)
     
     def addValue(self, value: float) -> None:
         """
