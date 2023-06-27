@@ -18,7 +18,7 @@ class TransformerWidget(QGroupBox):
     removed = Signal()
 
     titleLabel: QLabel
-    vSliderLayout: QVBoxLayout
+    vLayout: QVBoxLayout
     transformer: Transformer
 
     def __init__(self,
@@ -30,11 +30,11 @@ class TransformerWidget(QGroupBox):
         QGroupBox.__init__(self, parent)
         self.setTitle(title)
 
-        self.vSliderLayout = QVBoxLayout()
-        self.setLayout(self.vSliderLayout)
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
 
         self.headLayout = QHBoxLayout()
-        self.vSliderLayout.addLayout(self.headLayout)
+        self.vLayout.addLayout(self.headLayout)
 
         self.activeCheckBox = QCheckBox("Active")
         self.activeCheckBox.setChecked(True)

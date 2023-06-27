@@ -14,7 +14,7 @@ from PySide6.QtCore import QObject, Signal
 
 from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
-
+from events import Client, Event
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
@@ -247,5 +247,43 @@ class Snake(TransformerStage, QObject):
                 self.leftChickenWing.emit()
             if self.rightChickenWingDetector.detect(frameData["metrics"]):
                 self.rightChickenWing.emit()
+
+        self.next(frameData)
+
+class SnakeClient(TransformerStage, QObject):
+    """
+    The snake game. The snake is controlled by the user's body. A right chicken
+    wing turns the snake to the right, a left chicken wing turns the snake to
+    left.
+    """
+
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        TransformerStage.__init__(self, True, previous)
+        QObject.__init__(self)
+
+        self.leftChickenWingDetector = LeftChickenWingDetector()
+        self.rightChickenWingDetector = RightChickenWingDetector()
+
+        self.client = None
+
+    def setClient(self, client: Client) -> None:
+        """
+        Set the client to send the data to.
+        """
+        self.client = client
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Check wether the user has performed a chicken wing. If so, emit the
+        corresponding signal. The signal is emitted when the elbow is above the
+        shoulder. Before the signal is emitted, the elbow must be below the shoulder
+        plus some margin.
+        """
+        if self.active() and not frameData.dryRun and "metrics" in frameData \
+            and self.client is not None:
+            if self.leftChickenWingDetector.detect(frameData["metrics"]):
+                self.client.send(Event("leftTurn"))
+            if self.rightChickenWingDetector.detect(frameData["metrics"]):
+                self.client.send(Event("rightTurn"))
 
         self.next(frameData)

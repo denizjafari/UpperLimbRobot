@@ -102,7 +102,6 @@ class Server(QObject, QRunnable):
             for key, mask in events:
                 callback = key.data
                 callback(key.fileobj, mask)
-                print("Read")
 
             if not self.msgQueue.empty():
                 e = self.msgQueue.get()
@@ -116,6 +115,12 @@ class Server(QObject, QRunnable):
             conn.close()
         self.conns.clear()
         self.sock.close()
+
+    def start(self, threadPool = QThreadPool.globalInstance()) -> None:
+        """
+        Start the server in a new thread.
+        """
+        threadPool.start(self)
 
     def send(self, e: Event) -> None:
         """
@@ -194,6 +199,12 @@ class Client(QObject, QRunnable):
                 self.conn.send(e.toBytes())
 
         self.conn.close()
+
+    def start(self, threadPool = QThreadPool.globalInstance()) -> None:
+        """
+        Start the client in a new thread.
+        """
+        threadPool.start(self)
 
     def send(self, e: Event) -> None:
         """

@@ -6,12 +6,14 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from typing import Optional
-from random import randrange
-import sys
 
-from PySide6.QtCore import QTimer, Qt
+import sys
+from random import randrange
+
+from PySide6.QtCore import QTimer, Qt, QThreadPool
 from PySide6.QtWidgets import QWidget, QLabel, QApplication
 from PySide6.QtGui import QPaintEvent, QPainter
+from events import Server, Event
 
 
 SQUARE_SIZE = 30
@@ -124,3 +126,14 @@ class SnakeGame(QLabel):
                     self.snake.pop(0)
 
         self.repaint()
+
+class SnakeServerAdapter:
+    def __init__(self, snakeGame: SnakeGame) -> None:
+        self.snakeGame = snakeGame
+    
+    def eventReceived(self, e: Event) -> None:
+        print(e)
+        if e.name == "leftTurn":
+            self.snakeGame.turnLeft()
+        elif e.name == "rightTurn":
+            self.snakeGame.turnRight()

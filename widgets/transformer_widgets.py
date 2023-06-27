@@ -46,11 +46,11 @@ class ScalerWidget(TransformerWidget):
 
         self.heightSelector = QLineEdit(self)
         self.heightSelector.setText(str(640))
-        self.vSliderLayout.addWidget(self.heightSelector)
+        self.vLayout.addWidget(self.heightSelector)
 
         self.applyButton = QPushButton("Apply", self)
         self.applyButton.clicked.connect(self.onApplyClicked)
-        self.vSliderLayout.addWidget(self.applyButton)
+        self.vLayout.addWidget(self.applyButton)
 
     @Slot()
     def onApplyClicked(self) -> None:
@@ -100,7 +100,7 @@ class ModelRunnerWidget(TransformerWidget):
 
         self.modelSelector = ModelSelector(self)
         self.modelSelector.modelSelected.connect(self.transformer.setModel)
-        self.vSliderLayout.addWidget(self.modelSelector)
+        self.vLayout.addWidget(self.modelSelector)
 
     def __str__(self) -> str:
         return "Model"
@@ -120,7 +120,7 @@ class LandmarkDrawerWidget(TransformerWidget):
         self.transformer = LandmarkDrawer()
 
         self.sliderLabel = QLabel("Marker Radius", self)
-        self.vSliderLayout.addWidget(self.sliderLabel)
+        self.vLayout.addWidget(self.sliderLabel)
 
         self.colorDialog = QColorDialog(self, self.transformer.getRGBColor())
         self.colorDialog.currentColorChanged.connect(
@@ -135,11 +135,11 @@ class LandmarkDrawerWidget(TransformerWidget):
         self.markerRadiusSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.markerRadiusSlider.setTickInterval(1)
         self.markerRadiusSlider.valueChanged.connect(self.transformer.setMarkerRadius)
-        self.vSliderLayout.addWidget(self.markerRadiusSlider)
+        self.vLayout.addWidget(self.markerRadiusSlider)
 
         self.chooseColorButton = QPushButton("Change color...", self)
         self.chooseColorButton.clicked.connect(self.colorDialog.open)
-        self.vSliderLayout.addWidget(self.chooseColorButton)
+        self.vLayout.addWidget(self.chooseColorButton)
     
     def __str__(self) -> str:
         return "Landmarks"
@@ -159,7 +159,7 @@ class SkeletonDrawerWidget(TransformerWidget):
         self.transformer = SkeletonDrawer()
 
         self.sliderLabel = QLabel("Line Thickness", self)
-        self.vSliderLayout.addWidget(self.sliderLabel)
+        self.vLayout.addWidget(self.sliderLabel)
 
         self.colorDialog = QColorDialog(self, self.transformer.getRGBColor())
         self.colorDialog.currentColorChanged.connect(
@@ -174,11 +174,11 @@ class SkeletonDrawerWidget(TransformerWidget):
         self.lineThicknessSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.lineThicknessSlider.setTickInterval(1)
         self.lineThicknessSlider.valueChanged.connect(self.transformer.setLineThickness)
-        self.vSliderLayout.addWidget(self.lineThicknessSlider)
+        self.vLayout.addWidget(self.lineThicknessSlider)
 
         self.chooseColorButton = QPushButton("Change color...", self)
         self.chooseColorButton.clicked.connect(self.colorDialog.open)
-        self.vSliderLayout.addWidget(self.chooseColorButton)
+        self.vLayout.addWidget(self.chooseColorButton)
     
     def __str__(self) -> str:
         return "Skeleton"
@@ -250,13 +250,13 @@ class RecorderTransformerWidget(TransformerWidget):
         self.outputFileSelector = FileSelector(self,
                                                mode=FileSelector.MODE_SAVE,
                                                title="Output File")
-        self.vSliderLayout.addWidget(self.outputFileSelector)
+        self.vLayout.addWidget(self.outputFileSelector)
 
         self.csvExporterLayout = QVBoxLayout()
-        self.vSliderLayout.addLayout(self.csvExporterLayout)
+        self.vLayout.addLayout(self.csvExporterLayout)
 
         self.hButtonLayout = QHBoxLayout()
-        self.vSliderLayout.addLayout(self.hButtonLayout)
+        self.vLayout.addLayout(self.hButtonLayout)
 
         self.addExporterButton = QPushButton("Add CSV Exporter")
         self.addExporterButton.clicked.connect(self.addExporter)
@@ -356,7 +356,7 @@ class QCameraSourceWidget(TransformerWidget):
         
         self.cameraSelector = CameraSelector(self)
         self.cameraSelector.selected.connect(self.videoSource.setCamera)
-        self.vSliderLayout.addWidget(self.cameraSelector,
+        self.vLayout.addWidget(self.cameraSelector,
                                alignment=Qt.AlignmentFlag.AlignCenter)
 
     def close(self) -> None:
@@ -405,13 +405,13 @@ class VideoSourceWidget(TransformerWidget):
         self.transformer.append(self.videoSourceTransformer)
 
         self.fileSelector = FileSelector(self, title="Video Source")
-        self.vSliderLayout.addWidget(self.fileSelector)
+        self.vLayout.addWidget(self.fileSelector)
 
         self.csvImporterLayout = QVBoxLayout()
-        self.vSliderLayout.addLayout(self.csvImporterLayout)
+        self.vLayout.addLayout(self.csvImporterLayout)
 
         self.hButtonLayout = QHBoxLayout()
-        self.vSliderLayout.addLayout(self.hButtonLayout)
+        self.vLayout.addLayout(self.hButtonLayout)
 
         self.addImporterButton = QPushButton("Add CSV Importer")
         self.addImporterButton.clicked.connect(self.addImporter)
