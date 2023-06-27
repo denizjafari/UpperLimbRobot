@@ -7,13 +7,11 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 
 from typing import Optional
 import logging
-import math
 
 import cv2
 
 from PySide6.QtCore import QObject, Signal
 
-from models.models import KeypointSet
 from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
 
@@ -21,62 +19,6 @@ from pose_estimation.transforms import FrameData, Transformer, TransformerStage
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
-class PoseMeasurements:
-    """
-    Extracts relevant measurements from a keypoint set.
-    """
-    _shoulderDistanceX: float
-    _shoulderDistanceY: float
-    _leftUpperArmLength: float
-    _rightUpperArmLength: float
-
-    def __init__(self, keypointSet: KeypointSet):
-        """
-        Calculate baseline measures from the keypoint set.
-        """
-        leftShoulder = keypointSet.getLeftShoulder()
-        rightShoulder = keypointSet.getRightShoulder()
-        self._shoulderDistanceX = abs(leftShoulder[1] - rightShoulder[1])
-        self._shoulderDistanceY = abs(leftShoulder[0] - rightShoulder[0])
-
-        leftElbow = keypointSet.getLeftElbow()
-        rightElbow = keypointSet.getRightElbow()
-        self._leftUpperArmLength = abs(leftElbow[1] - leftShoulder[1])
-        self._rightUpperArmLength = abs(rightElbow[1] - rightShoulder[1])
-
-    def leftUpperArmLength(self) -> float:
-        """
-        Return the length of the left arm between shoulder and elbow.
-        """
-        return self._leftUpperArmLength
-    
-    def rightUpperArmLength(self) -> float:
-        """
-        Return the length of the right arm between shoulder and elbow.
-        """
-        return self._rightUpperArmLength
-    
-    def upperArmLength(self) -> float:
-        """
-        Return the average between left and right upper arm lengths.
-        """
-        return (self.leftUpperArmLength() + self.rightUpperArmLength()) / 2
-    
-    def shoulderDistanceX(self) -> float:
-        """
-        Return the distance between the left and right shoulders.
-        """
-        return self._shoulderDistanceX
-    
-    def shoulderDistanceY(self) -> float:
-        """
-        Return the distance between the left and right shoulders.
-        """
-        return self._shoulderDistanceY
-    
-    def shoulderDistance(self) -> float:
-        return math.sqrt(self.shoulderDistanceX() ** 2
-                         + self.shoulderDistanceY() ** 2)
 
 class DefaultMeasurementsTransformer(TransformerStage):
     """
@@ -84,26 +26,26 @@ class DefaultMeasurementsTransformer(TransformerStage):
     data object.
     """
     _lastKeypointSet: list[list[float]]
-    baselineMeasurements: Optional[PoseMeasurements]
+    baselineMetrics: Optional[dict[str, float]]
 
     def __init__(self, isActive: bool = True,
                  previous: Optional[Transformer] = None) -> None:
         TransformerStage.__init__(self, isActive, previous)
-        self.baselineMeasurements = None
+        self.baselineMetrics = None
         self._lastKeypointSet = None
     
     def captureDefaultPoseMeasurements(self) -> None:
         if self._lastKeypointSet is not None:
-            self.baselineMeasurements = PoseMeasurements(self._lastKeypointSet)
+            self.baselineMetrics = self._lastMetrics
             module_logger.info("Set baseline measurements")
         else:
             module_logger.warning(
                 "Cannot set baseline measures without any detected keypoints")
 
     def transform(self, frameData: FrameData) -> None:
-        if self.active():
-            self._lastKeypointSet = frameData.keypointSets[0]
-            frameData["default_measurements"] = self.baselineMeasurements
+        if self.active() and "metrics" in frameData:
+            self._lastMetrics = frameData["metrics"]
+            frameData["baseline_metrics"] = self.baselineMetrics
 
         self.next(frameData)
 
@@ -209,35 +151,6 @@ class PoseFeedbackTransformer(TransformerStage):
         """
         self.leanForwardLimit = 1 + (lfLimit / 10)
 
-    def _checkShoulderElevation(self, keypointSet: KeypointSet) -> bool:
-        leftShoulder = keypointSet.getLeftShoulder()
-        rightShoulder = keypointSet.getRightShoulder()
-
-        delta_x = abs(rightShoulder[1] - leftShoulder[1])
-        delta_y = abs(rightShoulder[0] - leftShoulder[0])
-
-        if delta_x != 0:
-            angle_rad = math.atan(delta_y / delta_x)
-            angle_deg = math.degrees(angle_rad)
-        else:
-            angle_deg = 0
-
-        return angle_deg <= self.elevAngleLimit
-    
-    def _checkLeanForward(self, keypointSet: KeypointSet,
-                          defaultMeasures: PoseMeasurements) -> bool:
-        leftShoulder = keypointSet.getLeftShoulder()
-        rightShoulder = keypointSet.getRightShoulder()
-
-        delta_x = abs(rightShoulder[1] - leftShoulder[1])
-        delta_y = abs(rightShoulder[0] - leftShoulder[0])
-
-        delta = math.sqrt(delta_x ** 2 + delta_y ** 2)
-
-        self.lastShoulderDistance = delta
-
-        return delta / defaultMeasures.shoulderDistance() <= self.leanForwardLimit
-
     def transform(self, frameData: FrameData) -> None:
         """
         Determine the angle between the straight line connecting the two
@@ -245,8 +158,10 @@ class PoseFeedbackTransformer(TransformerStage):
         the correct color.
         """
         if self.active() and not frameData.dryRun \
-            and isinstance(frameData["default_measurements"], PoseMeasurements):
-            keypointSet = frameData.keypointSets[self.keypointSetIndex]
+            and "default_measurements" in frameData \
+                and frameData["default_measurements"] is not None \
+                    and "metrics" in frameData:
+            defaultMetrics = frameData["baseline_measurements"]
 
             if "metrics_max" not in frameData:
                 metricsMax = {}
@@ -254,11 +169,15 @@ class PoseFeedbackTransformer(TransformerStage):
             else:
                 metricsMax = frameData["metrics_max"]
 
+            metrics = frameData["metrics"]
+
             metricsMax["shoulder_elevation_angle"] = self.elevAngleLimit
+            metricsMax["shoulder_distance"] = defaultMetrics["shoulder_distance"] * self.leanForwardLimit
             correct = True
 
-            if correct and not self._checkLeanForward(keypointSet,
-                                                      frameData["default_measurements"]):
+            if correct and \
+                not metrics["shoulder_distance"] / defaultMetrics["shoulder_distance"] \
+                    <= self.leanForwardLimit:
                 if not self.wasLeaningTooFar:
                     module_logger.info("User is leaning too far forward")
                     self.wasLeaningTooFar = True
@@ -267,7 +186,7 @@ class PoseFeedbackTransformer(TransformerStage):
                 module_logger.info("User corrected leaning too far forward")
                 self.wasLeaningTooFar = False
 
-            if correct and not self._checkShoulderElevation(keypointSet):
+            if correct and metrics["shoulder_elevation_angle"] < metricsMax["shoulder_elevation_angle"]:
                 if not self.shouldersWereNotLevel:
                     module_logger.info("User is not keeping their shoulders level enough")
                     self.shouldersWereNotLevel = True
