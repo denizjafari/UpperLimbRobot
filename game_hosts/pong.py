@@ -169,8 +169,8 @@ class PongGame(QLabel):
         Move the ball and paddles and check for collisions. Then paint the new
         state.
         """
-        if self.ball.leftEdge() == 0 \
-            or self.ball.rightEdge == self.sideLength:
+        if self.ball.leftEdge() <= 0 \
+            or self.ball.rightEdge() >= self.sideLength:
             self.lostGame = True
             self._timer.stop()
         elif self.ball.topEdge() <= 0 \
