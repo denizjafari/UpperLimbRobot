@@ -287,3 +287,35 @@ class SnakeClient(TransformerStage, QObject):
                 self.client.send(Event("rightTurn"))
 
         self.next(frameData)
+
+class PongClient(TransformerStage):
+    """
+    The pong game. The snake is controlled by the user's body.
+    The height of the hand will determine the height of the paddle.
+    """
+
+    def __init__(self, previous: Optional[Transformer] = None) -> None:
+        TransformerStage.__init__(self, True, previous)
+
+        self.client = None
+
+    def setClient(self, client: Client) -> None:
+        """
+        Set the client to send the data to.
+        """
+        self.client = client
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Check wether the user has performed a chicken wing. If so, emit the
+        corresponding signal. The signal is emitted when the elbow is above the
+        shoulder. Before the signal is emitted, the elbow must be below the shoulder
+        plus some margin.
+        """
+        if self.active() and not frameData.dryRun and "metrics" in frameData \
+            and self.client is not None:
+            event = Event("moveTo",
+                          [frameData["metrics"]["left_hand_elevation_adjusted"]])
+            self.client.send(event)
+
+        self.next(frameData)

@@ -14,6 +14,8 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
     QPushButton
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
 
+from events import Event
+
 
 SQUARE_SIZE = 600
 DEFAULT_PADDLE_SIZE = 50
@@ -74,6 +76,9 @@ class Paddle:
             self.position -= self.speed
         elif self.movingDown:
             self.position += self.speed
+
+    def moveTo(self, relativePosition: float) -> None:
+        self.position = (1 - relativePosition) * SQUARE_SIZE
 
     def paint(self, painter: QPainter) -> None:
         """
@@ -141,7 +146,7 @@ class Ball:
                             self.position[1] - self.radius,
                             self.radius * 2,
                             self.radius * 2)
-
+        
 
 class PongGame(QLabel):
     """
@@ -227,7 +232,7 @@ class PongGame(QLabel):
         
         painter.end()
 
-class Window(QWidget):
+class PongGameWindow(QWidget):
     def __init__(self) -> None:
         """
         Initialize the window for playing pong.
@@ -273,9 +278,17 @@ class Window(QWidget):
         elif key == Qt.Key_M:
             self.game.rightPaddle.movingDown = False
 
+class PongServerAdapter:
+    def __init__(self, pongGame: PongGameWindow) -> None:
+        self.window = pongGame
+    
+    def eventReceived(self, e: Event) -> None:
+        if e.name == "moveTo":
+            self.window.game.leftPaddle.moveTo(float(e.payload[0]))
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = Window()
+    window = PongGameWindow()
 
     window.show()
     sys.exit(app.exec())

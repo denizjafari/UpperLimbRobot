@@ -963,4 +963,8 @@ class MetricTransformer(TransformerStage):
             metrics["left_elbow_height"] = 1 - keypoints.getLeftElbow()[0]
             metrics["right_elbow_height"] = 1 - keypoints.getRightElbow()[0]
 
+            metrics["left_hand_elevation_adjusted"] = 1 - (0.5 + \
+                (keypoints.getLeftWrist()[0] - keypoints.getLeftShoulder()[0]) \
+                / metrics["shoulder_distance"])
+
         self.next(frameData)

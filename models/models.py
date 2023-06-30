@@ -154,6 +154,13 @@ class BlazePose(PoseModel):
         
         def getNose(self) -> list[float]:
             return self.getKeypoints()[0]
+        
+        def getRightWrist(self) -> list[float]:
+            return self.getKeypoints()[16]
+        
+        def getLeftWrist(self) -> list[float]:
+            return self.getKeypoints()[15]
+        
     
 class FeedThroughModel(PoseModel):
     def detect(self, image: np.ndarray) -> KeypointSet:

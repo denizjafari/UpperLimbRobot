@@ -57,6 +57,18 @@ class KeypointSet:
         Return the coordinates and confidence for the nose.
         """
         raise NotImplementedError
+    
+    def getRightWrist(self) -> list[float]:
+        """
+        Return the coordinates and confidence for the right wrist.
+        """
+        raise NotImplementedError
+        
+    def getLeftWrist(self) -> list[float]:
+        """
+        Return the coordinates and confidence for the left wrist.
+        """
+        raise NotImplementedError
 
 class PoseModel:
     """
@@ -102,3 +114,10 @@ class SimpleKeypointSet(KeypointSet):
     
     def getNose(self) -> list[float]:
         return [0.0, 0.0, 0.0, 0.0]
+    
+    def getRightWrist(self) -> list[float]:
+        return [0.0, 0.0, 0.0, 0.0]
+    
+    def getLeftWrist(self) -> list[float]:
+        return [0.0, 0.0, 0.0, 0.0]
+    

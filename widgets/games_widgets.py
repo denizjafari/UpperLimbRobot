@@ -13,7 +13,7 @@ from events import Client
 from pose_estimation.registry import WIDGET_REGISTRY
 
 from pose_estimation.ui_utils import LabeledQSlider
-from pose_estimation.games import DefaultMeasurementsTransformer, PoseFeedbackTransformer, Snake, SnakeClient
+from pose_estimation.games import DefaultMeasurementsTransformer, PongClient, PoseFeedbackTransformer, Snake, SnakeClient
 from widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
@@ -136,9 +136,33 @@ class SnakeServerWidget(TransformerWidget):
 
     def __str__(self) -> str:
         return "Snake Server"
+    
+class PongServerWidget(TransformerWidget):
+    """
+    Widget controlloing the sending of events to a snake game running remotely.
+    """
+    transformer: SnakeClient
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        TransformerWidget.__init__(self, "Snake Server", parent)
+
+        self.transformer = PongClient()
+
+        self.connectButton = QPushButton("Connect", self)
+        self.connectButton.clicked.connect(self.connectClient)
+        self.vLayout.addWidget(self.connectButton)
+
+    def connectClient(self) -> None:
+        client = Client()
+        self.transformer.setClient(client)
+        client.start()
+
+    def __str__(self) -> str:
+        return "Pong Server"
 
 
 WIDGET_REGISTRY.register(DefaultMeasurementsWidget, "Default Measurements")
 WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")
 WIDGET_REGISTRY.register(SnakeWidget, "Snake Game")
 WIDGET_REGISTRY.register(SnakeServerWidget, "Snake Server")
+WIDGET_REGISTRY.register(PongServerWidget, "Pong Server")

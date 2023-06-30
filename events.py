@@ -46,7 +46,7 @@ class Event:
         if self.payload is None or len(self.payload) == 0:
             return f"{self.name}\n".encode()
         else:
-            return f"{self.name}:{':'.join(self.payload)}\n".encode()
+            return f"{self.name}:{':'.join(str(x) for x in self.payload)}\n".encode()
         
     @staticmethod
     def fromBytes(data: bytes) -> Event:
