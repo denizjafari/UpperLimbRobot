@@ -16,6 +16,7 @@ import tensorflow as tf
 import cv2
 import math
 from cvzone.SelfiSegmentationModule import SelfiSegmentation
+from scipy import signal
 
 from PySide6.QtCore import QObject, Signal, QMutex, QRunnable, QThreadPool
 from PySide6.QtGui import QImage
@@ -1005,5 +1006,58 @@ class SlidingAverageTransformer(TransformerStage):
             self._metrics[key].append(metrics[key])
             if active:
                 metrics[key] = sum(self._metrics[key]) / len(self._metrics[key])
+
+        self.next(frameData)
+
+
+class ButterworthTransformer(TransformerStage):
+    _metrics: dict[str, list[float]]
+
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True, previous)
+        self.x1 = {}
+        self.x2 = {}
+        self.y1 = {}
+        self.y2 = {}
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Collect the metrics. Average them and override the metrics value if the
+        transformer is active.
+        """
+        active = self.active()
+        metrics = frameData["metrics"]
+
+        sampleRate = 1.0 / frameData.frameRate
+        nyquistFreq = 0.5 * sampleRate
+
+        Wn = 5.0 / nyquistFreq
+        b, a = signal.butter(2, Wn, btype='lowpass')
+        
+        for key in metrics:
+            if key not in self.x1:
+                self.x1[key] = 0.0
+                self.x2[key] = 0.0
+                self.y1[key] = 0.0
+                self.y2[key] = 0.0
+
+            x0 = metrics[key]
+            y0 = -a[1] * self.y1[key] \
+                - a[2] * self.y2[key] \
+                    + b[0] * x0 \
+                        + b[1] * self.x1[key] \
+                            + b[2] * self.x2[key]
+            
+            if active:
+                metrics[key] = y0
+                
+            self.x2[key] = self.x1[key]
+            self.y2[key] = self.y1[key]
+            self.x1[key] = x0
+            self.y1[key] = y0
 
         self.next(frameData)

@@ -17,7 +17,7 @@ from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 
 from pose_estimation.video import CVVideoFileSource, QVideoSource
-from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
+from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, CsvExporter, \
     CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, ModelRunner, Pipeline, \
         RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
@@ -505,6 +505,21 @@ class SlidingAverageWidget(TransformerWidget):
     def __str__(self) -> str:
         return "Sliding Average"
     
+class ButterworthWidget(TransformerWidget):
+    """
+    A widget to view the metrics.
+    """
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerWidget.__init__(self, "Butterworth Transformer", parent)
+        self.transformer = ButterworthTransformer()
+    
+    def __str__(self) -> str:
+        return "Butterworth Transformer"
+    
 WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
 WIDGET_REGISTRY.register(VideoSourceWidget, "Video Source")
 WIDGET_REGISTRY.register(ImageMirrorWidget, "Mirror")
@@ -516,3 +531,4 @@ WIDGET_REGISTRY.register(LandmarkDrawerWidget, "Landmarks")
 WIDGET_REGISTRY.register(RecorderTransformerWidget, "Recorder")
 WIDGET_REGISTRY.register(MetricViewWidget, "Metrics")
 WIDGET_REGISTRY.register(SlidingAverageWidget, "Sliding Average")
+WIDGET_REGISTRY.register(SlidingAverageWidget, "Butterworth Filter")
