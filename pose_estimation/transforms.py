@@ -4,6 +4,7 @@ the frame data object.
 """
 
 from __future__ import annotations
+from collections import defaultdict
 import logging
 from typing import Optional
 from enum import Enum
@@ -969,5 +970,40 @@ class MetricTransformer(TransformerStage):
             metrics["left_hand_elevation_adjusted"] = 1 - (0.5 + \
                 (keypoints.getLeftWrist()[0] - keypoints.getLeftShoulder()[0]) \
                 / shoulderDistance)
+
+        self.next(frameData)
+
+class SlidingAverageTransformer(TransformerStage):
+    _metrics: dict[str, list[float]]
+
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True, previous)
+        self.sequenceLength = 10
+        self._metrics = defaultdict(lambda: [0.0] * self.sequenceLength)
+
+    def setSequenceLength(self, length: int) -> None:
+        """
+        Set the sequence length.
+        """
+        self.sequenceLength = length
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Collect the metrics. Average them and override the metrics value if the
+        transformer is active.
+        """
+        active = self.active()
+        metrics = frameData["metrics"]
+        
+        for key in metrics:
+            while len(self._metrics[key]) >= self.sequenceLength:
+                self._metrics[key].pop(0)
+            self._metrics[key].append(metrics[key])
+            if active:
+                metrics[key] = sum(self._metrics[key]) / len(self._metrics[key])
 
         self.next(frameData)

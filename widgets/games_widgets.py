@@ -139,12 +139,12 @@ class SnakeServerWidget(TransformerWidget):
     
 class PongServerWidget(TransformerWidget):
     """
-    Widget controlloing the sending of events to a snake game running remotely.
+    Widget controlling the sending of events to a pong game running remotely.
     """
     transformer: SnakeClient
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
-        TransformerWidget.__init__(self, "Snake Server", parent)
+        TransformerWidget.__init__(self, "Pong Server", parent)
 
         self.transformer = PongClient()
 

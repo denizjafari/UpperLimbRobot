@@ -19,7 +19,7 @@ from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, CsvExporter, \
     CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, ModelRunner, Pipeline, \
-        RecorderTransformer, Scaler, SkeletonDrawer, VideoSourceTransformer
+        RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
@@ -490,6 +490,21 @@ class MetricViewWidget(TransformerWidget):
     def __str__(self) -> str:
         return "Metric View"
     
+class SlidingAverageWidget(TransformerWidget):
+    """
+    A widget to view the metrics.
+    """
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerWidget.__init__(self, "Sliding Average", parent)
+        self.transformer = SlidingAverageTransformer()
+    
+    def __str__(self) -> str:
+        return "Sliding Average"
+    
 WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
 WIDGET_REGISTRY.register(VideoSourceWidget, "Video Source")
 WIDGET_REGISTRY.register(ImageMirrorWidget, "Mirror")
@@ -500,3 +515,4 @@ WIDGET_REGISTRY.register(SkeletonDrawerWidget, "Skeleton")
 WIDGET_REGISTRY.register(LandmarkDrawerWidget, "Landmarks")
 WIDGET_REGISTRY.register(RecorderTransformerWidget, "Recorder")
 WIDGET_REGISTRY.register(MetricViewWidget, "Metrics")
+WIDGET_REGISTRY.register(SlidingAverageWidget, "Sliding Average")
