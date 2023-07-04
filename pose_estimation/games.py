@@ -315,7 +315,7 @@ class PongClient(TransformerStage):
         if self.active() and not frameData.dryRun and "metrics" in frameData \
             and self.client is not None:
             event = Event("moveTo",
-                          [frameData["metrics"]["left_hand_elevation_adjusted"]])
+                          [frameData["metrics"]["left_hand_elevation"]])
             self.client.send(event)
 
         self.next(frameData)
