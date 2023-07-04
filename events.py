@@ -184,10 +184,11 @@ class Client(QObject, QRunnable):
                 data = self.conn.recv(1024)
             except socket.timeout:
                 timedOut = True
+            except ConnectionAbortedError:
+                timedOut = True
 
             if not timedOut:
                 if data is None:
-                    self.conn.close()
                     break
                 elif len(data) != 0:
                     event = Event.fromBytes(data)
@@ -196,7 +197,10 @@ class Client(QObject, QRunnable):
 
             if not self.msgQueue.empty():
                 e = self.msgQueue.get()
-                self.conn.send(e.toBytes())
+                try:
+                    self.conn.send(e.toBytes())
+                except ConnectionAbortedError:
+                    break
 
         self.conn.close()
 

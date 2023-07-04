@@ -168,6 +168,7 @@ class PongGame(QLabel):
         self._timer.setInterval(20)
         self._timer.timeout.connect(self.updateState)
         self.isRunning = False
+        self._timer.start()
 
     def updateState(self) -> None:
         """
@@ -189,7 +190,8 @@ class PongGame(QLabel):
             self.ballDirection = -abs(self.ballDirection[0]), \
                 self.ballDirection[1]
         
-        self.ball.move(*self.ballDirection)
+        if self.isRunning:
+            self.ball.move(*self.ballDirection)
 
         self.leftPaddle.move()
         self.rightPaddle.move()
@@ -200,14 +202,14 @@ class PongGame(QLabel):
         """
         Start the game or resume it if it is paused.
         """
-        self._timer.start()
+        #self._timer.start()
         self.isRunning = True
 
     def stop(self) -> None:
         """
         Pause the game.
         """
-        self._timer.stop()
+        #self._timer.stop()
         self.isRunning = False
 
     def toggle(self) -> None:
