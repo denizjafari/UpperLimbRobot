@@ -7,7 +7,8 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 from typing import Optional
 import logging
 
-from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
+    QButtonGroup, QRadioButton, QVBoxLayout
 from PySide6.QtCore import Qt
 from events import Client
 from pose_estimation.registry import WIDGET_REGISTRY
@@ -126,7 +127,8 @@ class PongServerWidget(TransformerWidget):
     """
     Widget controlling the sending of events to a pong game running remotely.
     """
-    transformer: SnakeClient
+    transformer: PongClient
+    client: Optional[Client]
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         TransformerWidget.__init__(self, "Pong Server", parent)
@@ -137,10 +139,36 @@ class PongServerWidget(TransformerWidget):
         self.connectButton.clicked.connect(self.connectClient)
         self.vLayout.addWidget(self.connectButton)
 
+        self.buttonLayout = QVBoxLayout()
+        self.vLayout.addLayout(self.buttonLayout)
+
+        self.absolute = QRadioButton("absolute")
+        self.threshold = QRadioButton("threshold")
+        self.speed = QRadioButton("speed")
+        self.buttonLayout.addWidget(self.absolute)
+        self.buttonLayout.addWidget(self.threshold)
+        self.buttonLayout.addWidget(self.speed)
+
+        self.buttonGroup = QButtonGroup(self)
+        self.buttonGroup.addButton(self.absolute)
+        self.buttonGroup.addButton(self.threshold)
+        self.buttonGroup.addButton(self.speed)
+        self.buttonGroup.buttonClicked.connect(
+            lambda btn: self.transformer.setMode(btn.text()))
+        
+        self.client = None
+
     def connectClient(self) -> None:
-        client = Client()
-        self.transformer.setClient(client)
-        client.start()
+        if self.client is not None:
+            self.client.close()
+
+        self.client = Client()
+        self.transformer.setClient(self.client)
+        self.client.start()
+
+    def close(self) -> None:
+        if self.client is not None:
+            self.client.close()
 
     def __str__(self) -> str:
         return "Pong Server"

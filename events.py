@@ -192,7 +192,6 @@ class Client(QObject, QRunnable):
                     break
                 elif len(data) != 0:
                     event = Event.fromBytes(data)
-                    print(event)
                     self.eventReceived.emit(event)
 
             if not self.msgQueue.empty():

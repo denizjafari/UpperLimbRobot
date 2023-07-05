@@ -845,7 +845,6 @@ class TransformerHead:
         PER_FRAME = 0
         PER_STAGE = 1
 
-
     def __init__(self,
                  transformer: Transformer,
                  threadingModel: MultiThreading = MultiThreading.PER_FRAME,

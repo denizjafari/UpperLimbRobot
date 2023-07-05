@@ -238,7 +238,8 @@ class SnakeClient(TransformerStage, QObject):
 
     def setClient(self, client: Client) -> None:
         """
-        Set the client to send the data to.
+        Set the client to send the data to. This transformer will not take
+        ownsership of the client.
         """
         self.client = client
 
@@ -268,12 +269,20 @@ class PongClient(TransformerStage):
         TransformerStage.__init__(self, True, previous)
 
         self.client = None
+        self.mode = "absolute"
 
     def setClient(self, client: Client) -> None:
         """
-        Set the client to send the data to.
+        Set the client to send the data to. The transformer will not take
+        ownership of the client object.
         """
         self.client = client
+
+    def setMode(self, mode: str) -> None:
+        if self.client is not None:
+            self.client.send(Event("clearMovement"))
+        self.mode = mode
+        module_logger.info(f"Pong movement mode set to {mode}")
 
     def transform(self, frameData: FrameData) -> None:
         """
@@ -284,14 +293,25 @@ class PongClient(TransformerStage):
         """
         if self.active() and not frameData.dryRun and "metrics" in frameData \
             and self.client is not None:
+
             delta = frameData["metrics_max"]["left_hand_elevation"] \
-                - frameData["metrics_min"]["left_hand_elevation"]
+                    - frameData["metrics_min"]["left_hand_elevation"]
 
             target = (frameData["metrics"]["left_hand_elevation"] \
-                      - frameData["metrics_min"]["left_hand_elevation"]) / delta
-            event = Event("moveTo",
-                          [target])
-            frameData["metrics"]["target"] = target
-            self.client.send(event)
+                    - frameData["metrics_min"]["left_hand_elevation"]) / delta
+
+            if self.mode == "absolute":
+                event = Event("moveTo", [target])
+                frameData["metrics"]["target"] = target
+                self.client.send(event)
+            elif self.mode == "threshold":
+                if target > 0.8:
+                    self.client.send(Event("moveUp"))
+                elif target < 0.2:
+                    self.client.send(Event("moveDown"))
+                else:
+                    self.client.send(Event("neutral"))
+            elif self.mode == "speed":
+                self.client.send(Event("setSpeed", [2 * target - 1.0]))
 
         self.next(frameData)

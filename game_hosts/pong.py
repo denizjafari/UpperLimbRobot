@@ -17,7 +17,7 @@ from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
 from events import Event
 
 
-SQUARE_SIZE = 600
+SQUARE_SIZE = 300
 DEFAULT_PADDLE_SIZE = 50
 
 NEUTRAL = 0
@@ -42,6 +42,7 @@ class Paddle:
         self.speed = 5
         self.movingUp = False
         self.movingDown = False
+        self.useVariableSpeed = False
 
     def topEdge(self) -> float:
         """
@@ -72,13 +73,19 @@ class Paddle:
         """
         Move the paddle according to the moving up and down attributes.
         """
-        if self.movingUp:
-            self.position -= self.speed
-        elif self.movingDown:
-            self.position += self.speed
+        if self.useVariableSpeed:
+            self.position += self.speed * self.speedMultiplier
+        else:
+            if self.movingUp:
+                self.position -= self.speed
+            elif self.movingDown:
+                self.position += self.speed
 
     def moveTo(self, relativePosition: float) -> None:
         self.position = (1 - relativePosition) * SQUARE_SIZE
+
+    def setSpeedMultiplier(self, speedMultiplier: float) -> None:
+        self.speedMultiplier = speedMultiplier
 
     def paint(self, painter: QPainter) -> None:
         """
@@ -285,8 +292,29 @@ class PongServerAdapter:
         self.window = pongGame
     
     def eventReceived(self, e: Event) -> None:
-        if e.name == "moveTo":
-            self.window.game.leftPaddle.moveTo(float(e.payload[0]))
+        leftPaddle = self.window.game.leftPaddle
+        if e.name == "clearMovement":
+            leftPaddle.movingUp = False
+            leftPaddle.movingDown = False
+            leftPaddle.useVariableSpeed = False
+            leftPaddle.setSpeedMultiplier(0.0)
+        elif e.name == "moveTo":
+            leftPaddle.moveTo(float(e.payload[0]))
+        elif e.name == "setSpeed":
+            leftPaddle.useVariableSpeed = True
+            leftPaddle.setSpeedMultiplier(float(e.payload[0]))
+        elif e.name == "moveUp":
+            leftPaddle.useVariableSpeed = False
+            leftPaddle.movingUp = True
+            leftPaddle.movingDown = False
+        elif e.name == "neutral":
+            leftPaddle.useVariableSpeed = False
+            leftPaddle.movingUp = False
+            leftPaddle.movingDown = False
+        elif e.name == "moveDown":
+            leftPaddle.useVariableSpeed = False
+            leftPaddle.movingDown= True
+            leftPaddle.movingUp = False
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
