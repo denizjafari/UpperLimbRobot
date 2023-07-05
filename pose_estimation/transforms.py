@@ -8,6 +8,7 @@ from collections import defaultdict
 import logging
 from typing import Optional
 from enum import Enum
+import time
 
 import io
 import csv
@@ -55,6 +56,7 @@ class FrameData:
     metrics: dict[str, MetricWidget]
     image: Optional[np.ndarray]
     keypointSets: list[KeypointSet]
+    startTime: float
 
     def __init__(self,
                  width: int = -1,
@@ -75,6 +77,7 @@ class FrameData:
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
         self._additional = {}
+        self.startTime = time.time()
 
     def width(self) -> int:
         """

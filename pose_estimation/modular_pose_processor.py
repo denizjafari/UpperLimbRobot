@@ -5,6 +5,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from __future__ import annotations
+import time
 from typing import  Optional
 
 import logging
@@ -188,6 +189,10 @@ class ModularPoseProcessorWidget(QWidget):
         self.frameRateLabel = QLabel()
         self.vLayout.addWidget(self.frameRateLabel,
                                alignment=Qt.AlignmentFlag.AlignCenter)
+        
+        self.latencyLabel = QLabel()
+        self.vLayout.addWidget(self.latencyLabel,
+                               alignment=Qt.AlignmentFlag.AlignCenter)
 
         self.buttonHLayout = QHBoxLayout()
         self.vLayout.addLayout(self.buttonHLayout)
@@ -210,12 +215,13 @@ class ModularPoseProcessorWidget(QWidget):
         self.qThreadPool = QThreadPool.globalInstance()
         self.transformerHead = TransformerHead(
             self.pipelineWidget.pipeline(),
-            threadingModel=TransformerHead.MultiThreading.PER_STAGE)
+            threadingModel=TransformerHead.MultiThreading.PER_FRAME)
 
         self.pipelineWidget.imageProvider.frameReady.connect(self.showFrame)
         self.pipelineWidget.frameDataProvider.frameDataReady.connect(self.setFrameData)
         self.lastFrameRate = 0
         self.frameData = FrameData()
+        self.latency = 0.1
 
         handler = StatusLogHandler()
         handler.messageEmitted.connect(self.statusBar.setText)
@@ -228,8 +234,10 @@ class ModularPoseProcessorWidget(QWidget):
         self.frameData = frameData
         if "metrics" in frameData:
             self.metricWidgets.updateMetrics(frameData["metrics"],
-                                             minimumMetrics=frameData["metrics_min"] if "metrics_min" in frameData else None,
-                                             maximumMetrics=frameData["metrics_max"] if "metrics_max" in frameData else None)
+                                             minimumMetrics=frameData["metrics_min"] \
+                                                if "metrics_min" in frameData else None,
+                                             maximumMetrics=frameData["metrics_max"] \
+                                                if "metrics_max" in frameData else None)
 
     def toggleRunning(self) -> None:
         """
@@ -259,6 +267,9 @@ class ModularPoseProcessorWidget(QWidget):
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
             nextFrameRate = self.frameData.frameRate
+            latency = time.time() - self.frameData.startTime
+            self.latency = (10 * self.latency + latency) / 11
+            self.onLatencyUpdate(self.latency)
             if self.frameData.streamEnded:
                 self.toggleRunning()
             if nextFrameRate != self.lastFrameRate:
@@ -272,3 +283,7 @@ class ModularPoseProcessorWidget(QWidget):
         Update the label displaying the current frame rate.
         """
         self.frameRateLabel.setText(f"FPS: {frameRate}")
+
+    @Slot(float)
+    def onLatencyUpdate(self, latency: float) -> None:
+        self.latencyLabel.setText(f"Latency: {int(1000 * round(latency, 3))}ms")
