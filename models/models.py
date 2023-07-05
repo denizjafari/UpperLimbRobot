@@ -9,9 +9,13 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
+import mediapipe as mp
 import mediapipe.python.solutions.pose as mp_pose
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-from PySide6.QtCore import QRunnable, QObject, Signal, Slot
+VisionRunningMode = mp.tasks.vision.RunningMode
+
 from pose_estimation.Models import KeypointSet, PoseModel, SimpleKeypointSet
 
 from pose_estimation.registry import MODEL_REGISTRY    
@@ -118,7 +122,7 @@ class BlazePose(PoseModel):
         keypoints: list[list[float]]
 
         def __init__(self, output) -> None:
-            if isinstance(output, list):
+            if isinstance(output[0], list):
                 self.keypoints = output
             else:
                 self.keypoints = [
@@ -161,6 +165,64 @@ class BlazePose(PoseModel):
         def getLeftWrist(self) -> list[float]:
             return self.getKeypoints()[15]
         
+class BlazePoseHeavy(PoseModel):
+    """
+    New (?) version of the BlazePose Model from MediaPipe in Heavy flavour.
+    """
+    def __init__(self) -> None:
+        file = open("pose_landmarker_heavy.task", "rb")
+        base_options = python.BaseOptions(model_asset_buffer=file.read())
+        file.close()
+        options = vision.PoseLandmarkerOptions(
+            base_options=base_options,
+            output_segmentation_masks=True)
+        self.detector = vision.PoseLandmarker.create_from_options(options)
+        self.inputSize = 224
+
+    def detect(self, image: np.ndarray) -> KeypointSet:
+        image = tf.image.resize(image, (self.inputSize, self.inputSize))
+        image = tf.cast(image, dtype=np.uint8).numpy()
+        image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
+
+        output = self.detector.detect(image).pose_landmarks
+
+        if len(output) > 0:
+            result = BlazePose.KeypointSet(output)
+        else:
+            result = SimpleKeypointSet([], [])
+
+        return result
+    
+class BlazePoseLite(PoseModel):
+    """
+    New (?) version of the BlazePose Model from MediaPipe in Lite flavour.
+    """
+    def __init__(self) -> None:
+        file = open("pose_landmarker_lite.task", "rb")
+        base_options = python.BaseOptions(model_asset_buffer=file.read())
+        file.close()
+        options = vision.PoseLandmarkerOptions(
+            base_options=base_options,
+            running_mode=VisionRunningMode.VIDEO)
+        self.detector = vision.PoseLandmarker.create_from_options(options)
+        self.inputSize = 224
+        self.timeline = 0
+
+    def detect(self, image: np.ndarray) -> KeypointSet:
+        image = tf.image.resize(image, (self.inputSize, self.inputSize))
+        image = tf.cast(image, dtype=np.uint8).numpy()
+        image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
+
+        output = self.detector.detect_for_video(image, self.timeline).pose_landmarks
+        self.timeline += 50
+
+        if len(output) > 0:
+            result = BlazePose.KeypointSet(output)
+        else:
+            result = SimpleKeypointSet([], [])
+
+        return result
+        
     
 class FeedThroughModel(PoseModel):
     def detect(self, image: np.ndarray) -> KeypointSet:
@@ -175,3 +237,6 @@ class FeedThroughModel(PoseModel):
 
 MODEL_REGISTRY.register(FeedThroughModel, "None")
 MODEL_REGISTRY.register(BlazePose, "BlazePose")
+MODEL_REGISTRY.register(BlazePoseHeavy, "BlazePose (Heavy)")
+MODEL_REGISTRY.register(BlazePoseLite, "BlazePose (Lite)")
+#MODEL_REGISTRY.register(MoveNetLightning, "MoveNet (Lightning)")
