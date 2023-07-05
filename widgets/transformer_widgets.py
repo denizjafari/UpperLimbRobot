@@ -11,14 +11,14 @@ from io import TextIOBase
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
-    QPushButton, QSlider, QHBoxLayout, QColorDialog
+    QPushButton, QSlider, QHBoxLayout, QColorDialog, QComboBox
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, CsvExporter, \
-    CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, ModelRunner, Pipeline, \
+    CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
         RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
@@ -520,6 +520,45 @@ class ButterworthWidget(TransformerWidget):
     def __str__(self) -> str:
         return "Butterworth Transformer"
     
+class MinMaxWidget(TransformerWidget):
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerWidget.__init__(self, "Min/Max Selector", parent)
+        self.transformer = MinMaxTransformer()
+
+        self.updateButton = QPushButton("Update Metrics")
+        self.updateButton.clicked.connect(self.updateMetricsList)
+        self.vLayout.addWidget(self.updateButton)
+
+        self.transformerSelector = QComboBox(self)
+        self.vLayout.addWidget(self.transformerSelector)
+
+        self.maxButton = QPushButton("Set Maximum")
+        self.maxButton.clicked.connect(lambda: \
+                                       self.transformer.setMaxForMetric(
+            self.transformerSelector.currentText()))
+        self.vLayout.addWidget(self.maxButton)
+
+        self.minButton = QPushButton("Set Minimum")
+        self.minButton.clicked.connect(lambda: \
+                                       self.transformer.setMinForMetric(
+            self.transformerSelector.currentText()))
+        self.vLayout.addWidget(self.minButton)
+
+        self.updateMetricsList()
+
+    def updateMetricsList(self) -> None:
+        newTransformerSelector = QComboBox(self)
+        for metrics in self.transformer.availableMetrics():
+            newTransformerSelector.addItem(metrics)
+        
+        self.vLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
+        self.transformerSelector.deleteLater()
+        self.transformerSelector = newTransformerSelector
+    
 WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
 WIDGET_REGISTRY.register(VideoSourceWidget, "Video Source")
 WIDGET_REGISTRY.register(ImageMirrorWidget, "Mirror")
@@ -532,3 +571,4 @@ WIDGET_REGISTRY.register(RecorderTransformerWidget, "Recorder")
 WIDGET_REGISTRY.register(MetricViewWidget, "Metrics")
 WIDGET_REGISTRY.register(SlidingAverageWidget, "Sliding Average")
 WIDGET_REGISTRY.register(SlidingAverageWidget, "Butterworth Filter")
+WIDGET_REGISTRY.register(MinMaxWidget, "Min/Max Selector")

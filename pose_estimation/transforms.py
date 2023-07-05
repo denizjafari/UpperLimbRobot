@@ -1055,3 +1055,48 @@ class ButterworthTransformer(TransformerStage):
             self.y1[key] = y0
 
         self.next(frameData)
+
+class MinMaxTransformer(TransformerStage):
+    metrics: Optional[dict[str, list[float]]]
+    _min: dict[str, float]
+    _max: dict[str, float]
+
+    def __init__(self) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True)
+        self.metrics = None
+        self._min = {}
+        self._max = {}
+
+    def setMinForMetric(self, metric: str) -> None:
+        """
+        Set the minimum value for a metric.
+        """
+        self._min[metric] = self.metrics[metric]
+
+    def setMaxForMetric(self, metric: str) -> None:
+        """
+        Set the minimum value for a metric.
+        """
+        self._max[metric] = self.metrics[metric]
+
+    def availableMetrics(self) -> None:
+        """
+        Get the available metrics.
+        """
+        return list(self.metrics.keys()) if self.metrics is not None else []
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Collect the metrics. Average them and override the metrics value if the
+        transformer is active.
+        """
+        self.metrics = frameData["metrics"].copy()
+
+        if self.active():
+            frameData["metrics_max"] = self._max.copy()
+            frameData["metrics_min"] = self._min.copy()
+
+        self.next(frameData)

@@ -19,36 +19,6 @@ from events import Client, Event
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
-
-class DefaultMeasurementsTransformer(TransformerStage):
-    """
-    Takes the default measurements and repeatedly injects them into the frame
-    data object.
-    """
-    _lastKeypointSet: list[list[float]]
-    baselineMetrics: Optional[dict[str, float]]
-
-    def __init__(self, isActive: bool = True,
-                 previous: Optional[Transformer] = None) -> None:
-        TransformerStage.__init__(self, isActive, previous)
-        self.baselineMetrics = None
-        self._lastKeypointSet = None
-    
-    def captureDefaultPoseMeasurements(self) -> None:
-        if self._lastKeypointSet is not None:
-            self.baselineMetrics = self._lastMetrics
-            module_logger.info("Set baseline measurements")
-        else:
-            module_logger.warning(
-                "Cannot set baseline measures without any detected keypoints")
-
-    def transform(self, frameData: FrameData) -> None:
-        if self.active() and "metrics" in frameData:
-            self._lastMetrics = frameData["metrics"]
-            frameData["baseline_metrics"] = self.baselineMetrics
-
-        self.next(frameData)
-
 class GestureDetector:
     """
     Interface for all GestureDetectors.
@@ -158,10 +128,10 @@ class PoseFeedbackTransformer(TransformerStage):
         the correct color.
         """
         if self.active() and not frameData.dryRun \
-            and "default_measurements" in frameData \
-                and frameData["default_measurements"] is not None \
+            and "baseline_measurements" in frameData \
+                and frameData["baseline_measurements"] is not None \
                     and "metrics" in frameData:
-            defaultMetrics = frameData["baseline_measurements"]
+            baselineMetrics = frameData["baseline_measurements"]
 
             if "metrics_max" not in frameData:
                 metricsMax = {}
@@ -172,11 +142,11 @@ class PoseFeedbackTransformer(TransformerStage):
             metrics = frameData["metrics"]
 
             metricsMax["shoulder_elevation_angle"] = self.elevAngleLimit
-            metricsMax["shoulder_distance"] = defaultMetrics["shoulder_distance"] * self.leanForwardLimit
+            metricsMax["shoulder_distance"] = baselineMetrics["shoulder_distance"] * self.leanForwardLimit
             correct = True
 
             if correct and \
-                not metrics["shoulder_distance"] / defaultMetrics["shoulder_distance"] \
+                not metrics["shoulder_distance"] / baselineMetrics["shoulder_distance"] \
                     <= self.leanForwardLimit:
                 if not self.wasLeaningTooFar:
                     module_logger.info("User is leaning too far forward")
@@ -314,8 +284,14 @@ class PongClient(TransformerStage):
         """
         if self.active() and not frameData.dryRun and "metrics" in frameData \
             and self.client is not None:
+            delta = frameData["metrics_max"]["left_hand_elevation"] \
+                - frameData["metrics_min"]["left_hand_elevation"]
+
+            target = (frameData["metrics"]["left_hand_elevation"] \
+                      - frameData["metrics_min"]["left_hand_elevation"]) / delta
             event = Event("moveTo",
-                          [frameData["metrics"]["left_hand_elevation"]])
+                          [target])
+            frameData["metrics"]["target"] = target
             self.client.send(event)
 
         self.next(frameData)
