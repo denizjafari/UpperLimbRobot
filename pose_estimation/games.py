@@ -292,7 +292,8 @@ class PongClient(TransformerStage):
         plus some margin.
         """
         if self.active() and not frameData.dryRun and "metrics" in frameData \
-            and self.client is not None:
+            and self.client is not None and "metrics_max" in frameData \
+                and "metrics_min" in frameData:
 
             delta = frameData["metrics_max"]["left_hand_elevation"] \
                     - frameData["metrics_min"]["left_hand_elevation"]

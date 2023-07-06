@@ -237,6 +237,6 @@ class FeedThroughModel(PoseModel):
 
 MODEL_REGISTRY.register(FeedThroughModel, "None")
 MODEL_REGISTRY.register(BlazePose, "BlazePose")
-MODEL_REGISTRY.register(BlazePoseHeavy, "BlazePose (Heavy)")
-MODEL_REGISTRY.register(BlazePoseLite, "BlazePose (Lite)")
+#MODEL_REGISTRY.register(BlazePoseHeavy, "BlazePose (Heavy)")
+#MODEL_REGISTRY.register(BlazePoseLite, "BlazePose (Lite)")
 #MODEL_REGISTRY.register(MoveNetLightning, "MoveNet (Lightning)")

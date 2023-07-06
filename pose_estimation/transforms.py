@@ -9,6 +9,12 @@ import logging
 from typing import Optional
 from enum import Enum
 import time
+import sys
+
+try:
+    import pydevd
+except ModuleNotFoundError:
+    pydevd = None
 
 import io
 import csv
@@ -826,12 +832,13 @@ class TransformerRunner(QRunnable, QObject):
         the stage cleared signal is emitted and the first transformer stage starts
         executing.
         """
-        #import pydevd;pydevd.settrace(suspend=False)
+        if pydevd is not None:
+            pydevd.settrace(suspend=False)
+
         self.frameData["timings"] = [("Start", time.time())]
         self._transformer.lock()
         self.transformerStarted.emit(self.frameData)
         self._transformer.transform(self.frameData)
-        endTime = time.time()
         self.transformerCompleted.emit(self.frameData)
 
 class TransformerHead:
@@ -1020,45 +1027,32 @@ class ButterworthTransformer(TransformerStage):
         Initialize it.
         """
         TransformerStage.__init__(self, True, previous)
-        self.x1 = {}
-        self.x2 = {}
-        self.y1 = {}
-        self.y2 = {}
+        self.filters = {}
 
     def transform(self, frameData: FrameData) -> None:
         """
         Apply the Butterworth filter on each signal.
         """
-        active = self.active()
-        metrics = frameData["metrics"]
+        if self.active():
+            metrics = frameData["metrics"]
 
-        sampleRate = 1.0 / frameData.frameRate
-        nyquistFreq = 0.5 * sampleRate
+            sampleRate = 20
+            filterFrequency = 5
+            nyquistFreq = sampleRate / 2
+            Wn = filterFrequency / nyquistFreq
 
-        Wn = 5.0 / nyquistFreq
-        b, a = signal.butter(2, Wn, btype='lowpass')
-        
-        for key in metrics:
-            if key not in self.x1:
-                self.x1[key] = 0.0
-                self.x2[key] = 0.0
-                self.y1[key] = 0.0
-                self.y2[key] = 0.0
+            for metric in metrics.keys():
+                if metric not in self.filters:
+                    b, a = signal.butter(2, Wn, "lowpass", analog=True, output='ba')
+                    self.filters[metric] = (b, a, signal.lfilter_zi(b, a))
 
-            x0 = metrics[key]
-            y0 = -a[1] * self.y1[key] \
-                - a[2] * self.y2[key] \
-                    + b[0] * x0 \
-                        + b[1] * self.x1[key] \
-                            + b[2] * self.x2[key]
-            
-            if active:
-                metrics[key] = y0
-                
-            self.x2[key] = self.x1[key]
-            self.y2[key] = self.y1[key]
-            self.x1[key] = x0
-            self.y1[key] = y0
+                b, a, zi = self.filters[metric]
+                val, zi = signal.lfilter(b,
+                                         a,
+                                         [metrics[metric]],
+                                         zi=zi)
+                metrics[metric] = val[0]
+                self.filters[metric] = (b, a, zi)
 
         self.next(frameData)
 
