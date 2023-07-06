@@ -56,7 +56,6 @@ class FrameData:
     metrics: dict[str, MetricWidget]
     image: Optional[np.ndarray]
     keypointSets: list[KeypointSet]
-    startTime: float
 
     def __init__(self,
                  width: int = -1,
@@ -77,7 +76,6 @@ class FrameData:
         self.streamEnded = streamEnded
         self.keypointSets = keypointSets if keypointSets is not None else []
         self._additional = {}
-        self.startTime = time.time()
 
     def width(self) -> int:
         """
@@ -164,6 +162,10 @@ class Transformer:
         Run the next stage in the pipeline. First acquire the lock of the next
         stage before unlockint this stage.
         """
+        if "timings" not in frameData:
+            frameData["timings"] = []
+
+        frameData["timings"].append((str(self), time.time()))
         if self._next is not None:
             self._next.lock()
         self.unlock()
@@ -824,10 +826,12 @@ class TransformerRunner(QRunnable, QObject):
         the stage cleared signal is emitted and the first transformer stage starts
         executing.
         """
-        import pydevd;pydevd.settrace(suspend=False)
+        #import pydevd;pydevd.settrace(suspend=False)
+        self.frameData["timings"] = [("Start", time.time())]
         self._transformer.lock()
         self.transformerStarted.emit(self.frameData)
         self._transformer.transform(self.frameData)
+        endTime = time.time()
         self.transformerCompleted.emit(self.frameData)
 
 class TransformerHead:
@@ -1023,8 +1027,7 @@ class ButterworthTransformer(TransformerStage):
 
     def transform(self, frameData: FrameData) -> None:
         """
-        Collect the metrics. Average them and override the metrics value if the
-        transformer is active.
+        Apply the Butterworth filter on each signal.
         """
         active = self.active()
         metrics = frameData["metrics"]
@@ -1093,8 +1096,7 @@ class MinMaxTransformer(TransformerStage):
 
     def transform(self, frameData: FrameData) -> None:
         """
-        Collect the metrics. Average them and override the metrics value if the
-        transformer is active.
+        Inject min and max for each metric.
         """
         self.metrics = frameData["metrics"].copy()
 

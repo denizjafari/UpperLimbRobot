@@ -19,6 +19,8 @@ from events import Event
 
 SQUARE_SIZE = 300
 DEFAULT_PADDLE_SIZE = 50
+DEFAULT_PADDLE_THICKNESS = 10
+DEFAULT_PADDLE_SPEED = 5
 
 NEUTRAL = 0
 LEFT = 1
@@ -37,9 +39,9 @@ class Paddle:
         """
         self.size = DEFAULT_PADDLE_SIZE
         self.position = SQUARE_SIZE // 2
-        self.thickness = 10
+        self.thickness = DEFAULT_PADDLE_THICKNESS
         self.side = side
-        self.speed = 5
+        self.speed = DEFAULT_PADDLE_SPEED
         self.movingUp = False
         self.movingDown = False
         self.useVariableSpeed = False
@@ -168,7 +170,7 @@ class PongGame(QLabel):
         self.rightPaddle = Paddle(side=RIGHT)
 
         self.setFixedSize(self.sideLength, self.sideLength)
-        self.ballDirection = 2, 3
+        self.ballDirection = 1, 2
         self.lostGame = False
 
         self._timer = QTimer(self)

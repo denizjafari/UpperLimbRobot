@@ -222,6 +222,7 @@ class ModularPoseProcessorWidget(QWidget):
         self.lastFrameRate = 0
         self.frameData = FrameData()
         self.latency = 0.1
+        self.lastLatency = 0.1
 
         handler = StatusLogHandler()
         handler.messageEmitted.connect(self.statusBar.setText)
@@ -238,6 +239,27 @@ class ModularPoseProcessorWidget(QWidget):
                                                 if "metrics_min" in frameData else None,
                                              maximumMetrics=frameData["metrics_max"] \
                                                 if "metrics_max" in frameData else None)
+            
+        nextFrameRate = self.frameData.frameRate
+
+        latency = time.time() - self.frameData["timings"][0][1]
+        """
+        timings = self.frameData["timings"]
+        formattedTimings = [str(int(1000 * round(timings[x][1] - timings[x-1][1], 3))) \
+                            for x in range(1, len(timings))]
+        formattedTimings.append(str(int(1000 * round(time.time() - timings[-1][1], 3))))
+        print(" ".join(formattedTimings))
+        """
+        
+        self.latency = (10 * self.latency + latency) / 11
+
+        if abs(self.latency - self.lastLatency) > 0.002:
+            self.lastLatency = self.latency
+            self.onLatencyUpdate(self.latency)
+
+        if nextFrameRate != self.lastFrameRate:
+            self.lastFrameRate = nextFrameRate
+            self.onFrameRateUpdate(self.lastFrameRate)
 
     def toggleRunning(self) -> None:
         """
@@ -266,15 +288,9 @@ class ModularPoseProcessorWidget(QWidget):
         if qImage is not None:
             pixmap = QPixmap.fromImage(qImage)
             self.displayLabel.setPixmap(pixmap)
-            nextFrameRate = self.frameData.frameRate
-            latency = time.time() - self.frameData.startTime
-            self.latency = (10 * self.latency + latency) / 11
-            self.onLatencyUpdate(self.latency)
+
             if self.frameData.streamEnded:
                 self.toggleRunning()
-            if nextFrameRate != self.lastFrameRate:
-                self.lastFrameRate = nextFrameRate
-                self.onFrameRateUpdate(self.lastFrameRate)
                 
 
     @Slot(int)
