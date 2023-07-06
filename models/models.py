@@ -187,7 +187,7 @@ class BlazePoseHeavy(PoseModel):
         output = self.detector.detect(image).pose_landmarks
 
         if len(output) > 0:
-            result = BlazePose.KeypointSet(output)
+            result = BlazePose.KeypointSet(output[0])
         else:
             result = SimpleKeypointSet([], [])
 
@@ -217,7 +217,7 @@ class BlazePoseLite(PoseModel):
         self.timeline += 50
 
         if len(output) > 0:
-            result = BlazePose.KeypointSet(output)
+            result = BlazePose.KeypointSet(output[0])
         else:
             result = SimpleKeypointSet([], [])
 

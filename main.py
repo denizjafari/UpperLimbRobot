@@ -18,7 +18,11 @@ module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
 def import_from(dir):
-    for module in os.listdir(os.path.dirname(__file__) + "/" + dir):
+    basePath = os.path.dirname(__file__)
+    basePath = basePath + "/" if basePath != "" else ""
+    path = basePath + dir
+    module_logger.info("Importing from " + path)
+    for module in os.listdir(path):
         if module == '__init__.py' or module[-3:] != '.py':
             continue
         __import__(dir + "." + module[:-3], locals(), globals())

@@ -824,6 +824,7 @@ class TransformerRunner(QRunnable, QObject):
         the stage cleared signal is emitted and the first transformer stage starts
         executing.
         """
+        import pydevd;pydevd.settrace(suspend=False)
         self._transformer.lock()
         self.transformerStarted.emit(self.frameData)
         self._transformer.transform(self.frameData)
