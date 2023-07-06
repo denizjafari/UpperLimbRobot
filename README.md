@@ -49,3 +49,18 @@ Transformers can be arranged in a pipeline, so that they can be run on streams
 of frames from a video. Core transformers are provided in transforms.py. They
 are usable in the application in conjunction with their respective widgets from 
 tranformer_widgets.py.
+
+
+### Pong Example
+To play pong, the following Transformers need to be selected:
+CameraSource > Scaler > Model > Metrics > Min/Max Selector > Pong Game
+
+Select the camera source and the model. Then press "Start" to start the
+tracking. Update the metrics in the Min/Max Selector. Then select the hand
+elevtion. Raise your hand as high as you can and press to select the max.
+Then reach to the bottom and press min. Then you can press "Connect" in the
+Pong Game Widget to connect to the paddle in the pong application.
+
+In the pong application, you can "Toggle" to start the game. The right paddle
+is controlled by the keys I and M, the left paddle is controlled by your left
+arm.

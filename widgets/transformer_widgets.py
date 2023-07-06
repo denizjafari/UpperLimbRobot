@@ -42,7 +42,7 @@ class ScalerWidget(TransformerWidget):
         """
         TransformerWidget.__init__(self, "Scaler", parent)
 
-        self.transformer = Scaler(640, 640)
+        self.transformer = Scaler(400, 400)
 
         self.heightSelector = QLineEdit(self)
         self.heightSelector.setText(str(640))
