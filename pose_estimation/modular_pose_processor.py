@@ -186,7 +186,6 @@ class ModularPoseProcessorWidget(QWidget):
     metricWidgets: MetricWidgetGroup
 
     def __init__(self,
-                 onClose: Callable[[], None],
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the ModularProcessorWidget.
@@ -245,8 +244,6 @@ class ModularPoseProcessorWidget(QWidget):
         self.frameData = FrameData()
         self.latency = 0.1
         self.lastLatency = 0.1
-
-        self.onClose = onClose
 
         handler = StatusLogHandler()
         handler.messageEmitted.connect(self.statusBar.setText)
@@ -343,6 +340,8 @@ class ModularPoseProcessorWidget(QWidget):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """
+        Stop the pipeline and close the widget.
         """
-        self.onClose()
+        if self.transformerHead.isRunning():
+            self.transformerHead.stop()
         event.accept()

@@ -9,12 +9,7 @@ import logging
 from typing import Optional
 from enum import Enum
 import time
-import sys
-
-try:
-    import pydevd
-except ModuleNotFoundError:
-    pydevd = None
+import importlib
 
 import io
 import csv
@@ -35,6 +30,12 @@ from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
+
+try:
+    importlib.import_module("pydevd")
+except ModuleNotFoundError:
+    pydevd = None
+    module_logger.debug("Multi threaded debugging not enabled")
 
 class FrameData:
     """

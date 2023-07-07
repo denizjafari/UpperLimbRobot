@@ -8,6 +8,7 @@ import logging
 import sys
 import os
 import json
+import importlib
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
@@ -26,24 +27,27 @@ def import_from(dir):
     for module in os.listdir(path):
         if module == '__init__.py' or module[-3:] != '.py':
             continue
-        __import__(dir + "." + module[:-3], locals(), globals())
+        importlib.import_module(dir + "." + module[:-3])
 
-def save():
+def save(window: ModularPoseProcessorWidget):
     state = {}
     state["modular_pose_processor_widget"] = {}
     window.save(state["modular_pose_processor_widget"])
     with open("state.json", "w") as file:
         json.dump(state, file, indent=2)
+        module_logger.debug("Saved state of modular_pose_processor_widget")
 
-def restore():
+def restore(window: ModularPoseProcessorWidget):
     state = {}
     try:
         with open("state.json") as file:
             state = json.load(file)
     except FileNotFoundError:
-        pass
+        state = {}
+
     if "modular_pose_processor_widget" in state:
         window.restore(state["modular_pose_processor_widget"])
+        module_logger.debug("Restored state of modular_pose_processor_widget")
 
 
 if __name__ == "__main__":
@@ -55,15 +59,16 @@ if __name__ == "__main__":
     import_from("models")
 
     app = QApplication(sys.argv)
-    window = ModularPoseProcessorWidget(save)
+    window = ModularPoseProcessorWidget()
     window.setWindowState(Qt.WindowState.WindowMaximized)
     window.setWindowTitle("Modular Pose Processor")
     window.show()
 
-    restore()
-
+    restore(window)
     module_logger.info("Ready")
 
     code = app.exec()
+    save(window)
+
     sys.exit(code)
     
