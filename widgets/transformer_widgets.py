@@ -563,6 +563,8 @@ class ButterworthWidget(TransformerWidget):
     
     
 class MinMaxWidget(TransformerWidget):
+    transformer: MinMaxTransformer
+
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
         """
@@ -572,7 +574,9 @@ class MinMaxWidget(TransformerWidget):
         self.transformer = MinMaxTransformer()
 
         self.updateButton = QPushButton("Update Metrics")
-        self.updateButton.clicked.connect(self.updateMetricsList)
+        self.updateButton.clicked.connect(lambda: \
+                                          self.updateMetricsList(
+            self.transformer.availableMetrics()))
         self.vLayout.addWidget(self.updateButton)
 
         self.transformerSelector = QComboBox(self)
@@ -590,16 +594,39 @@ class MinMaxWidget(TransformerWidget):
             self.transformerSelector.currentText()))
         self.vLayout.addWidget(self.minButton)
 
-        self.updateMetricsList()
+        self.updateMetricsList(self.transformer.availableMetrics())
 
-    def updateMetricsList(self) -> None:
+
+    def updateMetricsList(self, metrics) -> None:
         newTransformerSelector = QComboBox(self)
-        for metrics in self.transformer.availableMetrics():
-            newTransformerSelector.addItem(metrics)
+        for metric in metrics:
+            newTransformerSelector.addItem(metric)
         
         self.vLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
         self.transformerSelector.deleteLater()
         self.transformerSelector = newTransformerSelector
+
+
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the widget to a dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["availableMetrics"] = self.transformer.availableMetrics()
+        d["selectedMetric"] = self.transformerSelector.currentText()
+        d["min"] = self.transformer._min
+        d["max"] = self.transformer._max
+    
+
+    def restore(self, d: dict) -> None:
+        """
+        Save the state of the widget to a dictionary.
+        """
+        TransformerWidget.save(self, d)
+        self.updateMetricsList(d["availableMetrics"])
+        self.transformerSelector.setCurrentText(d["selectedMetric"])
+        self.transformer._min = d["min"]
+        self.transformer._max = d["max"]
 
     
 WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
