@@ -13,9 +13,10 @@ import logging
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
     QPushButton, QSlider, QHBoxLayout, QColorDialog, QComboBox
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
+from PySide6.QtGui import QColor
+
 from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
-
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, CsvExporter, \
     CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
@@ -61,8 +62,19 @@ class ScalerWidget(TransformerWidget):
         self.transformer.setTargetSize(dim)
         module_logger.info(f"Applied dimensions {dim}x{dim} to Scaler")
 
-    def __str__(self) -> str:
-        return "Scaler"
+    def save(self, d: dict) -> None:
+        """
+        Save the widget state to the given dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["height"] = int(self.heightSelector.text())
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the widget state from the given dictionary.
+        """
+        TransformerWidget.restore(self, d)
+        self.heightSelector.setText(str(d["height"]))
 
 
 class ImageMirrorWidget(TransformerWidget):
@@ -79,9 +91,6 @@ class ImageMirrorWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Mirror", parent)
 
         self.transformer = ImageMirror()
-    
-    def __str__(self) -> str:
-        return "Mirror"
 
 
 class ModelRunnerWidget(TransformerWidget):
@@ -102,8 +111,19 @@ class ModelRunnerWidget(TransformerWidget):
         self.modelSelector.modelSelected.connect(self.transformer.setModel)
         self.vLayout.addWidget(self.modelSelector)
 
-    def __str__(self) -> str:
-        return "Model"
+    def save(self, d: dict) -> None:
+        """
+        Save the widget state to the given dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["model"] = int(self.modelSelector.selectedModel())
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the widget state from the given dictionary.
+        """
+        TransformerWidget.restore(self, d)
+        self.modelSelector.setSelectedModel(d["model"])
 
 
 class LandmarkDrawerWidget(TransformerWidget):
@@ -140,9 +160,22 @@ class LandmarkDrawerWidget(TransformerWidget):
         self.chooseColorButton = QPushButton("Change color...", self)
         self.chooseColorButton.clicked.connect(self.colorDialog.open)
         self.vLayout.addWidget(self.chooseColorButton)
-    
-    def __str__(self) -> str:
-        return "Landmarks"
+
+    def save(self, d: dict) -> None:
+        """
+        Save the widget state to the given dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["markerRadius"] = self.markerRadiusSlider.value()
+        d["color"] = self.transformer.getRGBColor()
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the widget state from the given dictionary.
+        """
+        TransformerWidget.restore(self, d)
+        self.markerRadiusSlider.setValue(d["markerRadius"])
+        self.colorDialog.setCurrentColor(QColor(*d["color"]))
 
 
 class SkeletonDrawerWidget(TransformerWidget):
@@ -179,9 +212,22 @@ class SkeletonDrawerWidget(TransformerWidget):
         self.chooseColorButton = QPushButton("Change color...", self)
         self.chooseColorButton.clicked.connect(self.colorDialog.open)
         self.vLayout.addWidget(self.chooseColorButton)
-    
-    def __str__(self) -> str:
-        return "Skeleton"
+
+    def save(self, d: dict) -> None:
+        """
+        Save the widget state to the given dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["lineThickness"] = self.lineThicknessSlider.value()
+        d["color"] = self.transformer.getRGBColor()
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the widget state from the given dictionary.
+        """
+        TransformerWidget.restore(self, d)
+        self.lineThicknessSlider.setValue(d["lineThickness"])
+        self.colorDialog.setCurrentColor(QColor(*d["color"]))
 
 
 class RecorderLoader(QRunnable, QObject):
@@ -334,9 +380,6 @@ class RecorderTransformerWidget(TransformerWidget):
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
             module_logger.info("Started recording")
-
-    def __str__(self) -> str:
-        return "Recorder"
     
 
 class QCameraSourceWidget(TransformerWidget):
@@ -361,9 +404,20 @@ class QCameraSourceWidget(TransformerWidget):
 
     def close(self) -> None:
         self.videoSource.close()
-    
-    def __str__(self) -> str:
-        return "Camera Source"
+
+    def save(self, d: dict) -> None:
+        """
+        Save the widget state to the given dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["camera"] = self.cameraSelector.selectedCamera()
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the widget state from the given dictionary.
+        """
+        TransformerWidget.restore(self, d)
+        self.cameraSelector.setSelectedCamera(d["camera"])
 
 
 class BackgroundRemoverWidget(TransformerWidget):
@@ -378,9 +432,6 @@ class BackgroundRemoverWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Background Remover", parent)
         
         self.transformer = BackgroundRemover()
-    
-    def __str__(self) -> str:
-        return "BackgroundRemover"
 
 
 class VideoSourceWidget(TransformerWidget):
@@ -470,9 +521,6 @@ class VideoSourceWidget(TransformerWidget):
         """
         if self.videoSourceTransformer.videoSource:
             self.videoSourceTransformer.videoSource.close()
-
-    def __str__(self) -> str:
-        return "Video Source"
     
 
 class MetricViewWidget(TransformerWidget):
@@ -486,9 +534,7 @@ class MetricViewWidget(TransformerWidget):
         """
         TransformerWidget.__init__(self, "Metric View", parent)
         self.transformer = MetricTransformer()
-    
-    def __str__(self) -> str:
-        return "Metric View"
+
     
 class SlidingAverageWidget(TransformerWidget):
     """
@@ -501,10 +547,8 @@ class SlidingAverageWidget(TransformerWidget):
         """
         TransformerWidget.__init__(self, "Sliding Average", parent)
         self.transformer = SlidingAverageTransformer()
-    
-    def __str__(self) -> str:
-        return "Sliding Average"
-    
+
+
 class ButterworthWidget(TransformerWidget):
     """
     A widget to view the metrics.
@@ -517,8 +561,6 @@ class ButterworthWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Butterworth Transformer", parent)
         self.transformer = ButterworthTransformer()
     
-    def __str__(self) -> str:
-        return "Butterworth Transformer"
     
 class MinMaxWidget(TransformerWidget):
     def __init__(self,
@@ -558,6 +600,7 @@ class MinMaxWidget(TransformerWidget):
         self.vLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
         self.transformerSelector.deleteLater()
         self.transformerSelector = newTransformerSelector
+
     
 WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
 WIDGET_REGISTRY.register(VideoSourceWidget, "Video Source")

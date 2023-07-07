@@ -70,6 +70,7 @@ class KeypointSet:
         """
         raise NotImplementedError
 
+
 class PoseModel:
     """
     Abstract class to allow models to be exchanged easily.
@@ -81,7 +82,16 @@ class PoseModel:
 
         image - the image to analyze.
         """
-        raise NotImplementedError  
+        raise NotImplementedError
+
+    def key(self) -> str:
+        return self._key
+    
+    def setKey(self, key: str) -> None:
+        self._key = key
+
+    def __str__(self) -> None:
+        return self._key
 
 class SimpleKeypointSet(KeypointSet):
     keypoints: list[list[float]]

@@ -46,7 +46,10 @@ class Registry(QObject):
         Create an item by name. Either instantiate the class or calls the
         registered function.
         """
-        return self._items[key]()
+        widget = self._items[key]()
+        widget.setKey(key)
+
+        return widget
 
 
 MODEL_REGISTRY = Registry()

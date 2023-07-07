@@ -7,6 +7,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 import logging
 import sys
 import os
+import json
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
@@ -27,6 +28,24 @@ def import_from(dir):
             continue
         __import__(dir + "." + module[:-3], locals(), globals())
 
+def save():
+    state = {}
+    state["modular_pose_processor_widget"] = {}
+    window.save(state["modular_pose_processor_widget"])
+    with open("state.json", "w") as file:
+        json.dump(state, file, indent=4)
+
+def restore():
+    state = {}
+    try:
+        with open("state.json") as file:
+            state = json.load(file)
+    except FileNotFoundError:
+        pass
+    if "modular_pose_processor_widget" in state:
+        window.restore(state["modular_pose_processor_widget"])
+
+
 if __name__ == "__main__":
     loggingHandler = logging.StreamHandler(sys.stdout)
     loggingHandler.setLevel(logging.DEBUG)
@@ -36,12 +55,15 @@ if __name__ == "__main__":
     import_from("models")
 
     app = QApplication(sys.argv)
-    window = ModularPoseProcessorWidget()
+    window = ModularPoseProcessorWidget(save)
     window.setWindowState(Qt.WindowState.WindowMaximized)
     window.setWindowTitle("Modular Pose Processor")
     window.show()
 
+    restore()
+
     module_logger.info("Ready")
 
-    sys.exit(app.exec())
+    code = app.exec()
+    sys.exit(code)
     

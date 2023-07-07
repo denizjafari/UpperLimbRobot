@@ -45,12 +45,46 @@ class TransformerWidget(QGroupBox):
         self.removeButton.clicked.connect(self.onRemove)
         self.headLayout.addWidget(self.removeButton)
 
+        self._key = "Transformer Widget"
+
     def onActiveToggle(self) -> None:
+        """
+        Called when the active checkbox is toggled.
+        """
         self.transformer.setActive(self.activeCheckBox.isChecked())
     
     def onRemove(self) -> None:
+        """
+        Called when the remove button is clicked.
+        """
         self.close()
         self.removed.emit()
 
     def close(self) -> None:
+        """
+        Any cleanup of the underlying transformer should be done here.
+        """
         pass
+
+    def save(self, d: dict) -> None:
+        """
+        Store the state of the widget in the given dictionary.
+        """
+        d["active"] = self.activeCheckBox.isChecked()
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the widget from the given dictionary.
+        """
+        self.activeCheckBox.setChecked(d["active"])
+
+    
+    def key(self) -> str:
+        return self._key
+    
+    def setKey(self, key: str) -> None:
+        self._key = key
+
+    def __str__(self) -> None:
+        return self.key()
+    

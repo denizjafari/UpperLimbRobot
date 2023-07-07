@@ -112,6 +112,25 @@ class CameraSelector(QGroupBox):
             self.vLayout.addWidget(button)
             self.cameraButtons.append(button)
 
+    def selectedCamera(self) -> str:
+        """
+        Get the currently selected camera.
+        """
+        for button in self.cameraButtons:
+            if button.isChecked():
+                return button.cameraDevice.description()
+
+        return ""
+    
+    def setSelectedCamera(self, camera: str) -> None:
+        """
+        Set the currently selected camera.
+        """
+        for button in self.cameraButtons:
+            if button.cameraDevice.description() == camera:
+                button.setChecked(True)
+                break
+
 class ModelSelectorButton(QRadioButton):
     """
     A Radio button that allows selection of one model.
@@ -170,6 +189,23 @@ class ModelSelector(QGroupBox):
         button.selected.connect(self.modelSelected)
         self.layout().addWidget(button)
 
+    def selectedModel(self) -> str:
+        """
+        Get the name of the currently selected model.
+        """
+        for item in self.layout().children():
+            if isinstance(item, ModelSelectorButton):
+                if item.isChecked():
+                    return item.text()
+                
+        return ""
+    
+    def setSelectedModel(self, modelName: str) -> None:
+        for item in self.layout().children():
+            if isinstance(item, ModelSelectorButton):
+                if item.text() == modelName:
+                    item.setChecked(True)
+                    return
 
 class FileSelector(QWidget):
     """

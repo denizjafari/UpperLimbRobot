@@ -6,7 +6,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 
 from __future__ import annotations
 import time
-from typing import  Optional
+from typing import  Callable, Optional
 
 import logging
 import numpy as np
@@ -14,9 +14,9 @@ import numpy as np
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
     QLabel, QVBoxLayout, QComboBox, QSizePolicy
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
-from PySide6.QtGui import QPixmap, QImage
+from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 
-from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup, VetricalMetricWidgetGroup
+from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup
 from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
@@ -81,7 +81,7 @@ class PipelineWidget(QWidget):
         self.hLayout.addWidget(self.transformerSelector)
 
         self.addButton = QPushButton("Add Transformer", self)
-        self.addButton.clicked.connect(self.onAdd)
+        self.addButton.clicked.connect(lambda: self.onAdd(self.transformerSelector.currentText()))
         self.hLayout.addWidget(self.addButton)
 
         self.hLayout.addStretch()
@@ -91,17 +91,18 @@ class PipelineWidget(QWidget):
         self.onTransformerWidgetsChanged()
     
     @Slot()
-    def onAdd(self) -> None:
+    def onAdd(self, key: str) -> TransformerWidget:
         """
         When the add button is clicked to add a transformer
         """
-        text = self.transformerSelector.currentText()
-        widget: TransformerWidget = WIDGET_REGISTRY.createItem(text)
+        widget: TransformerWidget = WIDGET_REGISTRY.createItem(key)
 
         self._pipeline.append(widget.transformer)
         self.hTransformerLayout.addWidget(widget)
         widget.setParent(self)
         widget.removed.connect(lambda: self.removeTransformerWidget(widget))
+
+        return widget
 
     @Slot(TransformerWidget)
     def removeTransformerWidget(self, widget: TransformerWidget) -> None:
@@ -130,6 +131,26 @@ class PipelineWidget(QWidget):
         Return the pipeline of transformers.
         """
         return self._pipeline
+    
+    def save(self, d: dict) -> None:
+        lst = []
+
+        for widget in self.children():
+            if isinstance(widget, TransformerWidget):
+                inner_d = {}
+                widget.save(inner_d)
+                lst.append([str(widget), inner_d])
+
+        d["widgets"] = lst
+
+    def restore(self, d: dict) -> None:
+        for widget in self.children():
+            if isinstance(widget, TransformerWidget):
+                widget.deleteLater()
+
+        for widgetName, widgetDict in d["widgets"]:
+            widget = self.onAdd(widgetName)
+            widget.restore(widgetDict)
 
 class FrameProcessor(QRunnable, QObject):
     """
@@ -165,6 +186,7 @@ class ModularPoseProcessorWidget(QWidget):
     metricWidgets: MetricWidgetGroup
 
     def __init__(self,
+                 onClose: Callable[[], None],
                  parent: Optional[QWidget] = None) -> None:
         """
         Initialize the ModularProcessorWidget.
@@ -223,6 +245,8 @@ class ModularPoseProcessorWidget(QWidget):
         self.frameData = FrameData()
         self.latency = 0.1
         self.lastLatency = 0.1
+
+        self.onClose = onClose
 
         handler = StatusLogHandler()
         handler.messageEmitted.connect(self.statusBar.setText)
@@ -303,3 +327,23 @@ class ModularPoseProcessorWidget(QWidget):
     @Slot(float)
     def onLatencyUpdate(self, latency: float) -> None:
         self.latencyLabel.setText(f"Latency: {int(1000 * round(latency, 3))}ms")
+
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the widget to a dictionary.
+        """
+        d["pipeline"] = {}
+        self.pipelineWidget.save(d["pipeline"])
+        print(d)
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the widget from a dictionary.
+        """
+        self.pipelineWidget.restore(d["pipeline"])
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """
+        """
+        self.onClose()
+        event.accept()
