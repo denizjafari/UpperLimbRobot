@@ -193,7 +193,7 @@ class ModelSelector(QGroupBox):
         """
         Get the name of the currently selected model.
         """
-        for item in self.layout().children():
+        for item in self.children():
             if isinstance(item, ModelSelectorButton):
                 if item.isChecked():
                     return item.text()
@@ -201,7 +201,7 @@ class ModelSelector(QGroupBox):
         return ""
     
     def setSelectedModel(self, modelName: str) -> None:
-        for item in self.layout().children():
+        for item in self.children():
             if isinstance(item, ModelSelectorButton):
                 if item.text() == modelName:
                     item.setChecked(True)

@@ -334,7 +334,6 @@ class ModularPoseProcessorWidget(QWidget):
         """
         d["pipeline"] = {}
         self.pipelineWidget.save(d["pipeline"])
-        print(d)
 
     def restore(self, d: dict) -> None:
         """

@@ -258,19 +258,19 @@ class PongGameWindow(QWidget):
         Initialize the window for playing pong.
         """
         QWidget.__init__(self)
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
 
         self.game = PongGame()
-        self.layout.addWidget(self.game)
+        self.vLayout.addWidget(self.game)
 
         self.toggleButton = QPushButton("Toggle")
         self.toggleButton.clicked.connect(self.game.toggle)
-        self.layout.addWidget(self.toggleButton)
+        self.vLayout.addWidget(self.toggleButton)
 
         self.toggleButton = QPushButton("Reset")
         self.toggleButton.clicked.connect(self.game.reset)
-        self.layout.addWidget(self.toggleButton)
+        self.vLayout.addWidget(self.toggleButton)
 
         self.setFocus()
 

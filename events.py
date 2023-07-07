@@ -186,6 +186,8 @@ class Client(QObject, QRunnable):
                 timedOut = True
             except ConnectionAbortedError:
                 timedOut = True
+            except ConnectionResetError:
+                timedOut = True
 
             if not timedOut:
                 if data is None:

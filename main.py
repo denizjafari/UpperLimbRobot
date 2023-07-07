@@ -33,7 +33,7 @@ def save():
     state["modular_pose_processor_widget"] = {}
     window.save(state["modular_pose_processor_widget"])
     with open("state.json", "w") as file:
-        json.dump(state, file, indent=4)
+        json.dump(state, file, indent=2)
 
 def restore():
     state = {}

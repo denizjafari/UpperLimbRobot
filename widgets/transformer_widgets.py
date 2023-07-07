@@ -116,7 +116,7 @@ class ModelRunnerWidget(TransformerWidget):
         Save the widget state to the given dictionary.
         """
         TransformerWidget.save(self, d)
-        d["model"] = int(self.modelSelector.selectedModel())
+        d["model"] = self.modelSelector.selectedModel()
 
     def restore(self, d: dict) -> None:
         """

@@ -165,6 +165,7 @@ class PongServerWidget(TransformerWidget):
         self.client = Client()
         self.transformer.setClient(self.client)
         self.client.start()
+        module_logger.info("Connected to pong server")
 
     def close(self) -> None:
         if self.client is not None:
