@@ -8,7 +8,8 @@ from typing import Optional
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
-    QButtonGroup, QRadioButton, QVBoxLayout
+    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QLineEdit
+from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import Qt
 from events import Client
 from pose_estimation.registry import WIDGET_REGISTRY
@@ -135,6 +136,18 @@ class PongServerWidget(TransformerWidget):
 
         self.transformer = PongClient()
 
+        self.formLayout = QFormLayout()
+        self.vLayout.addLayout(self.formLayout)
+
+        self.hostField = QLineEdit()
+        self.hostField.setText("localhost")
+        self.formLayout.addRow("Host", self.hostField)
+
+        self.portField = QLineEdit()
+        self.portField.setText("3000")
+        self.portField.setValidator(QIntValidator(1024, 65535))
+        self.formLayout.addRow("Port", self.portField)
+
         self.connectButton = QPushButton("Connect", self)
         self.connectButton.clicked.connect(self.connectClient)
         self.vLayout.addWidget(self.connectButton)
@@ -162,7 +175,8 @@ class PongServerWidget(TransformerWidget):
         if self.client is not None:
             self.client.close()
 
-        self.client = Client()
+        address = (self.hostField.text(), int(self.portField.text()))
+        self.client = Client(address)
         self.transformer.setClient(self.client)
         self.client.start()
         module_logger.info("Connected to pong server")

@@ -78,7 +78,8 @@ class Server(QObject, QRunnable):
     conns: list[socket.socket]
     msgQueue: Queue[Event]
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 address:tuple[Optional[str], int]=("localhost", PORT)) -> None:
         QObject.__init__(self)
         QRunnable.__init__(self)
 
@@ -87,7 +88,7 @@ class Server(QObject, QRunnable):
         self.msgQueue = Queue()
 
         self.sel = DefaultSelector()
-        self.sock = socket.create_server(("localhost", PORT))
+        self.sock = socket.create_server(address)
         self.sock.listen(5)
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
         self.shouldClose = False
@@ -160,7 +161,8 @@ class Server(QObject, QRunnable):
 class Client(QObject, QRunnable):
     eventReceived = Signal(Event)
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 address:tuple[Optional[str], int]=("localhost", PORT)) -> None:
         """
         Initialize a new client. It connects to localhost:PORT.
         """
@@ -168,7 +170,7 @@ class Client(QObject, QRunnable):
         QRunnable.__init__(self)
 
         self.msgQueue: Queue[Event] = Queue()
-        self.conn = socket.create_connection(("localhost", PORT))
+        self.conn = socket.create_connection(address)
         self.conn.settimeout(0.001)
 
         self.shouldClose = False
@@ -186,8 +188,10 @@ class Client(QObject, QRunnable):
                 timedOut = True
             except ConnectionAbortedError:
                 timedOut = True
+                break
             except ConnectionResetError:
                 timedOut = True
+                break
 
             if not timedOut:
                 if data is None:
