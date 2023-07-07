@@ -186,8 +186,7 @@ class PongGame(QLabel):
         """
         if self.ball.leftEdge() <= 0 \
             or self.ball.rightEdge() >= self.sideLength:
-            self.lostGame = True
-            self._timer.stop()
+            self.stop()
         elif self.ball.topEdge() <= 0 \
             or self.ball.bottomEdge() >= self.sideLength:
             self.ballDirection = self.ballDirection[0], \
@@ -230,6 +229,16 @@ class PongGame(QLabel):
         else:
             self.start()
 
+    def reset(self) -> None:
+        self.ballDirection = 1, 2
+        self.lostGame = False
+        self.isRunning = False
+
+        self.ball = Ball()
+        self.leftPaddle = Paddle()
+        self.rightPaddle = Paddle(side=RIGHT)
+
+
     def paintEvent(self, event: QPaintEvent) -> None:
         """
         Paint the game state to the screen.
@@ -257,6 +266,10 @@ class PongGameWindow(QWidget):
 
         self.toggleButton = QPushButton("Toggle")
         self.toggleButton.clicked.connect(self.game.toggle)
+        self.layout.addWidget(self.toggleButton)
+
+        self.toggleButton = QPushButton("Reset")
+        self.toggleButton.clicked.connect(self.game.reset)
         self.layout.addWidget(self.toggleButton)
 
         self.setFocus()
