@@ -10,8 +10,20 @@ In the future, interactive games for rehabilitation will be built using it.
 ## Technological Overview
 
 The framework is programmed in Python, since most important pose analysis models
-offer bindings for Python. The Qt framework is used with the PySide 6 bindings
+offer bindings for Python. The Qt framework with the PySide 6 bindings
 for Python is used to build the user interface.
+
+
+## Setup
+### Prerequisites
+- Conda
+- Python 3.9
+
+### Installation
+1. Clone the repository to your local machine.
+2. Create a new conda environment with Python 3.9.
+3. Activate the environment.
+4. Install the requirements with `pip install -r requirements.txt`.
 
 
 ## Framework details

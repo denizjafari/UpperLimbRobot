@@ -20,6 +20,9 @@ module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
 def import_from(dir):
+    """
+    Import all modules from a directory relative to the script's location.
+    """
     basePath = os.path.dirname(__file__)
     basePath = basePath + "/" if basePath != "" else ""
     path = basePath + dir
@@ -30,6 +33,9 @@ def import_from(dir):
         importlib.import_module(dir + "." + module[:-3])
 
 def save(window: ModularPoseProcessorWidget):
+    """
+    Save the window to the state.json data file.
+    """
     state = {}
     state["modular_pose_processor_widget"] = {}
     window.save(state["modular_pose_processor_widget"])
@@ -38,6 +44,9 @@ def save(window: ModularPoseProcessorWidget):
         module_logger.debug("Saved state of modular_pose_processor_widget")
 
 def restore(window: ModularPoseProcessorWidget):
+    """
+    Restore the window from the state.json data file.
+    """
     state = {}
     try:
         with open("state.json") as file:
