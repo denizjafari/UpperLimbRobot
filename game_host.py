@@ -1,3 +1,9 @@
+"""
+Game Host from which games can be launched and clients can connect to.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
+"""
+
 import sys
 from typing import Optional
 
@@ -12,6 +18,10 @@ from game_hosts.snake import SnakeGame, SnakeServerAdapter
 
 def addSnakeGame(window: QStackedWidget,
                  address: tuple[Optional[str], int]) -> None:
+    """
+    Add the snake game to the stacked widget window. Start the event server
+    and connect it to the game.
+    """
     global game, adapter, server
     server = Server(address)
     server.start()
@@ -23,6 +33,10 @@ def addSnakeGame(window: QStackedWidget,
 
 def addPongGame(window: QStackedWidget,
                 address: tuple[Optional[str], int]) -> None:
+    """
+    Add the pong game to the stacked widget window. Start the event server
+    and connect it to the game.
+    """
     global game, adapter, server
     server = Server(address)
     server.start()

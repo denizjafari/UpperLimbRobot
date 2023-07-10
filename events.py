@@ -1,5 +1,7 @@
 """
 Implementation of a simple event-based network protocol.
+
+Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from __future__ import annotations
