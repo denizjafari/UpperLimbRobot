@@ -1103,7 +1103,7 @@ class MinMaxTransformer(TransformerStage):
 
 
 class DerivativeTransformer(TransformerStage):
-    prev_metrics: dict[str, list[float]]
+    prev_metrics: dict[str, list[tuple[float, float]]]
 
     def __init__(self) -> None:
         """
@@ -1115,7 +1115,7 @@ class DerivativeTransformer(TransformerStage):
     
     def transform(self, frameData: FrameData) -> None:
         """
-        Inject min and max for each metric.
+        Inject the first derivative of each metric.
         """
         metrics = frameData["metrics"]
         derivatives = {}
@@ -1123,9 +1123,21 @@ class DerivativeTransformer(TransformerStage):
         if self.active():
             for key in metrics.keys():
                 if key in self.prev_metrics:
-                    delta = metrics[key] - self.prev_metrics[key]
-                    derivatives[key] = [metrics[key], delta]
-                self.prev_metrics[key] = metrics[key]
+                    values = self.prev_metrics[key]
+                else:
+                    values = [(0, 0), (0, 0), (0, 0)]
+
+                for degree in range(len(values)):
+                    if degree == 0:
+                        values[0] = (values[0][1], metrics[key])
+                        derivatives[key] = [metrics[key]]
+                    else:
+                        previous = values[degree - 1]
+                        delta = previous[1] - previous[0]
+                        values[degree] = (values[degree][1], delta)
+                        derivatives[key].append(delta)
+
+                self.prev_metrics[key] = values
 
             frameData["metrics_derivatives"] = derivatives
 
