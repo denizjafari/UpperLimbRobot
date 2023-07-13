@@ -19,7 +19,7 @@ from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
-def import_from(dir):
+def importFrom(dir):
     """
     Import all modules from a directory relative to the script's location.
     """
@@ -64,8 +64,8 @@ if __name__ == "__main__":
     loggingHandler.setLevel(logging.DEBUG)
     logging.getLogger().addHandler(loggingHandler)
 
-    import_from("widgets")
-    import_from("models")
+    importFrom("widgets")
+    importFrom("models")
 
     app = QApplication(sys.argv)
     window = ModularPoseProcessorWidget()

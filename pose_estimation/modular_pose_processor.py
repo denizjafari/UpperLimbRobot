@@ -259,7 +259,9 @@ class ModularPoseProcessorWidget(QWidget):
                                              minimumMetrics=frameData["metrics_min"] \
                                                 if "metrics_min" in frameData else None,
                                              maximumMetrics=frameData["metrics_max"] \
-                                                if "metrics_max" in frameData else None)
+                                                if "metrics_max" in frameData else None,
+                                             derivativeMetrics=frameData["metrics_derivatives"] \
+                                                if "metrics_derivatives" in frameData else None)
             
         nextFrameRate = self.frameData.frameRate
 

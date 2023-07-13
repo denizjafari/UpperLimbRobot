@@ -32,7 +32,7 @@ module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
 try:
-    importlib.import_module("pydevd")
+    pydevd = importlib.import_module("pydevd")
 except ModuleNotFoundError:
     pydevd = None
     module_logger.debug("Multi threaded debugging not enabled")
@@ -1098,5 +1098,35 @@ class MinMaxTransformer(TransformerStage):
         if self.active():
             frameData["metrics_max"] = self._max.copy()
             frameData["metrics_min"] = self._min.copy()
+
+        self.next(frameData)
+
+
+class DerivativeTransformer(TransformerStage):
+    prev_metrics: dict[str, list[float]]
+
+    def __init__(self) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True)
+        self.prev_metrics = {}
+
+    
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Inject min and max for each metric.
+        """
+        metrics = frameData["metrics"]
+        derivatives = {}
+
+        if self.active():
+            for key in metrics.keys():
+                if key in self.prev_metrics:
+                    delta = metrics[key] - self.prev_metrics[key]
+                    derivatives[key] = [metrics[key], delta]
+                self.prev_metrics[key] = metrics[key]
+
+            frameData["metrics_derivatives"] = derivatives
 
         self.next(frameData)

@@ -19,7 +19,7 @@ from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, CsvExporter, \
-    CsvImporter, ImageMirror, LandmarkDrawer, MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
+    CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
         RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
@@ -628,6 +628,15 @@ class MinMaxWidget(TransformerWidget):
         self.transformer._min = d["min"]
         self.transformer._max = d["max"]
 
+class DerivativeWidget(TransformerWidget):
+    def __init__(self,
+                 parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerWidget.__init__(self, "Derivatives", parent)
+        self.transformer = DerivativeTransformer()
+
     
 WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
 WIDGET_REGISTRY.register(VideoSourceWidget, "Video Source")
@@ -642,3 +651,4 @@ WIDGET_REGISTRY.register(MetricViewWidget, "Metrics")
 WIDGET_REGISTRY.register(SlidingAverageWidget, "Sliding Average")
 WIDGET_REGISTRY.register(ButterworthWidget, "Butterworth Filter")
 WIDGET_REGISTRY.register(MinMaxWidget, "Min/Max Selector")
+WIDGET_REGISTRY.register(DerivativeWidget, "Derivatives")

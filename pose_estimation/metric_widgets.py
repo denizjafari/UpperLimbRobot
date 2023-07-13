@@ -6,6 +6,7 @@ Pyqtpgrapg is much faster.
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
+from collections import defaultdict
 from typing import Optional
 import logging
 
@@ -47,6 +48,13 @@ class MetricWidget:
         """
         Add a value to the graph. This corresponds to the y value of the next
         point in the timeline.
+        """
+        raise NotImplementedError
+    
+    def addValueTo(self, key: str, value: float) -> None:
+        """
+        Add a value to the graph to a specific series. The value corresponds
+        to the y value of the next point in the timeline.
         """
         raise NotImplementedError
 
@@ -112,7 +120,8 @@ class GridMetricWidgetGroup(MetricWidgetGroup):
     def updateMetrics(self,
                       metrics: dict[str, list[float]],
                       minimumMetrics: Optional[dict[str, list[float]]] = None,
-                      maximumMetrics: Optional[dict[str, list[float]]] = None) -> None:
+                      maximumMetrics: Optional[dict[str, list[float]]] = None,
+                      derivativeMetrics: Optional[dict[str, list[float]]] = None) -> None:
        """
        Update the metric views.
        """
@@ -127,7 +136,16 @@ class GridMetricWidgetGroup(MetricWidgetGroup):
                 self.gridLayout.addWidget(widget, row, column)
             else:
                 widget = self._metricViews[col]
-            self._metricViews[col].addValue(metrics[col])
+
+            if derivativeMetrics is not None and col in derivativeMetrics:
+                derivatives = derivativeMetrics[col]
+                self._metricViews[col].addValue(derivatives[0])
+                if len(derivatives) > 1:
+                    self._metricViews[col].addValueTo("speed", derivatives[1])
+                if len(derivatives) > 2:
+                    self._metricViews[col].addValueTo("acceleration", derivatives[2])
+            else:
+                self._metricViews[col].addValue(metrics[col])
 
             if minimumMetrics is not None and col in minimumMetrics:
                 self._metricViews[col].setMinimum(minimumMetrics[col])
@@ -180,8 +198,14 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
         self._maximum = 0
         self._minimumLine = None
         self._maximumLine = None
-        self.line = None
-        self.values = [0] * max_datapoints
+        self.maxDataPoints = max_datapoints
+        self.values = defaultdict(self.newSeries)
+
+    def newSeries(self) -> tuple[list, pg.PlotDataItem]:
+        data = [0] * self.maxDataPoints
+        line = self.plot(data)
+
+        return data, line
 
     def setMinimum(self, value: Optional[float]) -> None:
         if value == self._minimum:
@@ -208,9 +232,11 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
         Add a value to the graph. This corresponds to the y value of the next
         point in the timeline.
         """
-        self.values.append(value)
-        self.values.pop(0)
-        if self.line is None:
-            self.line = self.plot(self.values)
-        else:
-            self.line.setData(self.values)
+        self.addValueTo("", value)
+
+    def addValueTo(self, key: str, value: float) -> None:
+        series, line = self.values[key]
+        series.append(value)
+        series.pop(0)
+        line.setData(series)
+            
