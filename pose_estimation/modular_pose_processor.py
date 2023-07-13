@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
-    QLabel, QVBoxLayout, QComboBox, QSizePolicy
+    QLabel, QVBoxLayout, QComboBox, QSizePolicy, QScrollArea
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 

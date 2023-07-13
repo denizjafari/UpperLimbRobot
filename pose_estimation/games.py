@@ -270,6 +270,7 @@ class PongClient(TransformerStage):
 
         self.client = None
         self.mode = "absolute"
+        self.followMetric = ""
 
     def setClient(self, client: Client) -> None:
         """
@@ -284,6 +285,12 @@ class PongClient(TransformerStage):
         self.mode = mode
         module_logger.info(f"Pong movement mode set to {mode}")
 
+    def availableMetrics(self) -> list[str]:
+        return self._availableMetrics
+    
+    def setFollowMetrics(self, metric: str) -> None:
+        self.followMetric = metric
+
     def transform(self, frameData: FrameData) -> None:
         """
         Check wether the user has performed a chicken wing. If so, emit the
@@ -291,19 +298,26 @@ class PongClient(TransformerStage):
         shoulder. Before the signal is emitted, the elbow must be below the shoulder
         plus some margin.
         """
+        if "metrics" in frameData:
+            self._availableMetrics = list(frameData["metrics"].keys())
+
         if self.active() and not frameData.dryRun and "metrics" in frameData \
             and self.client is not None and "metrics_max" in frameData \
-                and "metrics_min" in frameData:
+                and "metrics_min" in frameData \
+                    and self.followMetric in frameData["metrics"] \
+                        and self.followMetric in frameData["metrics_max"] \
+                            and self.followMetric in frameData["metrics_min"]:
 
-            delta = frameData["metrics_max"]["left_hand_elevation"] \
-                    - frameData["metrics_min"]["left_hand_elevation"]
+            delta = frameData["metrics_max"][self.followMetric] \
+                    - frameData["metrics_min"][self.followMetric]
 
-            target = (frameData["metrics"]["left_hand_elevation"] \
-                    - frameData["metrics_min"]["left_hand_elevation"]) / delta
+            target = (frameData["metrics"][self.followMetric] \
+                    - frameData["metrics_min"][self.followMetric]) / delta
+
+            frameData["metrics"]["target"] = target
 
             if self.mode == "absolute":
                 event = Event("moveTo", [target])
-                frameData["metrics"]["target"] = target
                 self.client.send(event)
             elif self.mode == "threshold":
                 if target > 0.8:

@@ -8,7 +8,7 @@ from typing import Optional
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
-    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QLineEdit
+    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QLineEdit, QComboBox
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import Qt
 from events import Client
@@ -152,6 +152,15 @@ class PongServerWidget(TransformerWidget):
         self.connectButton.clicked.connect(self.connectClient)
         self.vLayout.addWidget(self.connectButton)
 
+        self.metricDropdown = QComboBox(self)
+        self.vLayout.addWidget(self.metricDropdown)
+
+        self.updateButton = QPushButton("Update", self)
+        self.updateButton.clicked.connect(lambda: \
+                                          self.updateMetricsList(
+            self.transformer.availableMetrics()))
+        self.vLayout.addWidget(self.updateButton)
+
         self.buttonLayout = QVBoxLayout()
         self.vLayout.addLayout(self.buttonLayout)
 
@@ -171,6 +180,17 @@ class PongServerWidget(TransformerWidget):
         
         self.client = None
 
+    def updateMetricsList(self, metrics) -> None:
+        newMetricDropdown = QComboBox(self)
+        for metric in metrics:
+            newMetricDropdown.addItem(metric)
+
+        newMetricDropdown.currentTextChanged.connect(self.transformer.setFollowMetrics)
+        
+        self.vLayout.replaceWidget(self.metricDropdown, newMetricDropdown)
+        self.metricDropdown.deleteLater()
+        self.metricDropdown = newMetricDropdown
+
     def connectClient(self) -> None:
         if self.client is not None:
             self.client.close()
@@ -184,6 +204,23 @@ class PongServerWidget(TransformerWidget):
     def close(self) -> None:
         if self.client is not None:
             self.client.close()
+
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the widget to a dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["availableMetrics"] = self.transformer.availableMetrics()
+        d["selectedMetric"] = self.transformer.followMetric
+    
+
+    def restore(self, d: dict) -> None:
+        """
+        Save the state of the widget to a dictionary.
+        """
+        TransformerWidget.save(self, d)
+        self.updateMetricsList(d["availableMetrics"])
+        self.metricDropdown.setCurrentText(d["selectedMetric"])
 
     def __str__(self) -> str:
         return "Pong Server"
