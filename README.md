@@ -26,6 +26,30 @@ for Python is used to build the user interface.
 4. Install the requirements with `pip install -r requirements.txt`.
 
 
+## Games
+The framework comes with a few games that can be played using the pose tracking
+models. The games are implemented in the game_hosts directory. The game_host.py
+is a separate application and serves as the entry point into the games. Interaction
+between the pose tracking software and the game is done through a TCP connection.
+This allows people to join from a different device altogether.
+
+
+### Pong Example
+To play pong, the following Transformers need to be selected:
+CameraSource > Model > Min/Max Selector > Pong Game
+
+Select the camera source and the model. Then press "Start" to start the
+tracking. Update the metrics in the Min/Max Selector. Then select the left hand
+elevtion. Raise your hand as high as you can and press to select the max.
+Then reach to the bottom and press min. Then you can press "Connect" in the
+Pong Game Widget to connect to the paddle in the pong application.
+
+In the pong application, you can "Toggle" to start the game. The right paddle
+is controlled by the up and down keys, the left paddle is controlled by your left
+arm (or alternatively with the W and S keys). After losing a game, you can "Reset"
+the game to start again.
+
+
 ## Framework details
 
 ### Directory Structure
@@ -58,22 +82,8 @@ transformer widget should exist, which allows to add and modify a transformer
 through the user interface.
 
 Transformers can be arranged in a pipeline, so that they can be run on streams
-of frames from a video. Core transformers are provided in transforms.py. They
-are usable in the application in conjunction with their respective widgets from 
-tranformer_widgets.py.
+of frames from a video. Pipelines itself can also be part of a bigger pipeline,
+allowing endless ways to compose transformers.
 
-
-### Pong Example
-To play pong, the following Transformers need to be selected:
-CameraSource > Model > Min/Max Selector > Pong Game
-
-Select the camera source and the model. Then press "Start" to start the
-tracking. Update the metrics in the Min/Max Selector. Then select the left hand
-elevtion. Raise your hand as high as you can and press to select the max.
-Then reach to the bottom and press min. Then you can press "Connect" in the
-Pong Game Widget to connect to the paddle in the pong application.
-
-In the pong application, you can "Toggle" to start the game. The right paddle
-is controlled by the up and down keys, the left paddle is controlled by your left
-arm (or alternatively with the W and S keys). After losing a game, you can "Reset"
-the game to start again.
+Core transformers are provided in transforms.py. They are usable in the application
+in conjunction with their respective widgets from tranformer_widgets.py.
