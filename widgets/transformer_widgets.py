@@ -105,10 +105,17 @@ class ModelRunnerWidget(TransformerWidget):
         """
         TransformerWidget.__init__(self, "Model", parent)
 
-        self.transformer = ModelRunner()
+        self.transformer = Pipeline()
+        self.modelTransformer = ModelRunner()
+        self.metricTransformer = MetricTransformer()
+        self.derivativeTransformer = DerivativeTransformer()
+
+        self.transformer.append(self.modelTransformer)
+        self.transformer.append(self.metricTransformer)
+        self.transformer.append(self.derivativeTransformer)
 
         self.modelSelector = ModelSelector(self)
-        self.modelSelector.modelSelected.connect(self.transformer.setModel)
+        self.modelSelector.modelSelected.connect(self.modelTransformer.setModel)
         self.vLayout.addWidget(self.modelSelector)
 
     def save(self, d: dict) -> None:

@@ -20,7 +20,7 @@ from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGr
 from pose_estimation.registry import WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
-    QImageProvider, Transformer, TransformerHead
+    QImageProvider, Scaler, Transformer, TransformerHead
 
 class StatusLogHandler(QObject):
     """
@@ -69,9 +69,11 @@ class PipelineWidget(QWidget):
 
         self.frameDataProvider = FrameDataProvider()
         self.imageProvider = QImageProvider()
+        self.scaler = Scaler(400, 400)
         self.qThreadPool = QThreadPool.globalInstance()
         self._pipeline = Pipeline()
-        self._pipeline.setNextTransformer(self.imageProvider)
+        self._pipeline.setNextTransformer(self.scaler)
+        self.scaler.setNextTransformer(self.imageProvider)
         self.imageProvider.setNextTransformer(self.frameDataProvider)
 
         self.hTransformerLayout = QHBoxLayout()
