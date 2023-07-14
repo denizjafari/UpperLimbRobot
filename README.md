@@ -65,14 +65,15 @@ tranformer_widgets.py.
 
 ### Pong Example
 To play pong, the following Transformers need to be selected:
-CameraSource > Scaler > Model > Metrics > Min/Max Selector > Pong Game
+CameraSource > Model > Min/Max Selector > Pong Game
 
 Select the camera source and the model. Then press "Start" to start the
-tracking. Update the metrics in the Min/Max Selector. Then select the hand
+tracking. Update the metrics in the Min/Max Selector. Then select the left hand
 elevtion. Raise your hand as high as you can and press to select the max.
 Then reach to the bottom and press min. Then you can press "Connect" in the
 Pong Game Widget to connect to the paddle in the pong application.
 
 In the pong application, you can "Toggle" to start the game. The right paddle
-is controlled by the keys I and M, the left paddle is controlled by your left
-arm.
+is controlled by the up and down keys, the left paddle is controlled by your left
+arm (or alternatively with the W and S keys). After losing a game, you can "Reset"
+the game to start again.

@@ -179,6 +179,8 @@ class PongGame(QLabel):
         self.isRunning = False
         self._timer.start()
 
+        self.setFocus()
+
     def updateState(self) -> None:
         """
         Move the ball and paddles and check for collisions. Then paint the new
@@ -229,6 +231,8 @@ class PongGame(QLabel):
         else:
             self.start()
 
+        self.setFocus()
+
     def reset(self) -> None:
         self.ballDirection = 1, 2
         self.lostGame = False
@@ -237,6 +241,8 @@ class PongGame(QLabel):
         self.ball = Ball()
         self.leftPaddle = Paddle()
         self.rightPaddle = Paddle(side=RIGHT)
+
+        self.setFocus()
 
 
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -251,6 +257,35 @@ class PongGame(QLabel):
         self.rightPaddle.paint(painter)
         
         painter.end()
+
+    def keyPressEvent(self, e: QKeyEvent) -> None:
+        """
+        Handle key presses.
+        """
+        key = e.key()
+        if key == Qt.Key_W:
+            self.leftPaddle.movingUp = True
+        elif key == Qt.Key_S:
+            self.leftPaddle.movingDown = True
+        elif key == Qt.Key_Up:
+            self.rightPaddle.movingUp = True
+        elif key == Qt.Key_Down:
+            self.rightPaddle.movingDown = True
+
+    def keyReleaseEvent(self, e: QKeyEvent) -> None:
+        """
+        Handle key releases.
+        """
+        key = e.key()
+        if key == Qt.Key_W:
+            self.leftPaddle.movingUp = False
+        elif key == Qt.Key_S:
+            self.leftPaddle.movingDown = False
+        elif key == Qt.Key_Up:
+            self.rightPaddle.movingUp = False
+        elif key == Qt.Key_Down:
+            self.rightPaddle.movingDown = False
+
 
 class PongGameWindow(QWidget):
     def __init__(self) -> None:
@@ -271,36 +306,6 @@ class PongGameWindow(QWidget):
         self.toggleButton = QPushButton("Reset")
         self.toggleButton.clicked.connect(self.game.reset)
         self.vLayout.addWidget(self.toggleButton)
-
-        self.setFocus()
-
-    def keyPressEvent(self, e: QKeyEvent) -> None:
-        """
-        Handle key presses.
-        """
-        key = e.key()
-        if key == Qt.Key_Q:
-            self.game.leftPaddle.movingUp = True
-        elif key == Qt.Key_Y:
-            self.game.leftPaddle.movingDown = True
-        elif key == Qt.Key_I:
-            self.game.rightPaddle.movingUp = True
-        elif key == Qt.Key_M:
-            self.game.rightPaddle.movingDown = True
-
-    def keyReleaseEvent(self, e: QKeyEvent) -> None:
-        """
-        Handle key releases.
-        """
-        key = e.key()
-        if key == Qt.Key_Q:
-            self.game.leftPaddle.movingUp = False
-        elif key == Qt.Key_Y:
-            self.game.leftPaddle.movingDown = False
-        elif key == Qt.Key_I:
-            self.game.rightPaddle.movingUp = False
-        elif key == Qt.Key_M:
-            self.game.rightPaddle.movingDown = False
 
 class PongServerAdapter:
     def __init__(self, pongGame: PongGameWindow) -> None:
