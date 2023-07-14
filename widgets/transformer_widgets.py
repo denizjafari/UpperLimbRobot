@@ -32,8 +32,8 @@ module_logger.setLevel(logging.DEBUG)
 
 class ScalerWidget(TransformerWidget):
     """
-    Widget wrapper around the Scaler transformer exposing the target size
-    property in the ui.
+    Scales an image to a square size using padding to keep the frame from
+    tearing. Requires a frame source before it.
     """
     transformer: Scaler
 
@@ -79,8 +79,7 @@ class ScalerWidget(TransformerWidget):
 
 class ImageMirrorWidget(TransformerWidget):
     """
-    Widget wrapper around the ImageMirror transformer exposing the target size
-    property in the ui.
+    Mirrors the frame horizontally. Requires a frame source before it.
     """
     transformer: ImageMirror
 
@@ -95,6 +94,7 @@ class ImageMirrorWidget(TransformerWidget):
 
 class ModelRunnerWidget(TransformerWidget):
     """
+    Runs a model and injects the keypoints. Requires a frame source before it.
     """
     transformer: ModelRunner
 
@@ -128,6 +128,7 @@ class ModelRunnerWidget(TransformerWidget):
 
 class LandmarkDrawerWidget(TransformerWidget):
     """
+    Draws landmarks on the frame. Requires a frame source and a model before it.
     """
     transformer: LandmarkDrawer
 
@@ -180,6 +181,8 @@ class LandmarkDrawerWidget(TransformerWidget):
 
 class SkeletonDrawerWidget(TransformerWidget):
     """
+    Draws a skeleton on the image. Requires a frame source and a model before
+    it.
     """
     transformer: SkeletonDrawer
 
@@ -383,6 +386,10 @@ class RecorderTransformerWidget(TransformerWidget):
     
 
 class QCameraSourceWidget(TransformerWidget):
+    """
+    Grabs frames from a QCamera and injects them into the frameData.
+    """
+    
     videoSource: QVideoSource
     transformer: VideoSourceTransformer
 
@@ -422,7 +429,7 @@ class QCameraSourceWidget(TransformerWidget):
 
 class BackgroundRemoverWidget(TransformerWidget):
     """
-    Removes the background from a frame.
+    Removes the background from a frame. Requires a video source before it.
     """
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
@@ -525,7 +532,7 @@ class VideoSourceWidget(TransformerWidget):
 
 class MetricViewWidget(TransformerWidget):
     """
-    A widget to view the metrics.
+    Calculates the metrics from a model's output. Requires a model before it.
     """
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
@@ -538,7 +545,8 @@ class MetricViewWidget(TransformerWidget):
     
 class SlidingAverageWidget(TransformerWidget):
     """
-    A widget to view the metrics.
+    Smoothes out metrics data using a sliding average over the most recent
+    values. Requires a metrics transformer before it.
     """
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
@@ -551,7 +559,8 @@ class SlidingAverageWidget(TransformerWidget):
 
 class ButterworthWidget(TransformerWidget):
     """
-    A widget to view the metrics.
+    Smoothes out metrics data using a Butterworth filter. Requires a metrics
+    transformer before it.
     """
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
@@ -563,6 +572,10 @@ class ButterworthWidget(TransformerWidget):
     
     
 class MinMaxWidget(TransformerWidget):
+    """
+    Injects minimum and maximum into the frame data object. Requires a metrics
+    transformer before it.
+    """
     transformer: MinMaxTransformer
 
     def __init__(self,
@@ -598,6 +611,9 @@ class MinMaxWidget(TransformerWidget):
 
 
     def updateMetricsList(self, metrics) -> None:
+        """
+        Updates the list of available metrics.
+        """
         newTransformerSelector = QComboBox(self)
         for metric in metrics:
             newTransformerSelector.addItem(metric)
@@ -629,6 +645,11 @@ class MinMaxWidget(TransformerWidget):
         self.transformer._max = d["max"]
 
 class DerivativeWidget(TransformerWidget):
+    """
+    Calculates derivatives for metrics. Requires a Metrics Transformer before
+    before it in the pipeline.
+    """
+    
     def __init__(self,
                  parent: Optional[QWidget] = None) -> None:
         """
