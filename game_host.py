@@ -11,41 +11,25 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, \
     QStackedWidget, QPushButton, QFormLayout, QLineEdit
 from PySide6.QtGui import QIntValidator
 
-from events import Server
-from game_hosts.pong import PongGameWindow, PongServerAdapter
+from events import GameAdapter, Server
+from game_hosts.pong import PongGameWindow, PongServerAdapter, SoloBallStormPongGame, TwoPlayerPongGame
 from game_hosts.snake import SnakeGame, SnakeServerAdapter
 
 
-def addSnakeGame(window: QStackedWidget,
-                 address: tuple[Optional[str], int]) -> None:
+def addGame(    window: QStackedWidget,
+                adapter: GameAdapter,
+                address: tuple[Optional[str], int]) -> None:
     """
     Add the snake game to the stacked widget window. Start the event server
     and connect it to the game.
     """
-    global game, adapter, server
+    global server
     server = Server(address)
     server.start()
-    game = SnakeGame()
-    adapter = SnakeServerAdapter(game)
     server.eventReceived.connect(adapter.eventReceived)
-    window.addWidget(game)
-    window.setCurrentWidget(game)
+    window.addWidget(adapter.widget())
+    window.setCurrentWidget(adapter.widget())
 
-def addPongGame(window: QStackedWidget,
-                address: tuple[Optional[str], int]) -> None:
-    """
-    Add the pong game to the stacked widget window. Start the event server
-    and connect it to the game.
-    """
-    global game, adapter, server
-    server = Server(address)
-    server.start()
-    game = PongGameWindow()
-    adapter = PongServerAdapter(game)
-    server.eventReceived.connect(adapter.eventReceived)
-    adapter.eventReady.connect(server.send)
-    window.addWidget(game)
-    window.setCurrentWidget(game)
 
 if __name__ == "__main__":
     server = None
@@ -72,16 +56,27 @@ if __name__ == "__main__":
 
     snakeButton = QPushButton("Snake")
     snakeButton.clicked.connect(lambda:
-                                addSnakeGame(window,
+                                addGame(window,
+                                        SnakeServerAdapter(SnakeGame()),
                                              address=(hostField.text(),
                                                       int(portField.text()))))
     selectorLayout.addWidget(snakeButton)
 
-    pongButton = QPushButton("Pong")
-    pongButton.clicked.connect(lambda:
-                               addPongGame(window,
+    soloPongButton = QPushButton("Solo Pong")
+    soloPongButton.clicked.connect(lambda:
+                               addGame(window,
+                                       PongServerAdapter(PongGameWindow(SoloBallStormPongGame())),
                                            address=(hostField.text(),
                                                     int(portField.text()))))
+    selectorLayout.addWidget(soloPongButton)
+
+    pongButton = QPushButton("Pong")
+    pongButton.clicked.connect(lambda:
+                               addGame(window,
+                                       PongServerAdapter(PongGameWindow(TwoPlayerPongGame())),
+                                           address=(hostField.text(),
+                                                    int(portField.text()))))
+
     selectorLayout.addWidget(pongButton)
 
     window.show()

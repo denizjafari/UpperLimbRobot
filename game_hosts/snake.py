@@ -13,7 +13,7 @@ from random import randrange
 from PySide6.QtCore import QTimer, Qt, QThreadPool
 from PySide6.QtWidgets import QWidget, QLabel, QApplication
 from PySide6.QtGui import QPaintEvent, QPainter
-from events import Server, Event
+from events import GameAdapter, Server, Event
 
 
 SQUARE_SIZE = 30
@@ -127,13 +127,15 @@ class SnakeGame(QLabel):
 
         self.repaint()
 
-class SnakeServerAdapter:
+class SnakeServerAdapter(GameAdapter):
     def __init__(self, snakeGame: SnakeGame) -> None:
-        self.snakeGame = snakeGame
-    
+        self.gameWidget = snakeGame
+
+    def widget(self) -> SnakeGame:
+        return self.gameWidget
+
     def eventReceived(self, e: Event) -> None:
-        print(e)
         if e.name == "leftTurn":
-            self.snakeGame.turnLeft()
+            self.gameWidget.turnLeft()
         elif e.name == "rightTurn":
-            self.snakeGame.turnRight()
+            self.gameWidget.turnRight()

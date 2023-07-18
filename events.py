@@ -230,6 +230,17 @@ class Client(QObject, QRunnable):
         """
         self.shouldClose = True
 
+class GameAdapter(QObject):
+    eventReady = Signal()
+
+    def __init__(self) -> None:
+        QObject.__init__(self)
+
+    def widget(self) -> QWidget:
+        raise NotImplementedError
+
+    def eventReceived(self, e: Event) -> None:
+        raise NotImplementedError
 
 if __name__ == "__main__":
     """
@@ -270,3 +281,5 @@ if __name__ == "__main__":
     code = app.exec()
     endpoint.close()
     sys.exit(code)
+
+

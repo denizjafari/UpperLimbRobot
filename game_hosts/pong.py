@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
     QPushButton
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
 
-from events import Event
+from events import Event, GameAdapter
 
 
 SQUARE_SIZE = 300
@@ -46,6 +46,8 @@ class Paddle:
         self.movingDown = False
         self.useVariableSpeed = False
 
+        self._active = True
+
     def topEdge(self) -> float:
         """
         Return the top y coordinate of the paddle.
@@ -75,6 +77,8 @@ class Paddle:
         """
         Move the paddle according to the moving up and down attributes.
         """
+        if not self.active(): return
+
         if self.useVariableSpeed:
             self.position += self.speed * self.speedMultiplier
         else:
@@ -93,12 +97,18 @@ class Paddle:
         """
         Paint the paddle to an active painter.
         """
+        if not self.active(): return
         painter.fillRect(0 if self.side == LEFT else SQUARE_SIZE - self.thickness,
                          self.position - self.size // 2,
                          self.thickness,
                          self.size,
                          Qt.black)
         
+    def active(self) -> bool:
+        return self._active
+    
+    def setActive(self, active: bool) -> bool:
+        self._active = active
 
 class Ball:
     """
@@ -110,6 +120,7 @@ class Ball:
         """
         self.radius = 10
         self.position = SQUARE_SIZE // 2, SQUARE_SIZE // 2
+        self.direction = 1, 2
     
     def leftEdge(self) -> float:
         """
@@ -141,11 +152,18 @@ class Ball:
         """
         return self.position[1] - self.radius
     
-    def move(self, x, y):
+    def move(self):
         """
         Move the ball by the given x and y amounts.
         """
-        self.position = self.position[0] + x, self.position[1] + y
+        self.position = self.position[0] + self.direction[0], \
+            self.position[1] + self.direction[1]
+
+    def reflectHorizontally(self):
+        self.direction = -self.direction[0], self.direction[1]
+
+    def reflectVertically(self):
+        self.direction = self.direction[0], -self.direction[1]
 
     def paint(self, painter: QPainter) -> None:
         """
@@ -194,15 +212,13 @@ class PongGame(QLabel):
         QLabel.__init__(self, parent)
         self.sideLength = SQUARE_SIZE
 
-        self.ball = Ball()
+        self.balls = []
         self.leftPaddle = Paddle()
         self.rightPaddle = Paddle(side=RIGHT)
         self.scoreBoard = ScoreBoard(self.sideLength)
 
         self.setFixedSize(self.sideLength, self.sideLength)
-        self.ballDirection = 1, 2
         self.lostGame = False
-        self.debounce = ""
 
         self._timer = QTimer(self)
         self._timer.setInterval(20)
@@ -212,33 +228,37 @@ class PongGame(QLabel):
 
         self.setFocus()
 
+    def onLeftPaddleHit(self, ball: Ball) -> None:
+        """
+        Handle the event when the ball hits the left paddle.
+        """
+        raise NotImplementedError
+    
+    def onRightPaddleHit(self, ball: Ball) -> None:
+        """
+        Handle the event when a ball hits the right paddle.
+        """
+        raise NotImplementedError
+
     def updateState(self) -> None:
         """
         Move the ball and paddles and check for collisions. Then paint the new
         state.
         """
-        if self.ball.leftEdge() <= 0 \
-            or self.ball.rightEdge() >= self.sideLength:
-            self.stop()
-        elif self.ball.topEdge() <= 0 \
-            or self.ball.bottomEdge() >= self.sideLength:
-            self.ballDirection = self.ballDirection[0], \
-                -self.ballDirection[1]
-        elif self.leftPaddle.isHit(self.ball) and self.debounce != "left":
-            self.updateScore(self.scoreBoard.scoreLeft + 1,
-                             self.scoreBoard.scoreRight)
-            self.debounce = "left"
-            self.ballDirection = abs(self.ballDirection[0]), \
-                self.ballDirection[1]
-        elif self.rightPaddle.isHit(self.ball) and self.debounce != "right":
-            self.updateScore(self.scoreBoard.scoreLeft,
-                             self.scoreBoard.scoreRight + 1)
-            self.debounce = "right"
-            self.ballDirection = -abs(self.ballDirection[0]), \
-                self.ballDirection[1]
-        
-        if self.isRunning:
-            self.ball.move(*self.ballDirection)
+        for ball in self.balls:
+            if ball.leftEdge() <= 0 \
+                    or ball.rightEdge() >= self.sideLength:
+                self.stop()
+            elif ball.topEdge() <= 0 \
+                    or ball.bottomEdge() >= self.sideLength:
+                ball.reflectVertically()
+            elif self.leftPaddle.isHit(ball):
+                self.onLeftPaddleHit(ball)
+            elif self.rightPaddle.isHit(ball):
+                self.onRightPaddleHit(ball)
+            
+            if self.isRunning:
+                ball.move()
 
         self.leftPaddle.move()
         self.rightPaddle.move()
@@ -279,14 +299,13 @@ class PongGame(QLabel):
         self.setFocus()
 
     def reset(self) -> None:
-        self.ballDirection = 1, 2
         self.lostGame = False
         self.isRunning = False
-        self.debounce = ""
 
-        self.ball = Ball()
+        self.balls = [Ball()]
         self.leftPaddle = Paddle()
         self.rightPaddle = Paddle(side=RIGHT)
+        self.scoreBoard = ScoreBoard(self.sideLength)
 
         self.setFocus()
 
@@ -300,7 +319,8 @@ class PongGame(QLabel):
 
         self.scoreBoard.paint(painter)
 
-        self.ball.paint(painter)
+        for ball in self.balls:
+            ball.paint(painter)
         self.leftPaddle.paint(painter)
         self.rightPaddle.paint(painter)
         
@@ -335,8 +355,37 @@ class PongGame(QLabel):
             self.rightPaddle.movingDown = False
 
 
-class PongGameWindow(QWidget):
+class TwoPlayerPongGame(PongGame):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+
+        self.balls.append(Ball())
+
+    def onLeftPaddleHit(self, ball: Ball) -> None:
+        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
+        ball.reflectHorizontally()
+
+    def onRightPaddleHit(self, ball: Ball) -> None:
+        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        ball.reflectHorizontally()
+
+
+class SoloBallStormPongGame(PongGame):
     def __init__(self) -> None:
+        PongGame.__init__(self)
+        self.balls.append(Ball())
+        self.balls[0].direction = -2, 0
+        self.rightPaddle.setActive(False)
+
+    def onLeftPaddleHit(self, ball: Ball) -> None:
+        self.updateScore(self.scoreBoard.scoreLeft + 1, 0)
+        self.balls.remove(ball)
+        self.balls.append(Ball())
+        self.balls[0].direction = -2, 0
+
+
+class PongGameWindow(QWidget):
+    def __init__(self, pongGame: Optional[PongGame] = None) -> None:
         """
         Initialize the window for playing pong.
         """
@@ -344,7 +393,10 @@ class PongGameWindow(QWidget):
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
 
-        self.game = PongGame()
+        if pongGame is None:
+            pongGame = TwoPlayerPongGame()
+
+        self.game = pongGame
         self.vLayout.addWidget(self.game)
 
         self.toggleButton = QPushButton("Toggle")
@@ -355,13 +407,16 @@ class PongGameWindow(QWidget):
         self.toggleButton.clicked.connect(self.game.reset)
         self.vLayout.addWidget(self.toggleButton)
 
-class PongServerAdapter(QObject):
+class PongServerAdapter(GameAdapter):
     eventReady = Signal(Event)
 
     def __init__(self, pongGame: PongGameWindow) -> None:
-        QObject.__init__(self)
+        GameAdapter.__init__(self)
         self.window = pongGame
         self.window.game.scoreUpdated.connect(self.onScoreUpdated)
+
+    def widget(self) -> QWidget:
+        return self.window
 
     def onScoreUpdated(self, scoreLeft: int, scoreRight: int) -> None:
         self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))

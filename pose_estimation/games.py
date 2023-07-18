@@ -153,7 +153,7 @@ class PoseFeedbackTransformer(TransformerStage):
             if correct and metrics["shoulder_elevation_angle"] > metricsMax["shoulder_elevation_angle"]:
                 if not self.shouldersWereNotLevel:
                     module_logger.info("User is not keeping their shoulders level enough")
-                    SOUND_REGISTRY.createItem("feedback").play()
+                    self.feedbackSound.play()
                     self.shouldersWereNotLevel = True
                 correct = False
             elif self.shouldersWereNotLevel:
