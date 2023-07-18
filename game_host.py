@@ -43,6 +43,7 @@ def addPongGame(window: QStackedWidget,
     game = PongGameWindow()
     adapter = PongServerAdapter(game)
     server.eventReceived.connect(adapter.eventReceived)
+    adapter.eventReady.connect(server.send)
     window.addWidget(game)
     window.setCurrentWidget(game)
 

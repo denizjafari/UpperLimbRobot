@@ -9,7 +9,7 @@ from typing import Optional
 
 import sys
 
-from PySide6.QtCore import QTimer, Qt, QRect
+from PySide6.QtCore import QTimer, Qt, QRect, Signal, QObject
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
     QPushButton
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
@@ -188,6 +188,8 @@ class PongGame(QLabel):
     """
     The Pong Game. Handles the game logic and displays the result.
     """
+    scoreUpdated = Signal(int, int)
+
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         QLabel.__init__(self, parent)
         self.sideLength = SQUARE_SIZE
@@ -223,12 +225,14 @@ class PongGame(QLabel):
             self.ballDirection = self.ballDirection[0], \
                 -self.ballDirection[1]
         elif self.leftPaddle.isHit(self.ball) and self.debounce != "left":
-            self.scoreBoard.scoreLeft += 1
+            self.updateScore(self.scoreBoard.scoreLeft + 1,
+                             self.scoreBoard.scoreRight)
             self.debounce = "left"
             self.ballDirection = abs(self.ballDirection[0]), \
                 self.ballDirection[1]
         elif self.rightPaddle.isHit(self.ball) and self.debounce != "right":
-            self.scoreBoard.scoreRight += 1
+            self.updateScore(self.scoreBoard.scoreLeft,
+                             self.scoreBoard.scoreRight + 1)
             self.debounce = "right"
             self.ballDirection = -abs(self.ballDirection[0]), \
                 self.ballDirection[1]
@@ -247,6 +251,14 @@ class PongGame(QLabel):
         """
         #self._timer.start()
         self.isRunning = True
+
+    def updateScore(self, scoreLeft: int, scoreRight: int) -> None:
+        """
+        Update the score on the scoreboard.
+        """
+        self.scoreUpdated.emit(scoreLeft, scoreRight)
+        self.scoreBoard.scoreLeft = scoreLeft
+        self.scoreBoard.scoreRight = scoreRight
 
     def stop(self) -> None:
         """
@@ -270,6 +282,7 @@ class PongGame(QLabel):
         self.ballDirection = 1, 2
         self.lostGame = False
         self.isRunning = False
+        self.debounce = ""
 
         self.ball = Ball()
         self.leftPaddle = Paddle()
@@ -342,9 +355,16 @@ class PongGameWindow(QWidget):
         self.toggleButton.clicked.connect(self.game.reset)
         self.vLayout.addWidget(self.toggleButton)
 
-class PongServerAdapter:
+class PongServerAdapter(QObject):
+    eventReady = Signal(Event)
+
     def __init__(self, pongGame: PongGameWindow) -> None:
+        QObject.__init__(self)
         self.window = pongGame
+        self.window.game.scoreUpdated.connect(self.onScoreUpdated)
+
+    def onScoreUpdated(self, scoreLeft: int, scoreRight: int) -> None:
+        self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))
     
     def eventReceived(self, e: Event) -> None:
         leftPaddle = self.window.game.leftPaddle

@@ -5,6 +5,7 @@ from the frame data objects to the games.
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
+from queue import Queue
 from typing import Optional
 import logging
 
@@ -264,9 +265,13 @@ class PongClient(TransformerStage):
     The pong game. The snake is controlled by the user's body.
     The height of the hand will determine the height of the paddle.
     """
+    events: Queue[Event]
+    client: Client
+    followMetrics: str
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         TransformerStage.__init__(self, True, previous)
+        self.events = Queue()
 
         self.client = None
         self.mode = "absolute"
@@ -277,7 +282,13 @@ class PongClient(TransformerStage):
         Set the client to send the data to. The transformer will not take
         ownership of the client object.
         """
+        if self.client is not None:
+            self.client.eventReceived.disconnect(self.events.put)
+        
         self.client = client
+
+        if self.client is not None:
+            client.eventReceived.connect(self.events.put)
 
     def setMode(self, mode: str) -> None:
         if self.client is not None:
@@ -293,10 +304,6 @@ class PongClient(TransformerStage):
 
     def transform(self, frameData: FrameData) -> None:
         """
-        Check wether the user has performed a chicken wing. If so, emit the
-        corresponding signal. The signal is emitted when the elbow is above the
-        shoulder. Before the signal is emitted, the elbow must be below the shoulder
-        plus some margin.
         """
         if "metrics" in frameData:
             self._availableMetrics = list(frameData["metrics"].keys())
@@ -328,5 +335,10 @@ class PongClient(TransformerStage):
                     self.client.send(Event("neutral"))
             elif self.mode == "speed":
                 self.client.send(Event("setSpeed", [2 * target - 1.0]))
+
+            while not self.events.empty():
+                event = self.events.get()
+                if event.name == "scoreUpdated":
+                    module_logger.info(f"Score is now {event.payload[0]}:{event.payload[1]}")
 
         self.next(frameData)
