@@ -9,7 +9,7 @@ from typing import Optional
 
 import sys
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, QRect
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
     QPushButton
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
@@ -157,6 +157,33 @@ class Ball:
                             self.radius * 2)
         
 
+class ScoreBoard:
+    """
+    Basic Scoreboard capable of tracking the scores for both sides,
+    left and right.
+    """
+    scoreLeft: int
+    scoreRight: int
+
+    def __init__(self, screenSize: int) -> None:
+        self.scoreLeft = 0
+        self.scoreRight = 0
+        self.screenSize = screenSize
+
+    def paint(self, painter: QPainter) -> None:
+        rect = QRect(self.screenSize / 2 - 30, 0, 60, 30)
+        painter.drawRect(rect)
+        boundings = painter.boundingRect(rect, "Score")
+        painter.drawText((self.screenSize - boundings.width()) / 2,
+                         12,
+                         "Score")
+
+        scoreStr = str(self.scoreLeft) + " : " + str(self.scoreRight)
+        boundings = painter.boundingRect(rect, scoreStr)
+        painter.drawText((self.screenSize - boundings.width()) / 2,
+                         25,
+                         scoreStr)
+
 class PongGame(QLabel):
     """
     The Pong Game. Handles the game logic and displays the result.
@@ -168,10 +195,12 @@ class PongGame(QLabel):
         self.ball = Ball()
         self.leftPaddle = Paddle()
         self.rightPaddle = Paddle(side=RIGHT)
+        self.scoreBoard = ScoreBoard(self.sideLength)
 
         self.setFixedSize(self.sideLength, self.sideLength)
         self.ballDirection = 1, 2
         self.lostGame = False
+        self.debounce = ""
 
         self._timer = QTimer(self)
         self._timer.setInterval(20)
@@ -193,10 +222,14 @@ class PongGame(QLabel):
             or self.ball.bottomEdge() >= self.sideLength:
             self.ballDirection = self.ballDirection[0], \
                 -self.ballDirection[1]
-        elif self.leftPaddle.isHit(self.ball):
+        elif self.leftPaddle.isHit(self.ball) and self.debounce != "left":
+            self.scoreBoard.scoreLeft += 1
+            self.debounce = "left"
             self.ballDirection = abs(self.ballDirection[0]), \
-                self.ballDirection[1]            
-        elif self.rightPaddle.isHit(self.ball):
+                self.ballDirection[1]
+        elif self.rightPaddle.isHit(self.ball) and self.debounce != "right":
+            self.scoreBoard.scoreRight += 1
+            self.debounce = "right"
             self.ballDirection = -abs(self.ballDirection[0]), \
                 self.ballDirection[1]
         
@@ -251,6 +284,8 @@ class PongGame(QLabel):
         """
         painter = QPainter(self)
         painter.setRenderHints(QPainter.Antialiasing, True)
+
+        self.scoreBoard.paint(painter)
 
         self.ball.paint(painter)
         self.leftPaddle.paint(painter)
