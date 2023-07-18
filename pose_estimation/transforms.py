@@ -948,7 +948,7 @@ class MetricTransformer(TransformerStage):
         """
         Add the metrics to the frame data object.
         """
-        if self.active():
+        if self.active() and len(frameData.keypointSets) > 0:
             if "metrics" not in frameData:
                 metrics = {}
                 frameData["metrics"] = metrics

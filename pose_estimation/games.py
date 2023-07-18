@@ -129,26 +129,15 @@ class PoseFeedbackTransformer(TransformerStage):
         the correct color.
         """
         if self.active() and not frameData.dryRun \
-            and "baseline_measurements" in frameData \
-                and frameData["baseline_measurements"] is not None \
+                and "metrics_max" in frameData \
                     and "metrics" in frameData:
-            baselineMetrics = frameData["baseline_measurements"]
-
-            if "metrics_max" not in frameData:
-                metricsMax = {}
-                frameData["metrics_max"] = metricsMax
-            else:
-                metricsMax = frameData["metrics_max"]
 
             metrics = frameData["metrics"]
+            metricsMax = frameData["metrics_max"]
 
-            metricsMax["shoulder_elevation_angle"] = self.elevAngleLimit
-            metricsMax["shoulder_distance"] = baselineMetrics["shoulder_distance"] * self.leanForwardLimit
             correct = True
 
-            if correct and \
-                not metrics["shoulder_distance"] / baselineMetrics["shoulder_distance"] \
-                    <= self.leanForwardLimit:
+            if correct and metrics["shoulder_distance"] > metricsMax["shoulder_distance"]:
                 if not self.wasLeaningTooFar:
                     module_logger.info("User is leaning too far forward")
                     self.wasLeaningTooFar = True
@@ -157,7 +146,7 @@ class PoseFeedbackTransformer(TransformerStage):
                 module_logger.info("User corrected leaning too far forward")
                 self.wasLeaningTooFar = False
 
-            if correct and metrics["shoulder_elevation_angle"] < metricsMax["shoulder_elevation_angle"]:
+            if correct and metrics["shoulder_elevation_angle"] > metricsMax["shoulder_elevation_angle"]:
                 if not self.shouldersWereNotLevel:
                     module_logger.info("User is not keeping their shoulders level enough")
                     self.shouldersWereNotLevel = True
@@ -276,6 +265,7 @@ class PongClient(TransformerStage):
         self.client = None
         self.mode = "absolute"
         self.followMetric = ""
+        self._availableMetrics = []
 
     def setClient(self, client: Client) -> None:
         """
