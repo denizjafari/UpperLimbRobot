@@ -12,6 +12,8 @@ import logging
 import cv2
 
 from PySide6.QtCore import QObject, Signal
+from pose_estimation.audio import QSound
+from pose_estimation.registry import SOUND_REGISTRY
 
 from pose_estimation.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
@@ -109,6 +111,7 @@ class PoseFeedbackTransformer(TransformerStage):
 
         self.wasLeaningTooFar = False
         self.shouldersWereNotLevel = False
+        self.feedbackSound = SOUND_REGISTRY.createItem("feedback")
 
     def setAngleLimit(self, angleLimit: int) -> None:
         """
@@ -140,6 +143,7 @@ class PoseFeedbackTransformer(TransformerStage):
             if correct and metrics["shoulder_distance"] > metricsMax["shoulder_distance"]:
                 if not self.wasLeaningTooFar:
                     module_logger.info("User is leaning too far forward")
+                    self.feedbackSound.play()
                     self.wasLeaningTooFar = True
                 correct = False
             elif self.wasLeaningTooFar:
@@ -149,6 +153,7 @@ class PoseFeedbackTransformer(TransformerStage):
             if correct and metrics["shoulder_elevation_angle"] > metricsMax["shoulder_elevation_angle"]:
                 if not self.shouldersWereNotLevel:
                     module_logger.info("User is not keeping their shoulders level enough")
+                    SOUND_REGISTRY.createItem("feedback").play()
                     self.shouldersWereNotLevel = True
                 correct = False
             elif self.shouldersWereNotLevel:
@@ -332,3 +337,6 @@ class PongClient(TransformerStage):
                     module_logger.info(f"Score is now {event.payload[0]}:{event.payload[1]}")
 
         self.next(frameData)
+
+
+SOUND_REGISTRY.register(lambda: QSound("assets/sounds/feedback.wav"), "feedback")
