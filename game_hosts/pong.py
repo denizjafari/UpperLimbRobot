@@ -9,6 +9,7 @@ from typing import Optional
 
 import sys
 import logging
+import math
 
 from PySide6.QtCore import QTimer, Qt, QRect, Signal
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
 
 from events import Event, GameAdapter
+
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
@@ -118,13 +120,19 @@ class Ball:
     """
     The ball that bounds off the walls and paddles.
     """
+    radius: int
+    position: tuple[float, float]
+    direction: tuple[float, float]
+    speed: float
+
     def __init__(self):
         """
         Initialize the ball.
         """
         self.radius = 10
         self.position = SQUARE_SIZE // 2, SQUARE_SIZE // 2
-        self.direction = 1, 2
+        self.speed = 1.0
+        self.direction = 1, 0
     
     def leftEdge(self) -> float:
         """
@@ -158,10 +166,13 @@ class Ball:
     
     def move(self):
         """
-        Move the ball by the given x and y amounts.
+        Move the ball along its direction with itsspeed.
         """
-        self.position = self.position[0] + self.direction[0], \
-            self.position[1] + self.direction[1]
+        length = math.sqrt(self.direction[0] ** 2 + self.direction[1] ** 2)
+        factor = self.speed / length
+
+        self.position = self.position[0] + factor * self.direction[0], \
+            self.position[1] + factor * self.direction[1]
 
     def reflectHorizontally(self):
         self.direction = -self.direction[0], self.direction[1]
@@ -221,6 +232,8 @@ class PongGame(QLabel):
         self.rightPaddle = Paddle(side=RIGHT)
         self.scoreBoard = ScoreBoard(self.sideLength)
 
+        self.ballSpeed = 2.0
+
         self.setFixedSize(self.sideLength, self.sideLength)
         self.lostGame = False
 
@@ -243,6 +256,26 @@ class PongGame(QLabel):
         Handle the event when a ball hits the right paddle.
         """
         raise NotImplementedError
+    
+    def onLeftEdgeHit(self, ball: Ball) -> None:
+        """
+        Handle the event when a ball hits the left edge of the playing field.
+        """
+        raise NotImplementedError
+    
+    def onRightEdgeHit(self, ball: Ball) -> None:
+        """
+        Handle the event when a ball hits the right edge of the playing field.
+        """
+        raise NotImplementedError
+    
+    def setBallSpeed(self, speed: float) -> None:
+        """
+        Set the speed of current and future balls.
+        """ 
+        self.ballSpeed = speed
+        for ball in self.balls:
+            ball.speed = speed
 
     def updateState(self) -> None:
         """
@@ -250,9 +283,10 @@ class PongGame(QLabel):
         state.
         """
         for ball in self.balls:
-            if ball.leftEdge() <= 0 \
-                    or ball.rightEdge() >= self.sideLength:
-                self.stop()
+            if ball.leftEdge() <= 0:
+                self.onLeftEdgeHit(ball)
+            elif ball.rightEdge() >= self.sideLength:
+                self.onRightEdgeHit(ball)
             elif ball.topEdge() <= 0 \
                     or ball.bottomEdge() >= self.sideLength:
                 ball.reflectVertically()
@@ -373,14 +407,19 @@ class TwoPlayerPongGame(PongGame):
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         ball.reflectHorizontally()
 
+    def onLeftEdgeHit(self, ball: Ball) -> None:
+        self.stop()
+
+    def onRightEdgeHit(self, ball: Ball) -> None:
+        self.stop()
+
 
 class SoloBallStormPongGame(PongGame):
     def __init__(self) -> None:
         PongGame.__init__(self)
-        self.balls.append(Ball())
-        self.balls[0].direction = -2, 0
         self.rightPaddle.setActive(False)
         self.lastBallUp = True
+        self.addBall()
 
     def reset(self) -> None:
         self.lostGame = False
@@ -395,14 +434,22 @@ class SoloBallStormPongGame(PongGame):
         self.setFocus()
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
-        self.updateScore(self.scoreBoard.scoreLeft + 1, 0)
+        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         self.balls.remove(ball)
         self.addBall()
+        self.setBallSpeed(self.ballSpeed + 0.2)
+
+    def onLeftEdgeHit(self, ball: Ball) -> None:
+        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        self.balls.remove(ball)
+        self.addBall()
+        self.setBallSpeed(self.ballSpeed - 0.2)
 
     def addBall(self) -> None:
         ball = Ball()
         ball.position = SQUARE_SIZE - 20, SQUARE_SIZE // 2
         ball.direction = -2, 1 if self.lastBallUp else -1
+        ball.speed = self.ballSpeed
         self.lastBallUp = not self.lastBallUp
         self.balls.append(ball)
 
@@ -469,6 +516,8 @@ class PongServerAdapter(GameAdapter):
             leftPaddle.useVariableSpeed = False
             leftPaddle.movingDown= True
             leftPaddle.movingUp = False
+        elif e.name == "setSpeed":
+            self.window.game.setBallSpeed(float(e.payload[0]))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
