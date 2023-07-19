@@ -6,6 +6,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 
 import sys
 from typing import Optional
+import logging
 
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, \
     QStackedWidget, QPushButton, QFormLayout, QLineEdit
@@ -23,7 +24,8 @@ def addGame(    window: QStackedWidget,
     Add the snake game to the stacked widget window. Start the event server
     and connect it to the game.
     """
-    global server
+    global server, gameAdapter
+    gameAdapter = adapter
     server = Server(address)
     server.start()
     server.eventReceived.connect(adapter.eventReceived)
@@ -32,6 +34,10 @@ def addGame(    window: QStackedWidget,
 
 
 if __name__ == "__main__":
+    loggingHandler = logging.StreamHandler(sys.stdout)
+    loggingHandler.setLevel(logging.DEBUG)
+    logging.getLogger().addHandler(loggingHandler)
+
     server = None
     app = QApplication(sys.argv)
 
@@ -51,7 +57,7 @@ if __name__ == "__main__":
 
     portField = QLineEdit()
     portField.setValidator(QIntValidator(1024, 65535))
-    portField.setText("3000")
+    portField.setText("9876")
     formLayout.addRow("Port", portField)
 
     snakeButton = QPushButton("Snake")

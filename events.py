@@ -12,14 +12,20 @@ from selectors import DefaultSelector
 import socket
 from queue import Queue
 import sys
+import logging
 
 from PySide6.QtCore import QObject, QRunnable, Signal
 from PySide6.QtWidgets import QApplication, QWidget, QHBoxLayout, \
     QVBoxLayout, QLineEdit, QPushButton, QLabel
 from PySide6.QtCore import QThreadPool
 
+
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
+
+
 # The port that is used by clients and servers.
-PORT = 3000
+PORT = 9876
 
 # The timeout for blocking reads in the client and select in the server.
 TIMEOUT = 0.001
@@ -136,6 +142,7 @@ class Server(QObject, QRunnable):
         Accept a new connection and register it with the selector.
         """
         conn, addr = sock.accept()
+        module_logger.info(f"Accepted connection from {addr}")
         self.sel.register(conn, selectors.EVENT_READ, self.read)
         self.conns.append(conn)
 
@@ -146,7 +153,9 @@ class Server(QObject, QRunnable):
         data = sock.recv(1024)
 
         if data:
-            self.eventReceived.emit(Event.fromBytes(data))
+            evt = Event.fromBytes(data)
+            module_logger.debug(f"Received event {str(evt)}")
+            self.eventReceived.emit(evt)
         else:
             self.sel.unregister(sock)
             self.conns.remove(sock)

@@ -144,7 +144,7 @@ class PongServerWidget(TransformerWidget):
         self.formLayout.addRow("Host", self.hostField)
 
         self.portField = QLineEdit()
-        self.portField.setText("3000")
+        self.portField.setText("9876")
         self.portField.setValidator(QIntValidator(1024, 65535))
         self.formLayout.addRow("Port", self.portField)
 

@@ -276,10 +276,7 @@ class PongClient(TransformerStage):
         """
         Set the client to send the data to. The transformer will not take
         ownership of the client object.
-        """
-        if self.client is not None:
-            self.client.eventReceived.disconnect(self.events.put)
-        
+        """        
         self.client = client
 
         if self.client is not None:

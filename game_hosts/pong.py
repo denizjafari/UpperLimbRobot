@@ -8,14 +8,17 @@ from __future__ import annotations
 from typing import Optional
 
 import sys
+import logging
 
-from PySide6.QtCore import QTimer, Qt, QRect, Signal, QObject
+from PySide6.QtCore import QTimer, Qt, QRect, Signal
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
     QPushButton
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
 
 from events import Event, GameAdapter
 
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 SQUARE_SIZE = 300
 DEFAULT_PADDLE_SIZE = 50
@@ -33,7 +36,7 @@ class Paddle:
     """
     One paddle that can be moved up and down by the player.
     """
-    def __init__(self, side:int=LEFT) -> None:
+    def __init__(self, side:int=LEFT, active: bool = True) -> None:
         """
         Initialize the paddle.
         """
@@ -46,7 +49,7 @@ class Paddle:
         self.movingDown = False
         self.useVariableSpeed = False
 
-        self._active = True
+        self._active = active
 
     def topEdge(self) -> float:
         """
@@ -64,6 +67,7 @@ class Paddle:
         """
         Determine whether the ball is hit by the paddle.
         """
+        if not self.active(): return False
         if self.side == LEFT:
             inXRange = ball.leftEdge() <= self.thickness
         else:
@@ -376,12 +380,31 @@ class SoloBallStormPongGame(PongGame):
         self.balls.append(Ball())
         self.balls[0].direction = -2, 0
         self.rightPaddle.setActive(False)
+        self.lastBallUp = True
+
+    def reset(self) -> None:
+        self.lostGame = False
+        self.isRunning = False
+
+        self.balls.clear()
+        self.addBall()
+        self.leftPaddle = Paddle()
+        self.rightPaddle = Paddle(side=RIGHT, active=False)
+        self.scoreBoard = ScoreBoard(self.sideLength)
+
+        self.setFocus()
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
         self.updateScore(self.scoreBoard.scoreLeft + 1, 0)
         self.balls.remove(ball)
-        self.balls.append(Ball())
-        self.balls[0].direction = -2, 0
+        self.addBall()
+
+    def addBall(self) -> None:
+        ball = Ball()
+        ball.position = SQUARE_SIZE - 20, SQUARE_SIZE // 2
+        ball.direction = -2, 1 if self.lastBallUp else -1
+        self.lastBallUp = not self.lastBallUp
+        self.balls.append(ball)
 
 
 class PongGameWindow(QWidget):
@@ -422,6 +445,7 @@ class PongServerAdapter(GameAdapter):
         self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))
     
     def eventReceived(self, e: Event) -> None:
+        module_logger.debug(f"Executing {str(e)}")
         leftPaddle = self.window.game.leftPaddle
         if e.name == "clearMovement":
             leftPaddle.movingUp = False
