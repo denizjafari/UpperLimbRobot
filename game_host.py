@@ -29,6 +29,7 @@ def addGame(    window: QStackedWidget,
     server = Server(address)
     server.start()
     server.eventReceived.connect(adapter.eventReceived)
+    adapter.eventReady.connect(server.send)
     window.addWidget(adapter.widget())
     window.setCurrentWidget(adapter.widget())
 

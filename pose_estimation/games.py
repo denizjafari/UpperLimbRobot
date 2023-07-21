@@ -13,6 +13,7 @@ import cv2
 
 from PySide6.QtCore import QObject, Signal
 from pose_estimation.audio import QSound
+from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import SOUND_REGISTRY
 
 from pose_estimation.snake import SnakeGame
@@ -254,37 +255,53 @@ class SnakeClient(TransformerStage, QObject):
 
         self.next(frameData)
 
+
 class PongClient(TransformerStage):
     """
     The pong game. The snake is controlled by the user's body.
     The height of the hand will determine the height of the paddle.
     """
     events: Queue[Event]
-    client: Client
+    pongData: dict[str, float]
     followMetrics: str
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         TransformerStage.__init__(self, True, previous)
         self.events = Queue()
 
-        self.client = None
         self.mode = "absolute"
         self.followMetric = ""
         self._availableMetrics = []
+        self.pongData = { "client":  None }
 
     def setClient(self, client: Client) -> None:
         """
         Set the client to send the data to. The transformer will not take
         ownership of the client object.
         """        
-        self.client = client
+        self.pongData["client"] = client
 
-        if self.client is not None:
-            client.eventReceived.connect(self.events.put)
+        if client is not None:
+            client.eventReceived.connect(self.handleEvent)
+
+    def handleEvent(self, event: Event) -> None:
+        """
+        Handle events received from the server.
+        """
+        self.updated = True
+        module_logger.debug(f"Received event {str(event)}")
+        if event.name == "scoreUpdated":
+            self.pongData["scoreLeft"] = float(event.payload[0])
+            self.pongData["scoreRight"] = float(event.payload[1])
+        elif event.name == "accuracyUpdated":
+            self.pongData["accuracy"] = float(event.payload[0])
+        else:
+            self.updated = False
+
 
     def setMode(self, mode: str) -> None:
-        if self.client is not None:
-            self.client.send(Event("clearMovement"))
+        if "client" in self.pongData and self.pongData["client"] is not None:
+            self.pongData["client"].send(Event("clearMovement"))
         self.mode = mode
         module_logger.info(f"Pong movement mode set to {mode}")
 
@@ -300,8 +317,10 @@ class PongClient(TransformerStage):
         if "metrics" in frameData:
             self._availableMetrics = list(frameData["metrics"].keys())
 
+        client = self.pongData["client"]
+
         if self.active() and not frameData.dryRun and "metrics" in frameData \
-            and self.client is not None and "metrics_max" in frameData \
+            and client is not None and "metrics_max" in frameData \
                 and "metrics_min" in frameData \
                     and self.followMetric in frameData["metrics"] \
                         and self.followMetric in frameData["metrics_max"] \
@@ -317,21 +336,34 @@ class PongClient(TransformerStage):
 
             if self.mode == "absolute":
                 event = Event("moveTo", [target])
-                self.client.send(event)
+                client.send(event)
             elif self.mode == "threshold":
                 if target > 0.8:
-                    self.client.send(Event("moveUp"))
+                    client.send(Event("moveUp"))
                 elif target < 0.2:
-                    self.client.send(Event("moveDown"))
+                    client.send(Event("moveDown"))
                 else:
-                    self.client.send(Event("neutral"))
+                    client.send(Event("neutral"))
             elif self.mode == "speed":
-                self.client.send(Event("setSpeed", [2 * target - 1.0]))
+                client.send(Event("setSpeed", [2 * target - 1.0]))
 
-            while not self.events.empty():
-                event = self.events.get()
-                if event.name == "scoreUpdated":
-                    module_logger.info(f"Score is now {event.payload[0]}:{event.payload[1]}")
+            frameData["pong"] = self.pongData.copy()
+            #module_logger.info(f"Score is now {event.payload[0]}:{event.payload[1]}")
+
+        self.next(frameData)
+
+
+class PongControllerWrapper(TransformerStage):
+    def __init__(self) -> None:
+        TransformerStage.__init__(self, True)
+        self.controller = None
+
+    def setController(self, controller: PongController) -> None:
+        self.controller = controller
+
+    def transform(self, frameData: FrameData) -> None:
+        if self.active() and self.controller is not None and "pong" in frameData:
+            self.controller.control(frameData["pong"])
 
         self.next(frameData)
 

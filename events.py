@@ -117,6 +117,7 @@ class Server(QObject, QRunnable):
                 data = e.toBytes()
                 for conn in self.conns:
                     conn.send(data)
+                module_logger.debug(f"Sent event {e}")
 
         self.sel.close()
         
@@ -240,7 +241,7 @@ class Client(QObject, QRunnable):
         self.shouldClose = True
 
 class GameAdapter(QObject):
-    eventReady = Signal()
+    eventReady = Signal(Event)
 
     def __init__(self) -> None:
         QObject.__init__(self)
@@ -290,5 +291,4 @@ if __name__ == "__main__":
     code = app.exec()
     endpoint.close()
     sys.exit(code)
-
 

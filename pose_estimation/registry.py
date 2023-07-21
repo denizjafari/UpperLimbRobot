@@ -55,3 +55,4 @@ class Registry(QObject):
 MODEL_REGISTRY = Registry()
 WIDGET_REGISTRY = Registry()
 SOUND_REGISTRY = Registry()
+PONG_CONTROLLER_REGISTRY = Registry()

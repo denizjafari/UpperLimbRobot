@@ -12,10 +12,10 @@ from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import Qt
 from events import Client
-from pose_estimation.registry import WIDGET_REGISTRY
+from pose_estimation.registry import PONG_CONTROLLER_REGISTRY, WIDGET_REGISTRY
 
 from pose_estimation.ui_utils import LabeledQSlider
-from pose_estimation.games import PongClient, PoseFeedbackTransformer, Snake, SnakeClient
+from pose_estimation.games import PongClient, PongControllerWrapper, PoseFeedbackTransformer, Snake, SnakeClient
 from widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
@@ -224,8 +224,33 @@ class PongServerWidget(TransformerWidget):
 
     def __str__(self) -> str:
         return "Pong Server"
+    
+class PongControllerWidget(TransformerWidget):
+    transformer: PongControllerWrapper
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__("Pong Controller", parent)
+
+        self.transformer = PongControllerWrapper()
+
+        self.controllerSelector = QComboBox(self)
+        self.controllerSelector.currentTextChanged.connect(self.setController)
+        self.updateControllerList()
+        PONG_CONTROLLER_REGISTRY.itemsChanged.connect(self.updateControllerList)
+
+        self.vLayout.addWidget(self.controllerSelector)
+
+    def updateControllerList(self) -> None:
+        self.controllerSelector.clear()
+        self.controllerSelector.addItems(PONG_CONTROLLER_REGISTRY.items())
+
+    def setController(self, controllerName: str) -> None:
+        self.transformer.setController(
+            PONG_CONTROLLER_REGISTRY.createItem(controllerName))
+
 
 WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")
 WIDGET_REGISTRY.register(SnakeWidget, "Snake Game")
 WIDGET_REGISTRY.register(SnakeServerWidget, "Snake Server")
 WIDGET_REGISTRY.register(PongServerWidget, "Pong Server")
+WIDGET_REGISTRY.register(PongControllerWidget, "Pong Controller")

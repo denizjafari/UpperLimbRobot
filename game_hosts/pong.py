@@ -222,6 +222,7 @@ class PongGame(QLabel):
     The Pong Game. Handles the game logic and displays the result.
     """
     scoreUpdated = Signal(int, int)
+    accuracyUpdated = Signal(float)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         QLabel.__init__(self, parent)
@@ -437,13 +438,15 @@ class SoloBallStormPongGame(PongGame):
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         self.balls.remove(ball)
         self.addBall()
-        self.setBallSpeed(self.ballSpeed + 0.2)
 
     def onLeftEdgeHit(self, ball: Ball) -> None:
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         self.balls.remove(ball)
         self.addBall()
-        self.setBallSpeed(self.ballSpeed - 0.2)
+
+    def updateScore(self, scoreLeft: int, scoreRight: int) -> None:
+        super().updateScore(scoreLeft, scoreRight)
+        self.accuracyUpdated.emit(scoreLeft / (scoreLeft + scoreRight))
 
     def addBall(self) -> None:
         ball = Ball()
@@ -478,18 +481,20 @@ class PongGameWindow(QWidget):
         self.vLayout.addWidget(self.toggleButton)
 
 class PongServerAdapter(GameAdapter):
-    eventReady = Signal(Event)
-
     def __init__(self, pongGame: PongGameWindow) -> None:
         GameAdapter.__init__(self)
         self.window = pongGame
         self.window.game.scoreUpdated.connect(self.onScoreUpdated)
+        self.window.game.accuracyUpdated.connect(self.onAccuracyUpdated)
 
     def widget(self) -> QWidget:
         return self.window
 
     def onScoreUpdated(self, scoreLeft: int, scoreRight: int) -> None:
         self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))
+
+    def onAccuracyUpdated(self, accuracy: float) -> None:
+        self.eventReady.emit(Event("accuracyUpdated", [accuracy]))
     
     def eventReceived(self, e: Event) -> None:
         module_logger.debug(f"Executing {str(e)}")
@@ -516,8 +521,9 @@ class PongServerAdapter(GameAdapter):
             leftPaddle.useVariableSpeed = False
             leftPaddle.movingDown= True
             leftPaddle.movingUp = False
-        elif e.name == "setSpeed":
+        elif e.name == "setBallSpeed":
             self.window.game.setBallSpeed(float(e.payload[0]))
+            self.eventReady.emit(Event("ballSpeedUpdated", [float(e.payload[0])]))
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
