@@ -61,7 +61,14 @@ class Event:
         """
         Create an event from the given sequence of bytes.
         """
-        data = data.decode()[:-1]
+        return Event.fromString(data.decode())
+    
+    @staticmethod
+    def fromString(data: str) -> Event:
+        """
+        Create an event from the given sequence of bytes.
+        """
+        data = data[:-1]
         if ":" in data:
             data = data.split(":")
             name = data[0]
@@ -83,7 +90,7 @@ class Server(QObject, QRunnable):
     to all clients at once.
     """
     eventReceived = Signal(Event)
-    conns: list[socket.socket]
+    conns: dict[socket.socket, str]
     msgQueue: Queue[Event]
 
     def __init__(self,
@@ -91,7 +98,7 @@ class Server(QObject, QRunnable):
         QObject.__init__(self)
         QRunnable.__init__(self)
 
-        self.conns = []
+        self.conns = {}
 
         self.msgQueue = Queue()
 
@@ -145,7 +152,7 @@ class Server(QObject, QRunnable):
         conn, addr = sock.accept()
         module_logger.info(f"Accepted connection from {addr}")
         self.sel.register(conn, selectors.EVENT_READ, self.read)
-        self.conns.append(conn)
+        self.conns[conn] = ""
 
     def read(self, sock: socket.socket, mask) -> None:
         """
@@ -154,12 +161,21 @@ class Server(QObject, QRunnable):
         data = sock.recv(1024)
 
         if data:
-            evt = Event.fromBytes(data)
-            module_logger.debug(f"Received event {str(evt)}")
-            self.eventReceived.emit(evt)
+            string = self.conns[sock] + data.decode()
+            index = string.find("\n")
+
+            while index != -1:
+                evt = Event.fromString(string[:index + 1])
+                module_logger.debug(f"Received event {str(evt)}")
+                self.eventReceived.emit(evt)
+
+                string = string[index + 1:]
+                index = string.find("\n")
+            
+            self.conns[sock] = string
         else:
             self.sel.unregister(sock)
-            self.conns.remove(sock)
+            del self.conns[sock]
             sock.close()
 
     def close(self) -> None:
@@ -172,6 +188,9 @@ class Server(QObject, QRunnable):
 
 class Client(QObject, QRunnable):
     eventReceived = Signal(Event)
+    conn: socket.socket
+    shouldClose: bool
+    buffer: str
 
     def __init__(self,
                  address:tuple[Optional[str], int]=("localhost", PORT)) -> None:
@@ -186,6 +205,7 @@ class Client(QObject, QRunnable):
         self.conn.settimeout(0.001)
 
         self.shouldClose = False
+        self.buffer = ""
 
     def run(self) -> None:
         """
@@ -209,8 +229,16 @@ class Client(QObject, QRunnable):
                 if data is None:
                     break
                 elif len(data) != 0:
-                    event = Event.fromBytes(data)
-                    self.eventReceived.emit(event)
+                    self.buffer += data.decode()
+                    index = self.buffer.find("\n")
+
+                    while index != -1:
+                        evt = Event.fromString(self.buffer[:index + 1])
+                        module_logger.debug(f"Received event {str(evt)}")
+                        self.eventReceived.emit(evt)
+
+                        self.buffer = self.buffer[index + 1:]
+                        index = self.buffer.find("\n")
 
             if not self.msgQueue.empty():
                 e = self.msgQueue.get()

@@ -272,7 +272,7 @@ class PongClient(TransformerStage):
         self.mode = "absolute"
         self.followMetric = ""
         self._availableMetrics = []
-        self.pongData = { "client":  None }
+        self.pongData = { "client":  None, "ballSpeed": 1.0 }
 
     def setClient(self, client: Client) -> None:
         """
@@ -289,12 +289,16 @@ class PongClient(TransformerStage):
         Handle events received from the server.
         """
         self.updated = True
-        module_logger.debug(f"Received event {str(event)}")
         if event.name == "scoreUpdated":
+            module_logger.debug("Updated scores for left and right player")
             self.pongData["scoreLeft"] = float(event.payload[0])
             self.pongData["scoreRight"] = float(event.payload[1])
         elif event.name == "accuracyUpdated":
+            module_logger.debug("Updated accuracy for left player")
             self.pongData["accuracy"] = float(event.payload[0])
+        elif event.name == "ballSpeedUpdated":
+            module_logger.debug("Updated ball speed")
+            self.pongData["ballSpeed"] = float(event.payload[0])
         else:
             self.updated = False
 
