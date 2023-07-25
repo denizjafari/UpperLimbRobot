@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout
 from PySide6.QtGui import QIntValidator
 from PySide6.QtCore import Qt
 from events import Client
+from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import PONG_CONTROLLER_REGISTRY, WIDGET_REGISTRY
 
 from pose_estimation.ui_utils import LabeledQSlider
@@ -263,11 +264,14 @@ class PongControllerWidget(TransformerWidget):
         self.transformer = PongControllerWrapper()
 
         self.controllerSelector = QComboBox(self)
+        self.vLayout.addWidget(self.controllerSelector)
+
+        self.controllerWidget = QLabel("No controller selected")
+        self.vLayout.addWidget(self.controllerWidget)
+
         self.controllerSelector.currentTextChanged.connect(self.setController)
         self.updateControllerList()
         PONG_CONTROLLER_REGISTRY.itemsChanged.connect(self.updateControllerList)
-
-        self.vLayout.addWidget(self.controllerSelector)
 
     def updateControllerList(self) -> None:
         """
@@ -280,8 +284,12 @@ class PongControllerWidget(TransformerWidget):
         """
         Set the controller when it is selected in the combobox.
         """
-        self.transformer.setController(
-            PONG_CONTROLLER_REGISTRY.createItem(controllerName))
+        controller: PongController = PONG_CONTROLLER_REGISTRY.createItem(controllerName)
+        widget = controller.widget()
+        self.transformer.setController(controller)
+        self.vLayout.replaceWidget(self.controllerWidget, widget)
+        self.controllerWidget.deleteLater()
+        self.controllerWidget = widget
         
     def __str__(self) -> str:
         return "Pong Controller"
