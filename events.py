@@ -1,5 +1,7 @@
 """
-Implementation of a simple event-based network protocol.
+Implementation of a simple event-based network protocol. Server and client
+both can send and receive events in a full-duplex configuration. They
+each run in a separate Qt thread by themselves.
 
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
@@ -87,7 +89,9 @@ class Event:
 class Server(QObject, QRunnable):
     """
     The server that excepts events from all clients and broadcasts events
-    to all clients at once.
+    to all clients at once. It must be started after initialization by
+    calling start() and runs in a separate thread. It can be closed by
+    calling close().
     """
     eventReceived = Signal(Event)
     conns: dict[socket.socket, str]
@@ -187,6 +191,12 @@ class Server(QObject, QRunnable):
 
 
 class Client(QObject, QRunnable):
+    """
+    The client side of the network protocol. It connects to the server and
+    can send as well as receive events. It must be started after initialization
+    by calling start() and runs in a separate thread. It can be closed by
+    calling close().
+    """
     eventReceived = Signal(Event)
     conn: socket.socket
     shouldClose: bool
@@ -269,15 +279,27 @@ class Client(QObject, QRunnable):
         self.shouldClose = True
 
 class GameAdapter(QObject):
+    """
+    An adapter for games that handles the event receiving and sending layer.
+    """
     eventReady = Signal(Event)
 
     def __init__(self) -> None:
+        """
+        Initilize a new game adapter.
+        """
         QObject.__init__(self)
 
     def widget(self) -> QWidget:
+        """
+        Return the underlying widget that runs the game.
+        """
         raise NotImplementedError
 
     def eventReceived(self, e: Event) -> None:
+        """
+        Handle an event that was received from the network.
+        """
         raise NotImplementedError
 
 if __name__ == "__main__":

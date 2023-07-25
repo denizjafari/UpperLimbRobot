@@ -95,6 +95,9 @@ class SnakeServerWidget(TransformerWidget):
     transformer: SnakeClient
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the SnakeServerWidget.
+        """
         TransformerWidget.__init__(self, "Snake Server", parent)
 
         self.transformer = SnakeClient()
@@ -117,6 +120,10 @@ class SnakeServerWidget(TransformerWidget):
         self.vLayout.addWidget(self.connectButton)
 
     def connectClient(self) -> None:
+        """
+        Create a client object connect to the default hostname and port
+        (localhost:9876).
+        """
         client = Client()
         self.transformer.setClient(client)
         client.start()
@@ -127,11 +134,16 @@ class SnakeServerWidget(TransformerWidget):
 class PongServerWidget(TransformerWidget):
     """
     Widget controlling the sending of events to a pong game running remotely.
+    For the connection, it allows selection the host and port of the server.
+    For the game, it allows the selection of the metrics that should be followed.
     """
     transformer: PongClient
     client: Optional[Client]
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the PongServerWidget.
+        """
         TransformerWidget.__init__(self, "Pong Server", parent)
 
         self.transformer = PongClient()
@@ -181,6 +193,9 @@ class PongServerWidget(TransformerWidget):
         self.client = None
 
     def updateMetricsList(self, metrics) -> None:
+        """
+        Update the metrics list.
+        """
         newMetricDropdown = QComboBox(self)
         for metric in metrics:
             newMetricDropdown.addItem(metric)
@@ -192,6 +207,10 @@ class PongServerWidget(TransformerWidget):
         self.metricDropdown = newMetricDropdown
 
     def connectClient(self) -> None:
+        """
+        Create a client object and attempt to connect to the server with the
+        host and port specified in the text fields.
+        """
         if self.client is not None:
             self.client.close()
 
@@ -202,6 +221,9 @@ class PongServerWidget(TransformerWidget):
         module_logger.info("Connected to pong server")
 
     def close(self) -> None:
+        """
+        Close the client connection.
+        """
         if self.client is not None:
             self.client.close()
 
@@ -226,9 +248,16 @@ class PongServerWidget(TransformerWidget):
         return "Pong Server"
     
 class PongControllerWidget(TransformerWidget):
+    """
+    Widget controlling pong controllers. It allows the selection of a controller
+    from the ones registered to the PONG_CONTROLLER_REGISTRY via a combobox.
+    """
     transformer: PongControllerWrapper
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the PongControllerWidget.
+        """
         super().__init__("Pong Controller", parent)
 
         self.transformer = PongControllerWrapper()
@@ -241,12 +270,21 @@ class PongControllerWidget(TransformerWidget):
         self.vLayout.addWidget(self.controllerSelector)
 
     def updateControllerList(self) -> None:
+        """
+        Update the controller list when the registry changes.
+        """
         self.controllerSelector.clear()
         self.controllerSelector.addItems(PONG_CONTROLLER_REGISTRY.items())
 
     def setController(self, controllerName: str) -> None:
+        """
+        Set the controller when it is selected in the combobox.
+        """
         self.transformer.setController(
             PONG_CONTROLLER_REGISTRY.createItem(controllerName))
+        
+    def __str__(self) -> str:
+        return "Pong Controller"
 
 
 WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")

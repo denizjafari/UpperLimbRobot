@@ -1,6 +1,7 @@
 """
 Games transformers that are used to start and manage games, passing information
-from the frame data objects to the games.
+from the frame data objects to the games and/or adapting the games parameters
+based on collected metrics.
 
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
@@ -258,14 +259,17 @@ class SnakeClient(TransformerStage, QObject):
 
 class PongClient(TransformerStage):
     """
-    The pong game. The snake is controlled by the user's body.
-    The height of the hand will determine the height of the paddle.
+    The pong game.
+    The height of the hand will determine the height of the left paddle.
     """
     events: Queue[Event]
     pongData: dict[str, float]
     followMetrics: str
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize the pong client.
+        """
         TransformerStage.__init__(self, True, previous)
         self.events = Queue()
 
@@ -304,19 +308,40 @@ class PongClient(TransformerStage):
 
 
     def setMode(self, mode: str) -> None:
+        """
+        Set the mode of movement. Can be "absolute", "threshold" or "speed".
+        Absolute means the paddle will always be at the exact position of the
+        metric.
+        Threshold means that the paddle will not move as long as the metric is
+        around the central value of 0.5. Only if the metric reaches a threshold
+        distance, the paddle moves either up or down depending on the directionn
+        of the delta.
+        Speed means that the distance of the metric to the central value of 0.5
+        determines the speed of the paddle. If the metric is at 0.5, the paddle
+        would not move for example. At 1.0, it would move up at full speed up, at
+        0.0 it would move down at full speed.
+        """
         if "client" in self.pongData and self.pongData["client"] is not None:
             self.pongData["client"].send(Event("clearMovement"))
         self.mode = mode
         module_logger.info(f"Pong movement mode set to {mode}")
 
     def availableMetrics(self) -> list[str]:
+        """
+        Return the list of available metrics.
+        """
         return self._availableMetrics
     
     def setFollowMetrics(self, metric: str) -> None:
+        """
+        Set the metric that should be followed for determining the paddle's
+        position.
+        """
         self.followMetric = metric
 
     def transform(self, frameData: FrameData) -> None:
         """
+        Control the paddle.
         """
         if "metrics" in frameData:
             self._availableMetrics = list(frameData["metrics"].keys())
@@ -358,14 +383,28 @@ class PongClient(TransformerStage):
 
 
 class PongControllerWrapper(TransformerStage):
+    """
+    Wrapper for the pong controller. The pong controller is used to adapt the game
+    to the capabilities of the user.
+    """
     def __init__(self) -> None:
+        """
+        Initialize the wrapper.
+        """
         TransformerStage.__init__(self, True)
         self.controller = None
 
     def setController(self, controller: PongController) -> None:
+        """
+        Set the controller that should be used to adapt the game.
+        """
         self.controller = controller
 
     def transform(self, frameData: FrameData) -> None:
+        """
+        Adapt the games values if the controller is active and pong metadata
+        is available in the frame data object.
+        """
         if self.active() and self.controller is not None and "pong" in frameData:
             self.controller.control(frameData["pong"])
 

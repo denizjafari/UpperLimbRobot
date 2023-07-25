@@ -481,22 +481,42 @@ class PongGameWindow(QWidget):
         self.vLayout.addWidget(self.toggleButton)
 
 class PongServerAdapter(GameAdapter):
+    """
+    The universal adapter for the pong game, so it can be controlled by a
+    separate client application.
+    """
     def __init__(self, pongGame: PongGameWindow) -> None:
+        """
+        Initialize the adapter. Connect the game's signals to the adapter's
+        slots.
+        """
         GameAdapter.__init__(self)
         self.window = pongGame
         self.window.game.scoreUpdated.connect(self.onScoreUpdated)
         self.window.game.accuracyUpdated.connect(self.onAccuracyUpdated)
 
     def widget(self) -> QWidget:
+        """
+        Return the window of the underlying game.
+        """
         return self.window
 
     def onScoreUpdated(self, scoreLeft: int, scoreRight: int) -> None:
+        """
+        Send the scoreUpdated event to the client.
+        """
         self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))
 
     def onAccuracyUpdated(self, accuracy: float) -> None:
+        """
+        Send the accuracyUpdated event to the client.
+        """
         self.eventReady.emit(Event("accuracyUpdated", [accuracy]))
     
     def eventReceived(self, e: Event) -> None:
+        """
+        Handle an event received from the client.
+        """
         module_logger.debug(f"Executing {str(e)}")
         leftPaddle = self.window.game.leftPaddle
         if e.name == "clearMovement":
