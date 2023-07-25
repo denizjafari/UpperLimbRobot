@@ -222,7 +222,10 @@ class PongGame(QLabel):
     The Pong Game. Handles the game logic and displays the result.
     """
     scoreUpdated = Signal(int, int)
-    accuracyUpdated = Signal(float)
+    leftHit = Signal()
+    leftMissed = Signal()
+    rightHit = Signal()
+    rightMissed = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         QLabel.__init__(self, parent)
@@ -436,17 +439,15 @@ class SoloBallStormPongGame(PongGame):
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
+        self.leftMissed.emit()
         self.balls.remove(ball)
         self.addBall()
 
     def onLeftEdgeHit(self, ball: Ball) -> None:
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        self.leftHit.emit()
         self.balls.remove(ball)
         self.addBall()
-
-    def updateScore(self, scoreLeft: int, scoreRight: int) -> None:
-        super().updateScore(scoreLeft, scoreRight)
-        self.accuracyUpdated.emit(scoreLeft / (scoreLeft + scoreRight))
 
     def addBall(self) -> None:
         ball = Ball()
@@ -493,7 +494,18 @@ class PongServerAdapter(GameAdapter):
         GameAdapter.__init__(self)
         self.window = pongGame
         self.window.game.scoreUpdated.connect(self.onScoreUpdated)
-        self.window.game.accuracyUpdated.connect(self.onAccuracyUpdated)
+        self.window.game.leftHit.connect(
+            lambda: self.eventReady.emit(Event("leftHit"))
+        )
+        self.window.game.leftMissed.connect(
+            lambda: self.eventReady.emit(Event("leftMissed"))
+        )
+        self.window.game.rightHit.connect(
+            lambda: self.eventReady.emit(Event("rightHit"))
+        )
+        self.window.game.rightMissed.connect(
+            lambda: self.eventReady.emit(Event("rightMissed"))
+        )
 
     def widget(self) -> QWidget:
         """

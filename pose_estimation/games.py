@@ -297,9 +297,18 @@ class PongClient(TransformerStage):
             module_logger.debug("Updated scores for left and right player")
             self.pongData["scoreLeft"] = float(event.payload[0])
             self.pongData["scoreRight"] = float(event.payload[1])
-        elif event.name == "accuracyUpdated":
-            module_logger.debug("Updated accuracy for left player")
-            self.pongData["accuracy"] = float(event.payload[0])
+        elif event.name == "leftMissed":
+            module_logger.debug("Left player missed the ball")
+            self.pongData['missesLeft'] += 1
+        elif event.name == "rightMissed":
+            module_logger.debug("Right player missed the ball")
+            self.pongData['missesRight'] += 1
+        elif event.name == "leftHit":
+            module_logger.debug("Left player hit the ball")
+            self.pongData['hitsLeft'] += 1
+        elif event.name == "rightHit":
+            module_logger.debug("Right player hit the ball")
+            self.pongData['hitsRight'] += 1
         elif event.name == "ballSpeedUpdated":
             module_logger.debug("Updated ball speed")
             self.pongData["ballSpeed"] = float(event.payload[0])
