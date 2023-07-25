@@ -17,7 +17,7 @@ from pose_estimation.audio import QSound
 from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import SOUND_REGISTRY
 
-from pose_estimation.snake import SnakeGame
+from game_hosts.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
 from events import Client, Event
 
