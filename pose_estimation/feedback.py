@@ -12,7 +12,9 @@ import json
 import sys
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit, \
-    QApplication, QPushButton
+    QApplication, QPushButton, QGridLayout, QRadioButton, QButtonGroup
+
+from PySide6.QtCore import Qt
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
@@ -63,7 +65,95 @@ class FreeTextFeedback(FeedbackItem):
         """
         d["type"] = "free-text"
         d["question"] = self._d["question"]
-        d["text"] = self.textEdit.toPlainText()
+        d["response"] = self.textEdit.toPlainText()
+
+    
+class FeedbackMatrixRow:
+    """
+    A row in the feedback matrix that holds a question and manages the answers.
+    """
+    def __init__(self, question: str, selections: list[str]) -> None:
+        self.question = question
+        self.selections = selections
+        self.buttons: list[QRadioButton] = []
+        self.question = QLabel(question)
+        self.buttonGroup = QButtonGroup()
+        self._value = ""
+
+        for _ in selections:
+            button = QRadioButton()
+            self.buttons.append(button)
+            self.buttonGroup.addButton(button)
+
+    def value(self) -> str:
+        """
+        Get the currently selected response.
+        """
+        for index, button in enumerate(self.buttons):
+            if button.isChecked():
+                return self.selections[index]
+    
+    def save(self, d: dict) -> None:
+        """
+        Save the results from this feedback item.
+        """
+        d["question"] = self.question.text()
+        d["response"] = self.value()
+
+class FeedbackMatrix(FeedbackItem):
+    """
+    Feedback Item that poses multiple question and ask
+    for answers on a scale.
+    """
+    def __init__(self,
+                 d: dict,
+                 parent: Optional[QWidget] = None) -> None:
+        FeedbackItem.__init__(self, d, parent)
+
+        self.gridLayout = QGridLayout(self)
+        self.setLayout(self.gridLayout)
+
+        self.rows: list[FeedbackMatrixRow] = []
+
+        if "selections" not in d or not isinstance(d["selections"], list):
+            raise ValueError("Feedback matrix must have a list of possible \
+                             selections")
+
+        if "questions" not in d or not isinstance(d["questions"], list):
+            raise ValueError("Feedback matrix must have a list of questions")
+        
+        for selection in d["selections"]:
+            if not isinstance(selection, str):
+                raise ValueError("Selections must be strings")
+        
+        for index, selection in enumerate(d["selections"]):
+            self.gridLayout.addWidget(QLabel(selection), 0, index + 1)
+
+        for index, question in enumerate(d["questions"]):
+            if not isinstance(question, str):
+                raise ValueError("Questions must be strings")
+            matrixRow = FeedbackMatrixRow(question, d["selections"])
+            self.gridLayout.addWidget(matrixRow.question, index + 1, 0)
+            for i, button in enumerate(matrixRow.buttons):
+                self.gridLayout.addWidget(button, index + 1, i + 1, Qt.AlignCenter)
+
+            self.rows.append(matrixRow)
+            
+        self._d = d
+
+    def save(self, d: dict) -> None:
+        """
+        Save the results from this feedback item.
+        """
+        d["type"] = "matrix"
+        d["questions"] = self._d["questions"]
+        d["selections"] = self._d["selections"]
+        d["responses"] = []
+
+        for row in self.rows:
+            newD = {}
+            row.save(newD)
+            d["responses"].append(newD)
     
 
 class FeedbackForm(QWidget):
@@ -93,6 +183,10 @@ class FeedbackForm(QWidget):
             
             if item["type"] == 'free-text':
                 feedbackItem = FreeTextFeedback(item, self)
+                self._items.append(feedbackItem)
+                self.vLayout.addWidget(feedbackItem)
+            elif item["type"] == 'matrix':
+                feedbackItem = FeedbackMatrix(item, self)
                 self._items.append(feedbackItem)
                 self.vLayout.addWidget(feedbackItem)
             else:
