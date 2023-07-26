@@ -2,3 +2,5 @@ __pycache__
 *.mp4
 *.csv
 state.json
+feedback.json
+feedback_output.json
