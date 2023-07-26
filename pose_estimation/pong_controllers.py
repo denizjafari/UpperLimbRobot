@@ -63,6 +63,13 @@ class SimplePongControllerWidget(QWidget):
         self.formLayout = QFormLayout(self)
         self.setLayout(self.formLayout)
 
+        self.speedDeltaSlider = LabeledQSlider(self, orientation=Qt.Horizontal)
+        self.speedDeltaSlider.valueChanged.connect(
+            lambda val: self._controller.setSpeedDelta(val / 10))
+        self.speedDeltaSlider.setRange(1, 20)
+        self.speedDeltaSlider.setValue(2)
+        self.formLayout.addRow("Speed Delta", self.speedDeltaSlider)
+
         self.lowerCutoffSlider = LabeledQSlider(self, orientation=Qt.Horizontal)
         self.lowerCutoffSlider.valueChanged.connect(
             lambda val: self._controller.setLowerCutoff(val / 100))
@@ -99,6 +106,7 @@ class SimplePongController(PongController):
         PongController.__init__(self)
         self._lowerCutoff = 0.4
         self._higherCutoff = 0.6
+        self._speedDelta = 0.2
 
     def widget(self) -> None:
         return SimplePongControllerWidget(self)
@@ -115,6 +123,12 @@ class SimplePongController(PongController):
         """
         self._higherCutoff = higherCutoff
 
+    def setSpeedDelta(self, speedDelta: float) -> None:
+        """
+        Set the speed delta.
+        """
+        self._speedDelta = speedDelta
+
     def higherCutoff(self) -> float:
         """
         Return the higher cutoff for the accuracy.
@@ -126,6 +140,12 @@ class SimplePongController(PongController):
         Return the lower cutoff for the accuracy.
         """
         return self._lowerCutoff
+    
+    def speedDelta(self) -> float:
+        """
+        Return the speed delta.
+        """
+        return self._speedDelta
     
     def control(self, pongData: dict[str, object]):
         """
@@ -142,11 +162,13 @@ class SimplePongController(PongController):
                     and "ballSpeed" in pongData:
             accuracy = pongData["hitsLeft"] / (pongData["hitsLeft"] + pongData["missesLeft"])
             if accuracy > self.higherCutoff():
-                client.send(Event("setBallSpeed", [pongData["ballSpeed"] + 0.02]))
-                module_logger.debug(f"Increased pong speed to {pongData['ballSpeed'] + 0.02}")
+                newSpeed = pongData["ballSpeed"] + self.speedDelta()
+                client.send(Event("setBallSpeed", [newSpeed]))
+                module_logger.debug(f"Increased pong speed to {newSpeed}")
             elif accuracy < self.lowerCutoff():
-                client.send(Event("setBallSpeed", [pongData["ballSpeed"] - 0.02]))
-                module_logger.debug(f"Decreased pong speed to {pongData['ballSpeed'] - 0.02}")
+                newSpeed = pongData["ballSpeed"] - self.speedDelta()
+                client.send(Event("setBallSpeed", [newSpeed]))
+                module_logger.debug(f"Decreased pong speed to {newSpeed}")
 
 
 class WindowedPongController(SimplePongController):
@@ -206,12 +228,14 @@ class WindowedPongController(SimplePongController):
 
             if len(self.history) == self._windowLength:
                 if accuracy > self.higherCutoff():
-                    client.send(Event("setBallSpeed", [pongData["ballSpeed"] + 0.1]))
-                    module_logger.debug(f"Increased pong speed to {pongData['ballSpeed'] + 0.1}")
+                    newSpeed = pongData["ballSpeed"] + self.speedDelta()
+                    client.send(Event("setBallSpeed", [newSpeed]))
+                    module_logger.debug(f"Increased pong speed to {newSpeed}")
                     self.history = []
                 elif accuracy < self.lowerCutoff():
-                    client.send(Event("setBallSpeed", [pongData["ballSpeed"] - 0.1]))
-                    module_logger.debug(f"Decreased pong speed to {pongData['ballSpeed'] - 0.1}")
+                    newSpeed = pongData["ballSpeed"] - self.speedDelta()
+                    client.send(Event("setBallSpeed", [newSpeed]))
+                    module_logger.debug(f"Decreased pong speed to {newSpeed}")
                     self.history = []
 
 
