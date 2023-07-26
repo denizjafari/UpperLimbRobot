@@ -439,13 +439,13 @@ class SoloBallStormPongGame(PongGame):
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
-        self.leftMissed.emit()
+        self.leftHit.emit()
         self.balls.remove(ball)
         self.addBall()
 
     def onLeftEdgeHit(self, ball: Ball) -> None:
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-        self.leftHit.emit()
+        self.leftMissed.emit()
         self.balls.remove(ball)
         self.addBall()
 

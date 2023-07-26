@@ -136,7 +136,10 @@ class SimplePongController(PongController):
         
         client: Client = pongData["client"]
 
-        if "hitsLeft" in pongData and "hitsRight" in pongData and "ballSpeed" in pongData:
+        if "hitsLeft" in pongData \
+            and "hitsRight" in pongData \
+                and pongData['hitsLeft'] + pongData['missesLeft'] > 0 \
+                    and "ballSpeed" in pongData:
             accuracy = pongData["hitsLeft"] / (pongData["hitsLeft"] + pongData["missesLeft"])
             if accuracy > self.higherCutoff():
                 client.send(Event("setBallSpeed", [pongData["ballSpeed"] + 0.02]))
@@ -165,6 +168,8 @@ class WindowedPongController(SimplePongController):
         """
         Set the window length for the accuracy.
         """
+        if windowLength < 1:
+            windowLength = 1
         self._windowLength = windowLength
     
     def windowLength(self) -> float:
@@ -182,25 +187,32 @@ class WindowedPongController(SimplePongController):
         
         client: Client = pongData["client"]
 
-        if "leftHits" in pongData and 'leftMisses' in pongData and "ballSpeed" in pongData:
+        if "hitsLeft" in pongData and 'missesRight' in pongData and "ballSpeed" in pongData:
             if pongData["hitsLeft"] > self._lastHit:
                 self._lastHit = pongData["hitsLeft"]
                 self.history.append(1)
+                module_logger.debug("Hit")
             elif pongData['missesLeft'] > self._lastMiss:
                 self._lastMiss = pongData['missesLeft']
+                module_logger.debug("Miss")
                 self.history.append(0)
+            else:
+                return
 
             while len(self.history) > self._windowLength:
                 self.history.pop(0)
 
             accuracy = sum(self.history) / len(self.history)
 
-            if accuracy > self.higherCutoff():
-                client.send(Event("setBallSpeed", [pongData["ballSpeed"] + 0.02]))
-                module_logger.debug(f"Increased pong speed to {pongData['ballSpeed'] + 0.02}")
-            elif accuracy < self.lowerCutoff():
-                client.send(Event("setBallSpeed", [pongData["ballSpeed"] - 0.02]))
-                module_logger.debug(f"Decreased pong speed to {pongData['ballSpeed'] - 0.02}")
+            if len(self.history) == self._windowLength:
+                if accuracy > self.higherCutoff():
+                    client.send(Event("setBallSpeed", [pongData["ballSpeed"] + 0.1]))
+                    module_logger.debug(f"Increased pong speed to {pongData['ballSpeed'] + 0.1}")
+                    self.history = []
+                elif accuracy < self.lowerCutoff():
+                    client.send(Event("setBallSpeed", [pongData["ballSpeed"] - 0.1]))
+                    module_logger.debug(f"Decreased pong speed to {pongData['ballSpeed'] - 0.1}")
+                    self.history = []
 
 
 PONG_CONTROLLER_REGISTRY.register(SimplePongController, "SimplePongController")

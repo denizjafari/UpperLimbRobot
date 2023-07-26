@@ -276,7 +276,14 @@ class PongClient(TransformerStage):
         self.mode = "absolute"
         self.followMetric = ""
         self._availableMetrics = []
-        self.pongData = { "client":  None, "ballSpeed": 1.0 }
+        self.pongData = {
+            "client":  None,
+            "ballSpeed": 2.0,
+            'missesLeft': 0,
+            'hitsLeft': 0,
+            'hitsRight': 0,
+            'missesRight': 0
+        }
 
     def setClient(self, client: Client) -> None:
         """
@@ -416,6 +423,7 @@ class PongControllerWrapper(TransformerStage):
         """
         if self.active() and self.controller is not None and "pong" in frameData:
             self.controller.control(frameData["pong"])
+            frameData["metrics"]["ballSpeed"] = frameData["pong"]["ballSpeed"]
 
         self.next(frameData)
 
