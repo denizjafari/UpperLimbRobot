@@ -6,6 +6,30 @@ This framework integrates various pose tracking models into one application.
 It comes with an easy-to-use user interface allowing detailed configuration.
 In the future, interactive games for rehabilitation will be built using it.
 
+## Setup for Non-Technical Users
+
+This is a step-by-step guide to getting the application running on your machine.
+
+1. Download the most recent version of miniconda from (anaconda)[https://docs.conda.io/en/latest/miniconda.html]
+2. Execute the downloaded file to install miniconda
+3. Download the python code from the by clicking (here)[https://github.com/denizjafari/UpperLimbRobot/archive/refs/heads/main.zip]
+4. Extract the downloaded file into a directory of your choice
+5. Open a terminal (on Windows/Linux, press the windows key and type "terminal")
+6. Create a new conda environment with `conda create -n upperlimbrobot python=3.9`
+7. Activate the environment with `conda activate upperlimbrobot`
+8. Navigate to the directory where you downloaded the code with `cd <path to directory>`
+9. Run `pip install -r requirements.txt` to install the dependencies
+
+## Running the application for Non-Technical Users
+Do steps 5, 7, and 8 from the setup, more precisely
+
+1. Open a terminal (on Windows/Linux, press the windows key and type "terminal")
+2. Activate the environment with `conda activate upperlimbrobot`
+3. Navigate to the directory where you downloaded the code with `cd <path to directory>`
+4. Run `python main.py` to start the application
+
+5. Repeat steps 1-3 if you want to run games as well
+6. Run `python game_host.py` to start the game host
 
 ## Technological Overview
 
@@ -60,6 +84,10 @@ You can add your own extensions by creating new files in these two directories.
 This includes widgets making use of custom transformers and models. Just register
 them with the registries exported by registry.py.
 
+### Registry
+Models, transformer widgets and more need to be registered to their respective
+registry in the registries file.
+
 ### Models
 The integration and testing of multiple pose tracking models lies at the core
 of the framework. There is an interface for models in Models.py which allows
@@ -87,3 +115,10 @@ allowing endless ways to compose transformers.
 
 Core transformers are provided in transforms.py. They are usable in the application
 in conjunction with their respective widgets from tranformer_widgets.py.
+
+### FrameData Object
+The FrameData Object is the central object that is processed by the pipeline.
+It is a new object for every pass of the pipeline. As a general rule, it should
+be stateless. Transformers should store any data that needs to be accumulated
+themselves. If there is very important global state such as a working directory,
+this state can be stored in the GLOBAL_PROPS object of the registry.
