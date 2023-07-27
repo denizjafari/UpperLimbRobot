@@ -1,0 +1,45 @@
+[
+    {
+        "type": "matrix",
+        "selections": [
+            "Very much",
+            "Somewhat",
+            "Neutral",
+            "Not really",
+            "Not at all"
+        ],
+        "questions": [
+            "Did you enjoy using the system?",
+            "Were you successful using the system?",
+            "Were you able to control the system?",
+            "Was the information provided by the system clear to you?",
+            "Did you feel discomfort during your experience with the system?",
+            "Do you think that this system will be helpful for your upper-limb rehabilitation?",
+            "Would you like to keep using the system during your rehabilitation?"
+        ]
+    },
+    {
+        "type": "free-text",
+        "question": "What did you think of the system?"
+    },
+    {
+        "type": "free-text",
+        "question": "What did you like?"
+    },
+    {
+        "type": "free-text",
+        "question": "What did you not like?"
+    },
+    {
+        "type": "free-text",
+        "question": "What was your favourite exercise game? Why?"
+    },
+    {
+        "type": "free-text",
+        "question": "Was there an exercise game you did not like? What game? Why?"
+    },
+    {
+        "type": "free-text",
+        "question": "What would you add or change?"
+    }
+]

@@ -12,7 +12,8 @@ import json
 import sys
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit, \
-    QApplication, QPushButton, QGridLayout, QRadioButton, QButtonGroup
+    QApplication, QPushButton, QGridLayout, QRadioButton, QButtonGroup, \
+    QScrollArea
 
 from PySide6.QtCore import Qt
 
@@ -223,8 +224,13 @@ if __name__ == "__main__":
         raise ValueError("Please provide a feedback file")
     
     app = QApplication()
+
     feedbackForm = FeedbackForm(sys.argv[1])
-    feedbackForm.show()
-    feedbackForm.setWindowTitle("Feedback Form")
+
+    scrollArea = QScrollArea()
+    scrollArea.setWidget(feedbackForm)
+    scrollArea.setWidgetResizable(True)
+    scrollArea.show()
+    scrollArea.setWindowTitle("Feedback Form")
 
     sys.exit(app.exec())
