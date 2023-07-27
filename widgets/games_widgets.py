@@ -190,8 +190,25 @@ class PongServerWidget(TransformerWidget):
         self.buttonGroup.addButton(self.speed)
         self.buttonGroup.buttonClicked.connect(
             lambda btn: self.transformer.setMode(btn.text()))
+        self.absolute.setChecked(True)
         
         self.client = None
+        
+        self.hDirectionLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.hDirectionLayout)
+
+        self.left = QRadioButton("left")
+        self.right = QRadioButton("right")
+        self.hDirectionLayout.addWidget(self.left)
+        self.hDirectionLayout.addWidget(self.right)
+
+        self.directionButtonGroup = QButtonGroup(self)
+        self.directionButtonGroup.addButton(self.left)
+        self.directionButtonGroup.addButton(self.right)
+        self.directionButtonGroup.buttonClicked.connect(
+            lambda btn: self.transformer.setOrientation(btn.text().upper()))
+        self.left.setChecked(True)
+        
 
     def updateMetricsList(self, metrics) -> None:
         """
@@ -235,7 +252,9 @@ class PongServerWidget(TransformerWidget):
         TransformerWidget.save(self, d)
         d["availableMetrics"] = self.transformer.availableMetrics()
         d["selectedMetric"] = self.transformer.followMetric
-    
+        
+        d["mode"] = self.buttonGroup.checkedButton().text()
+        d["orientation"] = self.directionButtonGroup.checkedButton().text()
 
     def restore(self, d: dict) -> None:
         """
@@ -244,6 +263,22 @@ class PongServerWidget(TransformerWidget):
         TransformerWidget.save(self, d)
         self.updateMetricsList(d["availableMetrics"])
         self.metricDropdown.setCurrentText(d["selectedMetric"])
+
+        if "mode" in d:
+            mode = d["mode"]
+            if mode == "absolute":
+                self.absolute.setChecked(True)
+            elif mode == "threshold":
+                self.threshold.setChecked(True)
+            elif mode == "speed":
+                self.speed.setChecked(True)
+        
+        if "orientation" in d:
+            orientation = d["orientation"]
+            if orientation == "left":
+                self.left.setChecked(True)
+            elif orientation == "right":
+                self.right.setChecked(True)
 
     def __str__(self) -> str:
         return "Pong Server"

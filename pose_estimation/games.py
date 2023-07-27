@@ -342,6 +342,16 @@ class PongClient(TransformerStage):
         self.mode = mode
         module_logger.info(f"Pong movement mode set to {mode}")
 
+    def setOrientation(self, orientation: str) -> None:
+        """
+        Set the orientation of the pong board. If orientation is "LEFT",
+        then the user controlled paddle is on the left. If the orientation
+        is "RIGHT", then the paddle is on the right.
+        """
+        if "client" in self.pongData and self.pongData["client"] is not None:
+            self.pongData["client"].send(Event("setOrientation", [orientation]))
+        module_logger.info(f"Pong orientation set to {orientation}")
+
     def availableMetrics(self) -> list[str]:
         """
         Return the list of available metrics.
@@ -393,7 +403,6 @@ class PongClient(TransformerStage):
                 client.send(Event("setSpeed", [2 * target - 1.0]))
 
             frameData["pong"] = self.pongData.copy()
-            #module_logger.info(f"Score is now {event.payload[0]}:{event.payload[1]}")
 
         self.next(frameData)
 

@@ -281,6 +281,18 @@ class PongGame(QLabel):
         for ball in self.balls:
             ball.speed = speed
 
+    def setOrientation(self) -> None:
+        """
+        Set the orientation of the paddles.
+        """
+        raise NotImplementedError
+    
+    def userControlledPaddle(self) -> None:
+        """
+        Return the paddle that is controlled by the user.
+        """
+        raise NotImplementedError
+
     def updateState(self) -> None:
         """
         Move the ball and paddles and check for collisions. Then paint the new
@@ -417,12 +429,20 @@ class TwoPlayerPongGame(PongGame):
     def onRightEdgeHit(self, ball: Ball) -> None:
         self.stop()
 
+    def setOrientation(self) -> None:
+        pass
+
+    def userControlledPaddle(self) -> Paddle:
+        return self.leftPaddle
 
 class SoloBallStormPongGame(PongGame):
     def __init__(self) -> None:
         PongGame.__init__(self)
+        
         self.rightPaddle.setActive(False)
         self.lastBallUp = True
+        self.orientation = "LEFT"
+
         self.addBall()
 
     def reset(self) -> None:
@@ -449,14 +469,39 @@ class SoloBallStormPongGame(PongGame):
         self.balls.remove(ball)
         self.addBall()
 
+    def onRightPaddleHit(self, ball: Ball) -> None:
+        self.onLeftPaddleHit(ball)
+
+    def onRightEdgeHit(self, ball: Ball) -> None:
+        self.onRightPaddleHit(ball)
+
     def addBall(self) -> None:
         ball = Ball()
-        ball.position = SQUARE_SIZE - 20, SQUARE_SIZE // 2
-        ball.direction = -2, 1 if self.lastBallUp else -1
+        ball.position = SQUARE_SIZE - 20 if self.orientation == "LEFT" else 20, \
+            SQUARE_SIZE // 2
+        ball.direction = -2 if self.orientation == "LEFT" else 2, \
+            1 if self.lastBallUp else -1
         ball.speed = self.ballSpeed
         self.lastBallUp = not self.lastBallUp
         self.balls.append(ball)
 
+    def setOrientation(self, orientation: str) -> None:
+        if orientation == "LEFT":
+            self.rightPaddle.setActive(False)
+            self.leftPaddle.setActive(True)
+        elif orientation == "RIGHT":
+            self.leftPaddle.setActive(False)
+            self.rightPaddle.setActive(True)
+
+        if orientation != self.orientation:
+            self.orientation = orientation
+            self.balls.clear()
+            self.addBall()
+
+        self.orientation = orientation
+
+    def userControlledPaddle(self) -> Paddle:
+        return self.leftPaddle if self.orientation == "LEFT" else self.rightPaddle
 
 class PongGameWindow(QWidget):
     def __init__(self, pongGame: Optional[PongGame] = None) -> None:
@@ -530,32 +575,34 @@ class PongServerAdapter(GameAdapter):
         Handle an event received from the client.
         """
         module_logger.debug(f"Executing {str(e)}")
-        leftPaddle = self.window.game.leftPaddle
+        paddle = self.window.game.userControlledPaddle()
         if e.name == "clearMovement":
-            leftPaddle.movingUp = False
-            leftPaddle.movingDown = False
-            leftPaddle.useVariableSpeed = False
-            leftPaddle.setSpeedMultiplier(0.0)
+            paddle.movingUp = False
+            paddle.movingDown = False
+            paddle.useVariableSpeed = False
+            paddle.setSpeedMultiplier(0.0)
         elif e.name == "moveTo":
-            leftPaddle.moveTo(float(e.payload[0]))
+            paddle.moveTo(float(e.payload[0]))
         elif e.name == "setSpeed":
-            leftPaddle.useVariableSpeed = True
-            leftPaddle.setSpeedMultiplier(float(e.payload[0]))
+            paddle.useVariableSpeed = True
+            paddle.setSpeedMultiplier(float(e.payload[0]))
         elif e.name == "moveUp":
-            leftPaddle.useVariableSpeed = False
-            leftPaddle.movingUp = True
-            leftPaddle.movingDown = False
+            paddle.useVariableSpeed = False
+            paddle.movingUp = True
+            paddle.movingDown = False
         elif e.name == "neutral":
-            leftPaddle.useVariableSpeed = False
-            leftPaddle.movingUp = False
-            leftPaddle.movingDown = False
+            paddle.useVariableSpeed = False
+            paddle.movingUp = False
+            paddle.movingDown = False
         elif e.name == "moveDown":
-            leftPaddle.useVariableSpeed = False
-            leftPaddle.movingDown= True
-            leftPaddle.movingUp = False
+            paddle.useVariableSpeed = False
+            paddle.movingDown= True
+            paddle.movingUp = False
         elif e.name == "setBallSpeed":
             self.window.game.setBallSpeed(float(e.payload[0]))
             self.eventReady.emit(Event("ballSpeedUpdated", [float(e.payload[0])]))
+        elif e.name == "setOrientation":
+            self.window.game.setOrientation(e.payload[0])
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
