@@ -835,7 +835,14 @@ class TransformerRunner(QRunnable, QObject):
         """
         if pydevd is not None:
             pydevd.settrace(suspend=False)
+            self.transform()
+        else:
+            try:
+                self.transform()
+            except Exception as e:
+                print(e)
 
+    def transform(self) -> None:
         self.frameData["timings"] = [("Start", time.time())]
         self._transformer.lock()
         self.transformerStarted.emit(self.frameData)
