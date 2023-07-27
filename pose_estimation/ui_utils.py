@@ -227,9 +227,10 @@ class FileSelector(QWidget):
 
     def __init__(self,
                  parent: Optional[QWidget] = None,
-                 mode=MODE_LOAD,
-                 title:Optional[str]=None,
-                 removable=False) -> None:
+                 mode: int = MODE_LOAD,
+                 title: Optional[str] = None,
+                 removable: bool = False,
+                 defaultPath: str = "") -> None:
         """
         Initialize the file selector widget.
         """
@@ -242,6 +243,7 @@ class FileSelector(QWidget):
             self.layout().addWidget(self.label)
 
         self.textInput = QLineEdit(self)
+        self.textInput.setText(defaultPath)
         self.textInput.textChanged.connect(self.fileSelected)
         self.layout().addWidget(self.textInput)
 

@@ -5,6 +5,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from __future__ import annotations
+import os
 from typing import Optional
 
 from io import TextIOBase
@@ -15,7 +16,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from PySide6.QtGui import QColor
 
-from pose_estimation.registry import WIDGET_REGISTRY
+from pose_estimation.registry import GLOBAL_PROPS, WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, CsvExporter, \
@@ -303,9 +304,11 @@ class RecorderTransformerWidget(TransformerWidget):
         self.recorderTransformer = RecorderTransformer()
         self.transformer.append(self.recorderTransformer)
 
+        defaultPath = os.path.join(GLOBAL_PROPS["WORKING_DIR"], "output.mp4")
         self.outputFileSelector = FileSelector(self,
                                                mode=FileSelector.MODE_SAVE,
-                                               title="Output File")
+                                               title="Output File",
+                                               defaultPath=defaultPath)
         self.vLayout.addWidget(self.outputFileSelector)
 
         self.csvExporterLayout = QVBoxLayout()
@@ -329,10 +332,13 @@ class RecorderTransformerWidget(TransformerWidget):
         """
         Add a csv exporter to the widget and pipeline.
         """
+        defaultPath = os.path.join(GLOBAL_PROPS["WORKING_DIR"],
+                                   f"output_{len(self.selectors) + 1}.mp4")
         selector = FileSelector(self,
                                 title="CSV output",
                                 mode=FileSelector.MODE_SAVE,
-                                removable=True)
+                                removable=True,
+                                defaultPath=defaultPath)
         self.selectors.append(selector)
 
         def remove() -> None:
@@ -469,7 +475,10 @@ class VideoSourceWidget(TransformerWidget):
         self.videoSourceTransformer = VideoSourceTransformer()
         self.transformer.append(self.videoSourceTransformer)
 
-        self.fileSelector = FileSelector(self, title="Video Source")
+        defaultPath = os.path.join(GLOBAL_PROPS["WORKING_DIR"], "input.mp4")
+        self.fileSelector = FileSelector(self,
+                                         title="Video Source",
+                                         defaultPath=defaultPath)
         self.vLayout.addWidget(self.fileSelector)
 
         self.csvImporterLayout = QVBoxLayout()
@@ -492,7 +501,12 @@ class VideoSourceWidget(TransformerWidget):
         """
         Add a csv importer to the widget and pipeline.
         """
-        selector = FileSelector(self, title="CSV input", removable=True)
+        defaultPath = os.path.join(GLOBAL_PROPS["WORKING_DIR"],
+                                   f"input_{len(self.selectors) + 1}.csv")
+        selector = FileSelector(self,
+                                title="CSV input",
+                                removable=True,
+                                defaultPath=defaultPath)
         self.selectors.append(selector)
 
         def remove() -> None:
