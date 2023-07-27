@@ -199,12 +199,15 @@ class PongServerWidget(TransformerWidget):
 
         self.left = QRadioButton("left")
         self.right = QRadioButton("right")
+        self.bottom = QRadioButton("bottom")
         self.hDirectionLayout.addWidget(self.left)
         self.hDirectionLayout.addWidget(self.right)
+        self.hDirectionLayout.addWidget(self.bottom)
 
         self.directionButtonGroup = QButtonGroup(self)
         self.directionButtonGroup.addButton(self.left)
         self.directionButtonGroup.addButton(self.right)
+        self.directionButtonGroup.addButton(self.bottom)
         self.directionButtonGroup.buttonClicked.connect(
             lambda btn: self.transformer.setOrientation(btn.text().upper()))
         self.left.setChecked(True)
