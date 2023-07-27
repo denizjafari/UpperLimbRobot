@@ -988,6 +988,10 @@ class MetricTransformer(TransformerStage):
             metrics["right_elbow_height"] = 1 - keypoints.getRightElbow()[0]
 
             metrics["left_hand_elevation"] = 1 - keypoints.getLeftWrist()[0]
+            metrics["right_hand_elevation"] = 1 - keypoints.getRightWrist()[0]
+
+            metrics["left_hand_x"] = keypoints.getLeftWrist()[1]
+            metrics["right_hand_x"] = keypoints.getRightWrist()[1]
         self.next(frameData)
 
 class SlidingAverageTransformer(TransformerStage):
