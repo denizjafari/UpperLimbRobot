@@ -8,6 +8,8 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 from __future__ import annotations
 from typing import Union, Callable
 
+import os
+
 from PySide6.QtCore import QObject, Signal
 
 class Registry(QObject):
@@ -50,9 +52,40 @@ class Registry(QObject):
         widget.setKey(key)
 
         return widget
+    
+
+class GlobalProps:
+    """
+    A class wrapping a dictionary to handle globally needed properties.
+    """
+    def __init__(self) -> None:
+        self._props = {}
+
+    def save(self, d: dict) -> None:
+        """
+        Save all globals props that have been set.
+        """
+        for key in self._props:
+            d[key] = self._props[key]
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore all global props from a dictionary.
+        """
+        for key in d:
+            self._props[key] = d[key]
+
+    def __getitem__(self, key) -> object:
+        return self._props[key]
+    
+    def __setitem__(self, key, item) -> None:
+        self._props[key] = item
 
 
 MODEL_REGISTRY = Registry()
 WIDGET_REGISTRY = Registry()
 SOUND_REGISTRY = Registry()
 PONG_CONTROLLER_REGISTRY = Registry()
+GLOBAL_PROPS = GlobalProps()
+
+GLOBAL_PROPS["WORKING_DIR"] = os.getcwd()

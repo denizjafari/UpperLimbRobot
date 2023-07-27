@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
 from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
+from pose_estimation.registry import GLOBAL_PROPS
 
 
 module_logger = logging.getLogger(__name__)
@@ -39,6 +40,10 @@ def save(window: ModularPoseProcessorWidget):
     state = {}
     state["modular_pose_processor_widget"] = {}
     window.save(state["modular_pose_processor_widget"])
+
+    state["global_props"] = {}
+    GLOBAL_PROPS.save(state["global_props"])
+
     with open("state.json", "w") as file:
         json.dump(state, file, indent=2)
         module_logger.debug("Saved state of modular_pose_processor_widget")
@@ -57,6 +62,9 @@ def restore(window: ModularPoseProcessorWidget):
     if "modular_pose_processor_widget" in state:
         window.restore(state["modular_pose_processor_widget"])
         module_logger.debug("Restored state of modular_pose_processor_widget")
+    
+    if "global_props" in state:
+        GLOBAL_PROPS.restore(state["global_props"])
 
 
 if __name__ == "__main__":
