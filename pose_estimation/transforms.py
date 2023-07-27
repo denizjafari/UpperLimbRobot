@@ -1093,7 +1093,8 @@ class MinMaxTransformer(TransformerStage):
         """
         Inject min and max for each metric.
         """
-        self.metrics = frameData["metrics"].copy()
+        if "metrics" in frameData:
+            self.metrics = frameData["metrics"].copy()
 
         if self.active():
             frameData["metrics_max"] = self._max.copy()
@@ -1117,10 +1118,9 @@ class DerivativeTransformer(TransformerStage):
         """
         Inject the first derivative of each metric.
         """
-        metrics = frameData["metrics"]
-        derivatives = {}
-
-        if self.active():
+        if "metrics" in frameData and self.active():
+            metrics = frameData["metrics"]
+            derivatives = {}
             for key in metrics.keys():
                 if key in self.prev_metrics:
                     values = self.prev_metrics[key]

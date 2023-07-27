@@ -127,7 +127,7 @@ class FeedbackMatrix(FeedbackItem):
                 raise ValueError("Selections must be strings")
         
         for index, selection in enumerate(d["selections"]):
-            self.gridLayout.addWidget(QLabel(selection), 0, index + 1)
+            self.gridLayout.addWidget(QLabel(selection), 0, index + 1, Qt.AlignCenter)
 
         for index, question in enumerate(d["questions"]):
             if not isinstance(question, str):
@@ -225,5 +225,6 @@ if __name__ == "__main__":
     app = QApplication()
     feedbackForm = FeedbackForm(sys.argv[1])
     feedbackForm.show()
+    feedbackForm.setWindowTitle("Feedback Form")
 
     sys.exit(app.exec())
