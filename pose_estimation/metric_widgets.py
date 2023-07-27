@@ -202,12 +202,19 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
         self.values = defaultdict(self.newSeries)
 
     def newSeries(self) -> tuple[list, pg.PlotDataItem]:
+        """
+        Create a new time series for the plot.
+        """
         data = [0] * self.maxDataPoints
         line = self.plot(data)
 
         return data, line
 
     def setMinimum(self, value: Optional[float]) -> None:
+        """
+        Set or remove the minimum line for this graph. If value is None, the
+        minimum line is removed. Otherwise, it is set to the given value.
+        """
         if value == self._minimum:
             return
         elif value is None and self._minimumLine is not None:
@@ -218,6 +225,10 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
             self._minimumLine.setPos(value)
 
     def setMaximum(self, value: Optional[float]) -> None:
+        """
+        Set or remove the maximum line for this graph. If value is None, the
+        maximum line is removed. Otherwise, it is set to the given value.
+        """
         if value == self._maximum:
             return
         elif value is None and self._maximumLine is not None:
@@ -229,12 +240,16 @@ class PyQtMetricWidget(MetricWidget, pg.PlotWidget):
     
     def addValue(self, value: float) -> None:
         """
-        Add a value to the graph. This corresponds to the y value of the next
-        point in the timeline.
+        Add a value to the graph for the default curve "". This corresponds to
+        the y value of the next point in the timeline.
         """
         self.addValueTo("", value)
 
     def addValueTo(self, key: str, value: float) -> None:
+        """
+        Add a value to the graph for the named curve <key>. This corresponds to
+        the y value of the next point in the timeline.
+        """
         series, line = self.values[key]
         series.append(value)
         series.pop(0)

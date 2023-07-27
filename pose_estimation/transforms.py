@@ -1127,7 +1127,7 @@ class DerivativeTransformer(TransformerStage):
     
     def transform(self, frameData: FrameData) -> None:
         """
-        Inject the first derivative of each metric.
+        Inject the first two derivatives of each metric.
         """
         if "metrics" in frameData and self.active():
             metrics = frameData["metrics"]

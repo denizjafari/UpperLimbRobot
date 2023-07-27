@@ -1,5 +1,6 @@
 """
-The pong game implemented using the Qt framework.
+The pong game implemented using the Qt framework. The common two player
+version is included as well as an adaption for solo players.
 
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
@@ -79,7 +80,8 @@ class Paddle:
     
     def isHit(self, ball: Ball) -> bool:
         """
-        Determine whether the ball is hit by the paddle.
+        Determine whether this paddle is activea and the ball is hit by the
+        paddle.
         """
         if not self.active(): return False
         if self.side == LEFT:
@@ -106,9 +108,19 @@ class Paddle:
                 self.position += self.speed
 
     def moveTo(self, relativePosition: float) -> None:
+        """
+        Move the paddle immediately, so that the center of the paddle is at
+        the specified relative position. Relative here means one a scale from
+        0.0 to 1.0, where 0.0 is at the bottom / left and 1.0 is at the
+        top / right.
+        """
         self.position = (1 - relativePosition) * SQUARE_SIZE
 
     def setSpeedMultiplier(self, speedMultiplier: float) -> None:
+        """
+        Set the speed multiplier for the paddle. This is used for the relative
+        movement mode. Set the speed to a value in the range between 0.0 to 1.0.
+        """
         self.speedMultiplier = speedMultiplier
 
     def paint(self, painter: QPainter) -> None:
@@ -123,27 +135,51 @@ class Paddle:
                          Qt.black)
         
     def active(self) -> bool:
+        """
+        Return whether the paddle is active. An inactive paddle is not painted
+        and also does not influence the game.
+        """
         return self._active
     
     def setActive(self, active: bool) -> bool:
+        """
+        Set the paddle to active or inactive. An inactive paddle is not painted
+        and also does not influence the game.
+        """
         self._active = active
 
 class HorizontalPaddle(Paddle):
+    """
+    Paddle, but horizontal.
+    """
     def leftEdge(self) -> float:
+        """
+        Return the left most x coordinate of the paddle.
+        """
         return self.position - self.size // 2
     
     def rightEdge(self) -> float:
+        """
+        Return the right most x coordinate of the paddle.
+        """
         return self.position + self.size // 2
     
     def topEdge(self) -> float:
+        """
+        Return the top most y coordinate.
+        """
         return SQUARE_SIZE - self.thickness
     
     def bottomEdge(self) -> float:
+        """
+        Return the bottom most y coordinate.
+        """
         return SQUARE_SIZE
 
     def isHit(self, ball: Ball) -> bool:
         """
-        Determine whether the ball is hit by the paddle.
+        Determine whether the paddle is active and the ball is hit by the
+        paddle.
         """
         if not self.active(): return False
         if self.side == BOTTOM:
@@ -231,9 +267,15 @@ class Ball:
             self.position[1] + factor * self.direction[1]
 
     def reflectHorizontally(self):
+        """
+        Reflect the ball horizontally by inverting its x direction.
+        """
         self.direction = -self.direction[0], self.direction[1]
 
     def reflectVertically(self):
+        """
+        Reflect the ball horizontally by inverting its y direction.
+        """
         self.direction = self.direction[0], -self.direction[1]
 
     def paint(self, painter: QPainter) -> None:
@@ -255,11 +297,17 @@ class ScoreBoard:
     scoreRight: int
 
     def __init__(self, screenSize: int) -> None:
+        """
+        Initialize the scoreboard.
+        """
         self.scoreLeft = 0
         self.scoreRight = 0
         self.screenSize = screenSize
 
     def paint(self, painter: QPainter) -> None:
+        """
+        Paint the scoreboard to an active painter.
+        """
         rect = QRect(self.screenSize / 2 - 30, 0, 60, 30)
         painter.drawRect(rect)
         boundings = painter.boundingRect(rect, "Score")
@@ -483,34 +531,71 @@ class PongGame(QLabel):
 
 
 class TwoPlayerPongGame(PongGame):
+    """
+    A two player game of pong. The left paddle is controlled by the W and S
+    keys, the right paddle is controlled by the up and down arrow keys.
+    If a player connects via the pose detection software, they control the
+    left paddle.
+    """
+
     def __init__(self, parent: QWidget | None = None) -> None:
+        """
+        Initialize the game by creating the paddles and the ball.
+        """
         super().__init__(parent)
 
         self.balls.append(Ball())
         self.bottomPaddle.setActive(False)
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
+        """
+        Update the score: The left player has scored.
+        """
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         ball.reflectHorizontally()
 
     def onRightPaddleHit(self, ball: Ball) -> None:
+        """
+        Update the score: The right player has scored.
+        """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         ball.reflectHorizontally()
 
     def onLeftEdgeHit(self, ball: Ball) -> None:
+        """
+        End the game because the left player has lost.
+        """
         self.stop()
 
     def onRightEdgeHit(self, ball: Ball) -> None:
+        """
+        End the game because the right player has lost
+        """
         self.stop()
 
     def setOrientation(self) -> None:
+        """
+        Do nothing. Orientation is not supported in the two player game.
+        """
         pass
 
     def userControlledPaddle(self) -> Paddle:
+        """
+        Always return the left paddle.
+        """
         return self.leftPaddle
 
 class SoloBallStormPongGame(PongGame):
+    """
+    A solo player game similar to pong. The player just needs to hit the balls
+    which are trhown from the other side. No reflections are possible. Also,
+    the game does not end if the player misses a ball.
+    """
+    
     def __init__(self) -> None:
+        """
+        Initialize the game by creating the paddles and the ball.
+        """
         PongGame.__init__(self)
         
         self.rightPaddle.setActive(False)
@@ -521,6 +606,9 @@ class SoloBallStormPongGame(PongGame):
         self.addBall()
 
     def reset(self) -> None:
+        """
+        Restore the original state of the game, but keep the orientation.
+        """
         self.lostGame = False
         self.isRunning = False
 
@@ -533,31 +621,56 @@ class SoloBallStormPongGame(PongGame):
         self.setFocus()
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
+        """
+        The player has scored. Replace the ball at its original position.
+        """
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         self.leftHit.emit()
         self.balls.remove(ball)
         self.addBall()
 
     def onLeftEdgeHit(self, ball: Ball) -> None:
+        """
+        The player missed the ball. Replace the ball at its original position.
+        """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         self.leftMissed.emit()
         self.balls.remove(ball)
         self.addBall()
 
     def onRightPaddleHit(self, ball: Ball) -> None:
+        """
+        Same as onLeftPaddleHit, but happens when the orientation is reversed.
+        """
         self.onLeftPaddleHit(ball)
 
     def onRightEdgeHit(self, ball: Ball) -> None:
+        """
+        Same as onLeftEdgeHit, but happens when the orientation is reversed.
+        """
         self.onRightPaddleHit(ball)
 
     def onBottomPaddleHit(self, ball: Ball) -> None:
-        self.onLeftPaddleHit(ball)
+        """
+        Same as onLeftPaddleHit, but happens when the orientation is changed
+        to BOTTOM.
+        """
+        if self.orientation == "BOTTOM":
+            self.onLeftPaddleHit(ball)
 
     def onHorizontalEdgeHit(self, ball: Ball) -> None:
+        """
+        Same as onLeftEdgeHit, but happens when the orientation is changed
+        to BOTTOM.
+        """
         if self.orientation == "BOTTOM":
             self.onLeftEdgeHit(ball)
 
     def addBall(self) -> None:
+        """
+        Add a ball at the correct entry point (left, right, or top),
+        alternating the sides it travels to.
+        """
         ball = Ball()
         if self.orientation == "LEFT":
             ball.position = SQUARE_SIZE - 20, SQUARE_SIZE // 2
@@ -574,6 +687,10 @@ class SoloBallStormPongGame(PongGame):
         self.balls.append(ball)
 
     def setOrientation(self, orientation: str) -> None:
+        """
+        Set the orientation of the playing field (LEFT, RIGHT, or BOTTOM).
+        Replace the ball at its new start point.
+        """
         if orientation == "LEFT":
             self.rightPaddle.setActive(False)
             self.bottomPaddle.setActive(False)
@@ -595,6 +712,9 @@ class SoloBallStormPongGame(PongGame):
         self.orientation = orientation
 
     def userControlledPaddle(self) -> Paddle:
+        """
+        Return the paddle that is currently controlled by the user.
+        """
         if self.orientation == "LEFT":
             return self.leftPaddle
         elif self.orientation == "RIGHT":

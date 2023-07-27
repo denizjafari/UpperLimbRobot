@@ -6,7 +6,8 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 
 from typing import Optional
 
-from PySide6.QtWidgets import QGroupBox, QCheckBox, QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import QGroupBox, QCheckBox, QPushButton, QHBoxLayout, \
+    QVBoxLayout, QLabel, QWidget
 from PySide6.QtCore import Signal
 
 from pose_estimation.transforms import Transformer
@@ -80,11 +81,21 @@ class TransformerWidget(QGroupBox):
 
     
     def key(self) -> str:
+        """
+        Return the key of this tranformer widget. Used by the registry.
+        """
         return self._key
     
     def setKey(self, key: str) -> None:
+        """
+        Set the key of the transformer widget. Used by the registry.
+        """
         self._key = key
 
     def __str__(self) -> None:
+        """
+        Return a string representation of this widget. Simply the name of the
+        widget.
+        """
         return self.key()
     
