@@ -318,7 +318,7 @@ class RecorderTransformerWidget(TransformerWidget):
         self.vLayout.addLayout(self.hButtonLayout)
 
         self.addExporterButton = QPushButton("Add CSV Exporter")
-        self.addExporterButton.clicked.connect(self.addExporter)
+        self.addExporterButton.clicked.connect(lambda: self.addExporter())
         self.hButtonLayout.addWidget(self.addExporterButton)
 
         self.recordingButton = QPushButton("Start Recording", self)
@@ -328,12 +328,14 @@ class RecorderTransformerWidget(TransformerWidget):
         self.threadpool = QThreadPool.globalInstance()
 
     @Slot()
-    def addExporter(self) -> None:
+    def addExporter(self, defaultPath: Optional[str] = None) -> None:
         """
         Add a csv exporter to the widget and pipeline.
         """
-        defaultPath = os.path.join(GLOBAL_PROPS["WORKING_DIR"],
-                                   f"output_{len(self.selectors) + 1}.mp4")
+        if defaultPath is None:
+            defaultPath = os.path.join(GLOBAL_PROPS["WORKING_DIR"],
+                                       f"output_{len(self.selectors) + 1}.csv")
+            
         selector = FileSelector(self,
                                 title="CSV output",
                                 mode=FileSelector.MODE_SAVE,
@@ -396,7 +398,24 @@ class RecorderTransformerWidget(TransformerWidget):
             loader.recorderLoaded.connect(self.onRecordingToggled)
             self.threadpool.start(loader)
             module_logger.info("Started recording")
-    
+
+    def save(self, d: dict) -> None:
+        TransformerWidget.save(self, d)
+
+        d["output_path"] = self.outputFileSelector.selectedFile()
+        csvExporterPaths = []
+        for selector in self.selectors:
+            csvExporterPaths.append(selector.selectedFile())
+
+        d["csv_exporter_paths"] = csvExporterPaths
+
+    def restore(self, d: dict) -> None:
+        TransformerWidget.restore(self, d)
+
+        self.outputFileSelector.setPath(d["output_path"])
+        for path in d["csv_exporter_paths"]:
+            self.addExporter(path)
+
 
 class QCameraSourceWidget(TransformerWidget):
     """
@@ -659,7 +678,7 @@ class MinMaxWidget(TransformerWidget):
         """
         Save the state of the widget to a dictionary.
         """
-        TransformerWidget.save(self, d)
+        TransformerWidget.restore(self, d)
         self.updateMetricsList(d["availableMetrics"])
         self.transformerSelector.setCurrentText(d["selectedMetric"])
         self.transformer._min = d["min"]

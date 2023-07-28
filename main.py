@@ -109,9 +109,13 @@ def onUserSelected(userProfile_: UserProfile) -> None:
     global userProfile
 
     module_logger.debug(f"User {userProfile_.name} selected")
+    
     modularPoseProcessor.show()
     userProfileSelector.close()
+    
     userProfile = userProfile_
+    GLOBAL_PROPS["WORKING_DIR"] = userProfile.workingDir
+
     restore(modularPoseProcessor)
 
 
