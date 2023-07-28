@@ -307,6 +307,8 @@ class PongControllerWidget(TransformerWidget):
         self.controllerWidget = QLabel("No controller selected")
         self.vLayout.addWidget(self.controllerWidget)
 
+        self._controller = None
+
         self.controllerSelector.currentTextChanged.connect(self.setController)
         self.updateControllerList()
         PONG_CONTROLLER_REGISTRY.itemsChanged.connect(self.updateControllerList)
@@ -323,14 +325,43 @@ class PongControllerWidget(TransformerWidget):
         Set the controller when it is selected in the combobox.
         """
         controller: PongController = PONG_CONTROLLER_REGISTRY.createItem(controllerName)
+        self._controller = controller
         widget = controller.widget()
         self.transformer.setController(controller)
         self.vLayout.replaceWidget(self.controllerWidget, widget)
         self.controllerWidget.deleteLater()
         self.controllerWidget = widget
+
+    def controller(self) -> PongController:
+        """
+        Get the currently selected controller.
+        """
+        return self._controller
         
     def __str__(self) -> str:
         return "Pong Controller"
+    
+
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the widget to a dictionary.
+        """
+        TransformerWidget.save(self, d)
+        d["selected_controller"] = self.controllerSelector.currentText()
+        d["controller_state"] = {}
+        self.controller().save(d["controller_state"])
+
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the widget from a dictionary.
+        """
+        TransformerWidget.restore(self, d)
+        if "selected_controller" in d:
+            self.controllerSelector.setCurrentText(d["selected_controller"])
+            self.setController(d["selected_controller"])
+        if "controller_state" in d:
+            self.controller().restore(d["controller_state"])
 
 
 WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")

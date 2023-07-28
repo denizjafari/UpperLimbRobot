@@ -52,6 +52,18 @@ class PongController:
         """
         raise NotImplementedError("control() not implemented")
     
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the pong controller.
+        """
+        pass
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the pong controller.
+        """
+        pass
+
 class SimplePongControllerWidget(QWidget):
     """
     Base widget to provide an UI for the SimplePongController.
@@ -84,6 +96,25 @@ class SimplePongControllerWidget(QWidget):
         self.higherCutoffSlider.setValue(80)
         self.formLayout.addRow("Higher Cutoff", self.higherCutoffSlider)
 
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the pong controller.
+        """
+        d["speed_delta"] = self.speedDeltaSlider.value() / 10
+        d["lower_cutoff"] = self.lowerCutoffSlider.value() / 100
+        d["higher_cutoff"] = self.higherCutoffSlider.value() / 100
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the pong controller.
+        """
+        if "speed_delta" in d:
+            self.speedDeltaSlider.setValue(d["speed_delta"] * 10)
+        if "lower_cutoff" in d:
+            self.lowerCutoffSlider.setValue(d["lower_cutoff"] * 100)
+        if "higher_cutoff" in d:
+            self.higherCutoffSlider.setValue(d["higher_cutoff"] * 100)
+
 class WindowedPongControllerWidget(SimplePongControllerWidget):
     """
     Adds the window length slider to the SimplePongControllerWidget.
@@ -95,6 +126,21 @@ class WindowedPongControllerWidget(SimplePongControllerWidget):
         self.windowLengthSlider.valueChanged.connect(self._controller.setWindowLength)
         self.windowLengthSlider.setRange(1, 10)
         self.formLayout.addRow("Window Length", self.windowLengthSlider)
+
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the pong controller.
+        """
+        SimplePongControllerWidget.save(self, d)
+        d["window_length"] = self.windowLengthSlider.value() / 100
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the pong controller.
+        """
+        SimplePongControllerWidget.restore(self, d)
+        if "window_length" in d:
+            self.windowLengthSlider.setValue(d["window_length"] * 100)
     
 class SimplePongController(PongController):
     """
@@ -107,9 +153,13 @@ class SimplePongController(PongController):
         self._lowerCutoff = 0.4
         self._higherCutoff = 0.6
         self._speedDelta = 0.2
+        self._widget = None
 
-    def widget(self) -> None:
-        return SimplePongControllerWidget(self)
+    def widget(self) -> SimplePongControllerWidget:
+        if self._widget is None:
+            self._widget = SimplePongControllerWidget(self)
+
+        return self._widget
     
     def setLowerCutoff(self, lowerCutoff: float) -> None:
         """
@@ -170,6 +220,19 @@ class SimplePongController(PongController):
                 client.send(Event("setBallSpeed", [newSpeed]))
                 module_logger.debug(f"Decreased pong speed to {newSpeed}")
 
+    
+    def save(self, d: dict) -> None:
+        """
+        Save the state of the pong controller.
+        """
+        self.widget().save(d)
+
+    
+    def restore(self, d: dict) -> None:
+        """
+        Restore the state of the pong controller.
+        """
+        self.widget().restore(d)
 
 class WindowedPongController(SimplePongController):
     """
@@ -183,8 +246,11 @@ class WindowedPongController(SimplePongController):
         self._lastHit = 0
         self.history = []
 
-    def widget(self) -> None:
-        return WindowedPongControllerWidget(self)
+    def widget(self) -> WindowedPongControllerWidget:
+        if self._widget is None:
+            self._widget = WindowedPongControllerWidget(self)
+
+        return self._widget
     
     def setWindowLength(self, windowLength: float) -> None:
         """
