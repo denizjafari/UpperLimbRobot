@@ -218,6 +218,7 @@ class FileSelector(QWidget):
     fileSelected = Signal(str)
     MODE_LOAD = 0
     MODE_SAVE = 1
+    MODE_DIRECTORY = 2
 
     fileSelectButton: QPushButton
     textInput: QLineEdit
@@ -266,8 +267,16 @@ class FileSelector(QWidget):
         """
         if self.option == self.MODE_LOAD:
             path, _ = QFileDialog.getOpenFileName(self, "Select Input")
-        else:
+        elif self.option == self.MODE_SAVE:
             path, _ = QFileDialog.getSaveFileName(self, "Select Output")
+        elif self.option == self.MODE_DIRECTORY:
+            path = QFileDialog.getExistingDirectory(self, "Select Directory")
+        self.textInput.setText(path)
+
+    def setPath(self, path: str) -> None:
+        """
+        Set the current path to the file.
+        """
         self.textInput.setText(path)
 
     def selectedFile(self) -> str:

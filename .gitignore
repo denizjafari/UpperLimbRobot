@@ -1,5 +1,7 @@
 __pycache__
 *.mp4
 *.csv
+users.json
+profiles
 state.json
 feedback_output.json
