@@ -3,7 +3,7 @@ import os
 import logging
 
 from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QVBoxLayout, \
-    QPushButton, QLabel
+    QPushButton, QLabel, QHBoxLayout, QGroupBox, QDialog
 from PySide6.QtCore import Signal
 
 from pose_estimation.ui_utils import FileSelector
@@ -49,7 +49,7 @@ class UserProfile:
         d["additionalNotes"] = self.additionalNotes
 
 
-class UserProfileWidget(QWidget):
+class UserProfileWidget(QGroupBox):
     """
     A widget which displays a user profile.
     """
@@ -62,11 +62,14 @@ class UserProfileWidget(QWidget):
     def __init__(self,
                  userProfile: UserProfile,
                  parent: Optional[QWidget] = None) -> None:
-        QWidget.__init__(self, parent)
+        QGroupBox.__init__(self, parent)
         self.userProfile = userProfile
 
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
+
         self.formLayout = QFormLayout()
-        self.setLayout(self.formLayout)
+        self.vLayout.addLayout(self.formLayout)
 
         self.formLayout.addRow("Name",
                                QLabel(self.userProfile.name))
@@ -75,16 +78,19 @@ class UserProfileWidget(QWidget):
         self.formLayout.addRow("Additional Notes",
                                QLabel(self.userProfile.additionalNotes))
         
+        self.hButtonLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.hButtonLayout)
+        
         self.editButton = QPushButton("Edit")
         self.editButton.clicked.connect(self.editRequested)
-        self.formLayout.addRow("", self.editButton)
+        self.hButtonLayout.addWidget(self.editButton)
 
         self.selectButton = QPushButton("Select")
         self.selectButton.clicked.connect(self.selected)
-        self.formLayout.addRow("", self.selectButton)
+        self.hButtonLayout.addWidget(self.selectButton)
 
 
-class UserProfileEditor(QWidget):
+class UserProfileEditor(QDialog):
     """
     An editor widget for a user profile.
     """
@@ -104,10 +110,11 @@ class UserProfileEditor(QWidget):
         """
         Initialize the widget with the given user profile.
         """
-        QWidget.__init__(self, parent)
+        QDialog.__init__(self, parent)
 
         self.vLayout = QVBoxLayout()
         self.setLayout(self.vLayout)
+        self.setModal(True)
         
         self.formLayout = QFormLayout()
         self.vLayout.addLayout(self.formLayout)
@@ -139,6 +146,7 @@ class UserProfileEditor(QWidget):
         self.userProfile.workingDir = self.directorySelector.selectedFile()
         self.userProfile.additionalNotes = self.additionalNotes.text()
         self.saveRequested.emit()
+        self.close()
 
 
 class UserProfileSelector(QWidget):
