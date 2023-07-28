@@ -210,7 +210,9 @@ class SimplePongController(PongController):
             and "hitsRight" in pongData \
                 and pongData['hitsLeft'] + pongData['missesLeft'] > 0 \
                     and "ballSpeed" in pongData:
-            accuracy = pongData["hitsLeft"] / (pongData["hitsLeft"] + pongData["missesLeft"])
+            accuracy = pongData["hitsLeft"] / \
+                (pongData["hitsLeft"] + pongData["missesLeft"])
+            
             if accuracy > self.higherCutoff():
                 newSpeed = pongData["ballSpeed"] + self.speedDelta()
                 client.send(Event("setBallSpeed", [newSpeed]))

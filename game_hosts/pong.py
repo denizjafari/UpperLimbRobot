@@ -152,6 +152,9 @@ class HorizontalPaddle(Paddle):
     """
     Paddle, but horizontal.
     """
+    def __init__(self, side: int = BOTTOM) -> None:
+        Paddle.__init__(self, side=side)
+
     def leftEdge(self) -> float:
         """
         Return the left most x coordinate of the paddle.
@@ -615,7 +618,11 @@ class SoloBallStormPongGame(PongGame):
         self.balls.clear()
         self.addBall()
         self.leftPaddle = Paddle()
-        self.rightPaddle = Paddle(side=RIGHT, active=False)
+        self.rightPaddle = Paddle(side=RIGHT)
+        self.bottomPaddle = HorizontalPaddle(side=BOTTOM)
+        
+        self.setOrientation(self.orientation)
+
         self.scoreBoard = ScoreBoard(self.sideLength)
 
         self.setFocus()

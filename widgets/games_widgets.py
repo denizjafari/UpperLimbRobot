@@ -16,7 +16,8 @@ from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import PONG_CONTROLLER_REGISTRY, WIDGET_REGISTRY
 
 from pose_estimation.ui_utils import LabeledQSlider
-from pose_estimation.games import PongClient, PongControllerWrapper, PoseFeedbackTransformer, Snake, SnakeClient
+from pose_estimation.games import PongClient, PongControllerWrapper, \
+    PoseFeedbackTransformer, Snake, SnakeClient
 from widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
@@ -282,6 +283,8 @@ class PongServerWidget(TransformerWidget):
                 self.left.setChecked(True)
             elif orientation == "right":
                 self.right.setChecked(True)
+            elif orientation == "bottom":
+                self.bottom.setChecked(True)
 
     def __str__(self) -> str:
         return "Pong Server"
