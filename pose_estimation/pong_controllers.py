@@ -274,23 +274,28 @@ class WindowedPongController(SimplePongController):
         """
         if "client" not in pongData or pongData["client"] is None:
             return
-        
         client: Client = pongData["client"]
 
-        if "selfHits" in pongData and 'selfMisses' in pongData and "ballSpeed" in pongData:
-            if pongData["selfHits"] > self._lastHit:
-                self._lastHit = pongData["selfHits"]
-                self.history.append(1)
-                module_logger.debug("Hit")
-            elif pongData['selfMisses'] > self._lastMiss:
-                self._lastMiss = pongData['selfMisses']
-                module_logger.debug("Miss")
-                self.history.append(0)
-            else:
-                return
+        if "events" not in pongData:
+            return
+        events: list[Event] = pongData["events"]
+        ballInteraction = False
+        
+        for e in events:
+            if e.payload[0] == pongData["orientation"]:
+                ballInteraction = True
+                if e.name == "hit":
+                    self.history.append(1)
+                    module_logger.debug("Hit")
+                elif e.name == "miss":
+                    module_logger.debug("Miss")
+                    self.history.append(0)
 
+        if ballInteraction:
             while len(self.history) > self._windowLength:
                 self.history.pop(0)
+            
+            if len(self.history) == 0: return
 
             accuracy = sum(self.history) / len(self.history)
 
@@ -307,5 +312,5 @@ class WindowedPongController(SimplePongController):
                     self.history = []
 
 
-PONG_CONTROLLER_REGISTRY.register(SimplePongController, "SimplePongController")
+#PONG_CONTROLLER_REGISTRY.register(SimplePongController, "SimplePongController")
 PONG_CONTROLLER_REGISTRY.register(WindowedPongController, "WindowedPongController")

@@ -328,11 +328,7 @@ class PongGame(QLabel):
     """
     The Pong Game. Handles the game logic and displays the result.
     """
-    scoreUpdated = Signal(int, int)
-    selfHit = Signal()
-    selfMissed = Signal()
-    otherHit = Signal()
-    otherMissed = Signal()
+    eventReady = Signal(Event)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         QLabel.__init__(self, parent)
@@ -453,7 +449,7 @@ class PongGame(QLabel):
         """
         Update the score on the scoreboard.
         """
-        self.scoreUpdated.emit(scoreLeft, scoreRight)
+        self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))
         self.scoreBoard.scoreLeft = scoreLeft
         self.scoreBoard.scoreRight = scoreRight
 
@@ -633,9 +629,7 @@ class SoloBallStormPongGame(PongGame):
         """
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         if self.orientation == "LEFT":
-            self.selfHit.emit()
-        elif self.orientation == "RIGHT":
-            self.otherHit.emit()
+            self.eventReady.emit(Event("hit", ["LEFT"]))
         self.balls.remove(ball)
         self.addBall()
 
@@ -644,7 +638,8 @@ class SoloBallStormPongGame(PongGame):
         The player missed the ball. Replace the ball at its original position.
         """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-        self.leftMissed.emit()
+        if self.orientation == "LEFT":
+            self.eventReady.emit(Event("miss", ["LEFT"]))
         self.balls.remove(ball)
         self.addBall()
 
@@ -654,9 +649,7 @@ class SoloBallStormPongGame(PongGame):
         """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         if self.orientation == "RIGHT":
-            self.selfHit.emit()
-        elif self.orientation == "LEFT":
-            self.otherHit.emit()
+            self.eventReady.emit(Event("hit", ["RIGHT"]))
         self.balls.remove(ball)
         self.addBall()
 
@@ -665,10 +658,8 @@ class SoloBallStormPongGame(PongGame):
         Same as onLeftEdgeHit, but happens when the orientation is reversed.
         """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-        if self.orientation == "LEFT":
-            self.selfMissed.emit()
-        elif self.orientation == "RIGHT":
-            self.otherMissed.emit()
+        if self.orientation == "RIGHT":
+            self.eventReady.emit(Event("miss", ["RIGHT"]))
         self.balls.remove(ball)
         self.addBall()
 
@@ -679,7 +670,7 @@ class SoloBallStormPongGame(PongGame):
         """
         if self.orientation == "BOTTOM":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-            self.selfHit.emit()
+            self.eventReady.emit(Event("hit", ["BOTTOM"]))
             self.balls.remove(ball)
             self.addBall()
 
@@ -690,7 +681,7 @@ class SoloBallStormPongGame(PongGame):
         """
         if self.orientation == "BOTTOM":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-            self.selfMissed.emit()
+            self.eventReady.emit(Event("miss", ["BOTTOM"]))
             self.balls.remove(ball)
             self.addBall()
 
@@ -778,6 +769,7 @@ class PongServerAdapter(GameAdapter):
     The universal adapter for the pong game, so it can be controlled by a
     separate client application.
     """
+
     def __init__(self, pongGame: PongGameWindow) -> None:
         """
         Initialize the adapter. Connect the game's signals to the adapter's
@@ -785,71 +777,62 @@ class PongServerAdapter(GameAdapter):
         """
         GameAdapter.__init__(self)
         self.window = pongGame
-        self.window.game.scoreUpdated.connect(self.onScoreUpdated)
-        self.window.game.selfHit.connect(
-            lambda: self.eventReady.emit(Event("selfHit"))
-        )
-        self.window.game.selfMissed.connect(
-            lambda: self.eventReady.emit(Event("selfMissed"))
-        )
-        self.window.game.otherHit.connect(
-            lambda: self.eventReady.emit(Event("otherHit"))
-        )
-        self.window.game.otherMissed.connect(
-            lambda: self.eventReady.emit(Event("otherMissed"))
-        )
+        self.window.game.eventReady.connect(self.eventReady.emit)
+        self.addrToOrientation = {}
 
     def widget(self) -> QWidget:
         """
         Return the window of the underlying game.
         """
         return self.window
-
-    def onScoreUpdated(self, scoreLeft: int, scoreRight: int) -> None:
-        """
-        Send the scoreUpdated event to the client.
-        """
-        self.eventReady.emit(Event("scoreUpdated", [scoreLeft, scoreRight]))
-
-    def onAccuracyUpdated(self, accuracy: float) -> None:
-        """
-        Send the accuracyUpdated event to the client.
-        """
-        self.eventReady.emit(Event("accuracyUpdated", [accuracy]))
     
     def eventReceived(self, e: Event) -> None:
         """
         Handle an event received from the client.
         """
-        module_logger.debug(f"Executing {str(e)}")
-        paddle = self.window.game.userControlledPaddle()
-        if e.name == "clearMovement":
-            paddle.movingUp = False
-            paddle.movingDown = False
-            paddle.useVariableSpeed = False
-            paddle.setSpeedMultiplier(0.0)
-        elif e.name == "moveTo":
-            paddle.moveTo(float(e.payload[0]))
-        elif e.name == "setSpeed":
-            paddle.useVariableSpeed = True
-            paddle.setSpeedMultiplier(float(e.payload[0]))
-        elif e.name == "moveUp":
-            paddle.useVariableSpeed = False
-            paddle.movingUp = True
-            paddle.movingDown = False
-        elif e.name == "neutral":
-            paddle.useVariableSpeed = False
-            paddle.movingUp = False
-            paddle.movingDown = False
-        elif e.name == "moveDown":
-            paddle.useVariableSpeed = False
-            paddle.movingDown= True
-            paddle.movingUp = False
-        elif e.name == "setBallSpeed":
+        module_logger.debug(f"Executing {str(e)} from {e.source}")
+
+        if e.name == "setBallSpeed":
             self.window.game.setBallSpeed(float(e.payload[0]))
-            self.eventReady.emit(Event("ballSpeedUpdated", [float(e.payload[0])]))
+            self.eventReady.emit(e.reply(
+                Event("ballSpeedUpdated", [float(e.payload[0])])))
         elif e.name == "setOrientation":
             self.window.game.setOrientation(e.payload[0])
+            self.eventReady.emit(e.reply(
+                Event("orientationUpdated", [e.payload[0]])))
+            self.addrToOrientation[e.source] = e.payload[0]
+        elif e.source in self.addrToOrientation:
+            orientation = self.addrToOrientation[e.source]
+
+            if orientation == "LEFT":
+                paddle = self.window.game.leftPaddle
+            elif orientation == "RIGHT":
+                paddle = self.window.game.rightPaddle
+            else:
+                paddle = self.window.game.bottomPaddle
+
+            if e.name == "clearMovement":
+                paddle.movingUp = False
+                paddle.movingDown = False
+                paddle.useVariableSpeed = False
+                paddle.setSpeedMultiplier(0.0)
+            elif e.name == "moveTo":
+                paddle.moveTo(float(e.payload[0]))
+            elif e.name == "setSpeed":
+                paddle.useVariableSpeed = True
+                paddle.setSpeedMultiplier(float(e.payload[0]))
+            elif e.name == "moveUp":
+                paddle.useVariableSpeed = False
+                paddle.movingUp = True
+                paddle.movingDown = False
+            elif e.name == "neutral":
+                paddle.useVariableSpeed = False
+                paddle.movingUp = False
+                paddle.movingDown = False
+            elif e.name == "moveDown":
+                paddle.useVariableSpeed = False
+                paddle.movingDown= True
+                paddle.movingUp = False
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

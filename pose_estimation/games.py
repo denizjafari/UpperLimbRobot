@@ -263,7 +263,7 @@ class PongClient(TransformerStage):
     The height of the hand will determine the height of the left paddle.
     """
     events: Queue[Event]
-    pongData: dict[str, float]
+    pongData: dict[str, object]
     followMetrics: str
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
@@ -278,11 +278,8 @@ class PongClient(TransformerStage):
         self._availableMetrics = []
         self.pongData = {
             "client":  None,
+            "orientation": "LEFT",
             "ballSpeed": 2.0,
-            'selfMisses': 0,
-            'selfHits': 0,
-            'otherHits': 0,
-            'otherMisses': 0
         }
 
     def setClient(self, client: Client) -> None:
@@ -299,28 +296,17 @@ class PongClient(TransformerStage):
         """
         Handle events received from the server.
         """
-        self.updated = True
         if event.name == "scoreUpdated":
             module_logger.debug("Updated scores for left and right player")
             self.pongData["scoreLeft"] = float(event.payload[0])
             self.pongData["scoreRight"] = float(event.payload[1])
-        elif event.name == "selfMissed":
-            module_logger.debug("This player missed the ball")
-            self.pongData['selfMisses'] += 1
-        elif event.name == "otherMissed":
-            module_logger.debug("The other player missed the ball")
-            self.pongData['otherMisses'] += 1
-        elif event.name == "selfHit":
-            module_logger.debug("This player hit the ball")
-            self.pongData['selfHits'] += 1
-        elif event.name == "otherHit":
-            module_logger.debug("The other player hit the ball")
-            self.pongData['otherHits'] += 1
         elif event.name == "ballSpeedUpdated":
             module_logger.debug("Updated ball speed")
             self.pongData["ballSpeed"] = float(event.payload[0])
-        else:
-            self.updated = False
+        elif event.name == "orientationUpdated":
+            module_logger.debug("Updated orientation")
+            self.pongData["orientation"] = event.payload[0]
+        self.events.put(event)
 
 
     def setMode(self, mode: str) -> None:
@@ -350,6 +336,8 @@ class PongClient(TransformerStage):
         """
         if "client" in self.pongData and self.pongData["client"] is not None:
             self.pongData["client"].send(Event("setOrientation", [orientation]))
+        
+        self.pongData["orientation"] = orientation
         module_logger.info(f"Pong orientation set to {orientation}")
 
     def availableMetrics(self) -> list[str]:
@@ -375,7 +363,7 @@ class PongClient(TransformerStage):
         client = self.pongData["client"]
 
         if self.active() and not frameData.dryRun and "metrics" in frameData \
-            and client is not None and "metrics_max" in frameData \
+            and isinstance(client, Client) and "metrics_max" in frameData \
                 and "metrics_min" in frameData \
                     and self.followMetric in frameData["metrics"] \
                         and self.followMetric in frameData["metrics_max"] \
@@ -402,7 +390,12 @@ class PongClient(TransformerStage):
             elif self.mode == "speed":
                 client.send(Event("setSpeed", [2 * target - 1.0]))
 
+            events = []
+            while not self.events.empty():
+                events.append(self.events.get())
+
             frameData["pong"] = self.pongData.copy()
+            frameData["pong"]["events"] = events
 
         self.next(frameData)
 

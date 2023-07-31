@@ -39,7 +39,8 @@ class Event:
     """
     name: str
     payload: Optional[list]
-
+    source: Optional[tuple[str, int]]
+    destination: Optional[tuple[int, str]]
 
     def __init__(self, name: str, payload: Optional[list] = None) -> None:
         """
@@ -47,6 +48,9 @@ class Event:
         """
         self.name = name
         self.payload = payload
+
+        self.source = None
+        self.destination = None
 
     def toBytes(self) -> bytes:
         """
@@ -57,6 +61,14 @@ class Event:
             return f"{self.name}\n".encode()
         else:
             return f"{self.name}:{':'.join(str(x) for x in self.payload)}\n".encode()
+        
+    def reply(self, e: Event) -> Event:
+        """
+        Set the source and destination of the passed in event to the
+        destination and source of this event, respectively.
+        """
+        e.source, e.destination = self.destination, self.source
+        return e
         
     @staticmethod
     def fromBytes(data: bytes) -> Event:
@@ -94,7 +106,8 @@ class Server(QObject, QRunnable):
     calling close().
     """
     eventReceived = Signal(Event)
-    conns: dict[socket.socket, str]
+    connToBuffer: dict[socket.socket, str]
+    connToAddr: dict[socket.socket, tuple[str, int]]
     msgQueue: Queue[Event]
 
     def __init__(self,
@@ -102,7 +115,8 @@ class Server(QObject, QRunnable):
         QObject.__init__(self)
         QRunnable.__init__(self)
 
-        self.conns = {}
+        self.connToBuffer = {}
+        self.connToAddr = {}
 
         self.msgQueue = Queue()
 
@@ -126,15 +140,23 @@ class Server(QObject, QRunnable):
             if not self.msgQueue.empty():
                 e = self.msgQueue.get()
                 data = e.toBytes()
-                for conn in self.conns:
-                    conn.send(data)
-                module_logger.debug(f"Sent event {e}")
+                if e.destination is None:
+                    for conn in self.connToBuffer:
+                        conn.send(data)
+                    module_logger.debug(f"Sent event {e} to all connected clients")
+                else:
+                    for conn in self.connToBuffer:
+                        if self.connToAddr[conn] == e.destination:
+                            conn.send(data)
+                            module_logger.debug(f"Sent event {e} to {e.destination}")
+                            break
+                        
 
         self.sel.close()
         
-        for conn in self.conns:
+        for conn in self.connToBuffer:
             conn.close()
-        self.conns.clear()
+        self.connToBuffer.clear()
         self.sock.close()
 
     def start(self, threadPool = QThreadPool.globalInstance()) -> None:
@@ -156,7 +178,8 @@ class Server(QObject, QRunnable):
         conn, addr = sock.accept()
         module_logger.info(f"Accepted connection from {addr}")
         self.sel.register(conn, selectors.EVENT_READ, self.read)
-        self.conns[conn] = ""
+        self.connToBuffer[conn] = ""
+        self.connToAddr[conn] = addr
 
     def read(self, sock: socket.socket, mask) -> None:
         """
@@ -165,22 +188,28 @@ class Server(QObject, QRunnable):
         data = sock.recv(1024)
 
         if data:
-            string = self.conns[sock] + data.decode()
+            string = self.connToBuffer[sock] + data.decode()
             index = string.find("\n")
 
             while index != -1:
                 evt = Event.fromString(string[:index + 1])
+                evt.source = self.connToAddr[sock]
+                
                 module_logger.debug(f"Received event {str(evt)}")
                 self.eventReceived.emit(evt)
 
                 string = string[index + 1:]
                 index = string.find("\n")
             
-            self.conns[sock] = string
+            self.connToBuffer[sock] = string
         else:
             self.sel.unregister(sock)
-            del self.conns[sock]
             sock.close()
+
+            module_logger.debug(f"Disconnected {self.connToAddr[sock]}")
+            
+            del self.connToBuffer[sock]
+            del self.connToAddr[sock]
 
     def close(self) -> None:
         """

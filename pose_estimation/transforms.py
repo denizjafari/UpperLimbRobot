@@ -6,6 +6,7 @@ the frame data object.
 from __future__ import annotations
 from collections import defaultdict
 import logging
+import traceback
 from typing import Optional
 from enum import Enum
 import time
@@ -840,7 +841,7 @@ class TransformerRunner(QRunnable, QObject):
             try:
                 self.transform()
             except Exception as e:
-                print(e)
+                print(traceback.format_exc())
 
     def transform(self) -> None:
         self.frameData["timings"] = [("Start", time.time())]
