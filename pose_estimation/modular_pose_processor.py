@@ -12,7 +12,7 @@ import logging
 import numpy as np
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
-    QLabel, QVBoxLayout, QComboBox, QSizePolicy, QScrollArea
+    QLabel, QVBoxLayout, QComboBox, QSizePolicy
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 
@@ -340,7 +340,8 @@ class ModularPoseProcessorWidget(QWidget):
         """
         Restore the state of the widget from a dictionary.
         """
-        self.pipelineWidget.restore(d["pipeline"])
+        if "pipeline" in d:
+            self.pipelineWidget.restore(d["pipeline"])
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """

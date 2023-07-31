@@ -279,10 +279,10 @@ class PongClient(TransformerStage):
         self.pongData = {
             "client":  None,
             "ballSpeed": 2.0,
-            'missesLeft': 0,
-            'hitsLeft': 0,
-            'hitsRight': 0,
-            'missesRight': 0
+            'selfMisses': 0,
+            'selfHits': 0,
+            'otherHits': 0,
+            'otherMisses': 0
         }
 
     def setClient(self, client: Client) -> None:
@@ -304,18 +304,18 @@ class PongClient(TransformerStage):
             module_logger.debug("Updated scores for left and right player")
             self.pongData["scoreLeft"] = float(event.payload[0])
             self.pongData["scoreRight"] = float(event.payload[1])
-        elif event.name == "leftMissed":
-            module_logger.debug("Left player missed the ball")
-            self.pongData['missesLeft'] += 1
-        elif event.name == "rightMissed":
-            module_logger.debug("Right player missed the ball")
-            self.pongData['missesRight'] += 1
-        elif event.name == "leftHit":
-            module_logger.debug("Left player hit the ball")
-            self.pongData['hitsLeft'] += 1
-        elif event.name == "rightHit":
-            module_logger.debug("Right player hit the ball")
-            self.pongData['hitsRight'] += 1
+        elif event.name == "selfMissed":
+            module_logger.debug("This player missed the ball")
+            self.pongData['selfMisses'] += 1
+        elif event.name == "otherMissed":
+            module_logger.debug("The other player missed the ball")
+            self.pongData['otherMisses'] += 1
+        elif event.name == "selfHit":
+            module_logger.debug("This player hit the ball")
+            self.pongData['selfHits'] += 1
+        elif event.name == "otherHit":
+            module_logger.debug("The other player hit the ball")
+            self.pongData['otherHits'] += 1
         elif event.name == "ballSpeedUpdated":
             module_logger.debug("Updated ball speed")
             self.pongData["ballSpeed"] = float(event.payload[0])

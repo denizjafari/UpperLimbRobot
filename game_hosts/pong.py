@@ -329,10 +329,10 @@ class PongGame(QLabel):
     The Pong Game. Handles the game logic and displays the result.
     """
     scoreUpdated = Signal(int, int)
-    leftHit = Signal()
-    leftMissed = Signal()
-    rightHit = Signal()
-    rightMissed = Signal()
+    selfHit = Signal()
+    selfMissed = Signal()
+    otherHit = Signal()
+    otherMissed = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         QLabel.__init__(self, parent)
@@ -632,7 +632,10 @@ class SoloBallStormPongGame(PongGame):
         The player has scored. Replace the ball at its original position.
         """
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
-        self.leftHit.emit()
+        if self.orientation == "LEFT":
+            self.selfHit.emit()
+        elif self.orientation == "RIGHT":
+            self.otherHit.emit()
         self.balls.remove(ball)
         self.addBall()
 
@@ -649,13 +652,25 @@ class SoloBallStormPongGame(PongGame):
         """
         Same as onLeftPaddleHit, but happens when the orientation is reversed.
         """
-        self.onLeftPaddleHit(ball)
+        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        if self.orientation == "RIGHT":
+            self.selfHit.emit()
+        elif self.orientation == "LEFT":
+            self.otherHit.emit()
+        self.balls.remove(ball)
+        self.addBall()
 
     def onRightEdgeHit(self, ball: Ball) -> None:
         """
         Same as onLeftEdgeHit, but happens when the orientation is reversed.
         """
-        self.onRightPaddleHit(ball)
+        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        if self.orientation == "LEFT":
+            self.selfMissed.emit()
+        elif self.orientation == "RIGHT":
+            self.otherMissed.emit()
+        self.balls.remove(ball)
+        self.addBall()
 
     def onBottomPaddleHit(self, ball: Ball) -> None:
         """
@@ -663,7 +678,10 @@ class SoloBallStormPongGame(PongGame):
         to BOTTOM.
         """
         if self.orientation == "BOTTOM":
-            self.onLeftPaddleHit(ball)
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+            self.selfHit.emit()
+            self.balls.remove(ball)
+            self.addBall()
 
     def onHorizontalEdgeHit(self, ball: Ball) -> None:
         """
@@ -671,7 +689,10 @@ class SoloBallStormPongGame(PongGame):
         to BOTTOM.
         """
         if self.orientation == "BOTTOM":
-            self.onLeftEdgeHit(ball)
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+            self.selfMissed.emit()
+            self.balls.remove(ball)
+            self.addBall()
 
     def addBall(self) -> None:
         """
@@ -765,17 +786,17 @@ class PongServerAdapter(GameAdapter):
         GameAdapter.__init__(self)
         self.window = pongGame
         self.window.game.scoreUpdated.connect(self.onScoreUpdated)
-        self.window.game.leftHit.connect(
-            lambda: self.eventReady.emit(Event("leftHit"))
+        self.window.game.selfHit.connect(
+            lambda: self.eventReady.emit(Event("selfHit"))
         )
-        self.window.game.leftMissed.connect(
-            lambda: self.eventReady.emit(Event("leftMissed"))
+        self.window.game.selfMissed.connect(
+            lambda: self.eventReady.emit(Event("selfMissed"))
         )
-        self.window.game.rightHit.connect(
-            lambda: self.eventReady.emit(Event("rightHit"))
+        self.window.game.otherHit.connect(
+            lambda: self.eventReady.emit(Event("otherHit"))
         )
-        self.window.game.rightMissed.connect(
-            lambda: self.eventReady.emit(Event("rightMissed"))
+        self.window.game.otherMissed.connect(
+            lambda: self.eventReady.emit(Event("otherMissed"))
         )
 
     def widget(self) -> QWidget:

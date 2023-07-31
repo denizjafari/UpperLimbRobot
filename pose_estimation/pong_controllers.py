@@ -206,12 +206,12 @@ class SimplePongController(PongController):
         
         client: Client = pongData["client"]
 
-        if "hitsLeft" in pongData \
-            and "hitsRight" in pongData \
-                and pongData['hitsLeft'] + pongData['missesLeft'] > 0 \
+        if "selfHits" in pongData \
+            and "selfMisses" in pongData \
+                and pongData['selfHits'] + pongData['selfMisses'] > 0 \
                     and "ballSpeed" in pongData:
-            accuracy = pongData["hitsLeft"] / \
-                (pongData["hitsLeft"] + pongData["missesLeft"])
+            accuracy = pongData["selfHits"] / \
+                (pongData["selfHits"] + pongData["selfMisses"])
             
             if accuracy > self.higherCutoff():
                 newSpeed = pongData["ballSpeed"] + self.speedDelta()
@@ -277,13 +277,13 @@ class WindowedPongController(SimplePongController):
         
         client: Client = pongData["client"]
 
-        if "hitsLeft" in pongData and 'missesRight' in pongData and "ballSpeed" in pongData:
-            if pongData["hitsLeft"] > self._lastHit:
-                self._lastHit = pongData["hitsLeft"]
+        if "selfHits" in pongData and 'selfMisses' in pongData and "ballSpeed" in pongData:
+            if pongData["selfHits"] > self._lastHit:
+                self._lastHit = pongData["selfHits"]
                 self.history.append(1)
                 module_logger.debug("Hit")
-            elif pongData['missesLeft'] > self._lastMiss:
-                self._lastMiss = pongData['missesLeft']
+            elif pongData['selfMisses'] > self._lastMiss:
+                self._lastMiss = pongData['selfMisses']
                 module_logger.debug("Miss")
                 self.history.append(0)
             else:
