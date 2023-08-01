@@ -841,7 +841,7 @@ class TransformerRunner(QRunnable, QObject):
             try:
                 self.transform()
             except Exception as e:
-                print(traceback.format_exc())
+                module_logger.exception(e)
 
     def transform(self) -> None:
         self.frameData["timings"] = [("Start", time.time())]
