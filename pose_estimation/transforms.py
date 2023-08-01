@@ -969,8 +969,8 @@ class MetricTransformer(TransformerStage):
 
             metrics["nose_distance"] = keypoints.getNose()[2]
             metrics["shoulder_distance"] = math.sqrt(
-                abs(leftShoulder[1] - rightShoulder[1]) ** 2
-                    + abs(leftShoulder[0]) - abs(rightShoulder[0]) ** 2)
+                abs(leftShoulder[1] - rightShoulder[1]) ** 2 \
+                    + abs(leftShoulder[0] - rightShoulder[0]) ** 2)
 
             delta_x = abs(rightShoulder[1] - leftShoulder[1])
             delta_y = abs(rightShoulder[0] - leftShoulder[0])
