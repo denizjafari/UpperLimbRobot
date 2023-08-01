@@ -286,9 +286,9 @@ class WindowedPongController(SimplePongController):
                 ballInteraction = True
                 if e.name == "hit":
                     self.history.append(1)
-                    module_logger.debug("Hit")
+                    module_logger.debug("Registered hit for pong controller")
                 elif e.name == "miss":
-                    module_logger.debug("Miss")
+                    module_logger.debug("Registered miss for pong controller")
                     self.history.append(0)
 
         if ballInteraction:
