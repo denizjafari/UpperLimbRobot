@@ -257,10 +257,7 @@ class Client(QObject, QRunnable):
                 data = self.conn.recv(1024)
             except socket.timeout:
                 timedOut = True
-            except ConnectionAbortedError:
-                timedOut = True
-                break
-            except ConnectionResetError:
+            except Exception:
                 timedOut = True
                 break
 
@@ -284,6 +281,8 @@ class Client(QObject, QRunnable):
                 try:
                     self.conn.send(e.toBytes())
                 except ConnectionAbortedError:
+                    break
+                except BrokenPipeError:
                     break
 
         self.conn.close()
