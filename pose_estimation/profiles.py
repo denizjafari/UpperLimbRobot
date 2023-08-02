@@ -54,6 +54,7 @@ class UserProfileWidget(QGroupBox):
     A widget which displays a user profile.
     """
     selected = Signal()
+    deleteRequested = Signal()
     editRequested = Signal()
 
     userProfile: UserProfile
@@ -80,6 +81,10 @@ class UserProfileWidget(QGroupBox):
         
         self.hButtonLayout = QHBoxLayout()
         self.vLayout.addLayout(self.hButtonLayout)
+
+        self.deleteButton = QPushButton("Delete")
+        self.deleteButton.clicked.connect(self.deleteRequested)
+        self.hButtonLayout.addWidget(self.deleteButton)
         
         self.editButton = QPushButton("Edit")
         self.editButton.clicked.connect(self.editRequested)
@@ -149,6 +154,33 @@ class UserProfileEditor(QDialog):
         self.close()
 
 
+class UserDeletionConfirmation(QWidget):
+    """
+    A prompt that asks whether a given user should really be deleted.
+    """
+    deletionConfirmed = Signal()
+
+    def __init__(self, userProfile: UserProfile) -> None:
+        QWidget.__init__(self)
+        
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
+
+        self.prompt = QLabel(f"Are you sure you want to delete the user {userProfile.name}?")
+        self.vLayout.addWidget(self.prompt)
+        
+        self.hButtonLayout = QHBoxLayout()
+        self.vLayout.addLayout(self.hButtonLayout)
+
+        self.noButton = QPushButton("No")
+        self.noButton.clicked.connect(self.close)
+        self.hButtonLayout.addWidget(self.noButton)
+
+        self.yesButton = QPushButton("Yes")
+        self.yesButton.clicked.connect(self.deletionConfirmed)
+        self.deletionConfirmed.connect(self.close)
+        self.hButtonLayout.addWidget(self.yesButton)
+
 class UserProfileSelector(QWidget):
     """
     A widget to select which user profile to use, edit or create as new.
@@ -175,6 +207,7 @@ class UserProfileSelector(QWidget):
         self.highestIdGiven = -1
         self.userIdToWidget: dict[int, QWidget] = {}
         self.userCreator = None
+        self.deleteConfirmation = None
 
     def setUsers(self, users: list[UserProfile]) -> None:
         """
@@ -193,6 +226,7 @@ class UserProfileSelector(QWidget):
         widget = UserProfileWidget(user)
         widget.selected.connect(lambda: self.userSelected.emit(user))
         widget.editRequested.connect(lambda: self.editUser(user))
+        widget.deleteRequested.connect(lambda: self.onDeleteUserRequested(user))
         self.vUserLayout.addWidget(widget)
         self.userIdToWidget[user.userId] = widget
 
@@ -210,6 +244,28 @@ class UserProfileSelector(QWidget):
         self.userCreator.saveRequested.connect(lambda: self.saveUser(user))
         self.userCreator.show()
 
+    def onDeleteUserRequested(self, user: UserProfile) -> None:
+        """
+        Open a dialog to make the user confirm the profile deletion.
+        """
+        self.deleteConfirmation = UserDeletionConfirmation(user)
+        self.deleteConfirmation.deletionConfirmed.connect(lambda: self.deleteUser(user))
+        self.deleteConfirmation.show()
+
+    def deleteUser(self, user: UserProfile) -> None:
+        """
+        Remove the user from the list of users.
+        """
+        self.users.remove(user)
+        self.vUserLayout.removeWidget(self.userIdToWidget[user.userId])
+        self.userIdToWidget[user.userId].deleteLater()
+        del self.userIdToWidget[user.userId]
+        self.saveRequested.emit()
+
+        if self.deleteConfirmation is not None:
+            self.deleteConfirmation.deleteLater()
+
+
     def saveUser(self, user: UserProfile) -> None:
         """
         Save changes to a user. Can be a completely new user or an existing
@@ -226,6 +282,7 @@ class UserProfileSelector(QWidget):
                 self.userIdToWidget[u.userId].deleteLater()
                 self.userIdToWidget[u.userId] = widget
                 userIsNew = False
+                break
 
         if userIsNew:
             self.users.append(user)
@@ -246,7 +303,7 @@ class UserProfileSelector(QWidget):
                 user.restore(d["users"][i])
             self.setUsers(users)
             if "highestIdGiven" in d:
-                self.highestIdGiven = -1
+                self.highestIdGiven = d["highestIdGiven"]
             else:
                 raise ValueError("Missing highestIdGiven in user profiles dict")
     
