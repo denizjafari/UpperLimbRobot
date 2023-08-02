@@ -22,6 +22,9 @@ from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Scaler, Transformer, TransformerHead
 
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
+
 class StatusLogHandler(QObject):
     """
     Log handler that makes the logged messages available to Qt slots.
@@ -153,6 +156,14 @@ class PipelineWidget(QWidget):
         for widgetName, widgetDict in d["widgets"]:
             widget = self.onAdd(widgetName)
             widget.restore(widgetDict)
+
+    def close(self) -> None:
+        module_logger.debug("Closing pipeline widget")
+        for widget in self.children():
+            if isinstance(widget, TransformerWidget):
+                widget.close()
+
+        QWidget.close(self)
 
 class FrameProcessor(QRunnable, QObject):
     """
@@ -349,4 +360,5 @@ class ModularPoseProcessorWidget(QWidget):
         """
         if self.transformerHead.isRunning():
             self.transformerHead.stop()
+        self.pipelineWidget.close()
         event.accept()

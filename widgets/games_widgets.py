@@ -169,7 +169,7 @@ class PongServerWidget(TransformerWidget):
         self.metricDropdown = QComboBox(self)
         self.vLayout.addWidget(self.metricDropdown)
 
-        self.updateButton = QPushButton("Update", self)
+        self.updateButton = QPushButton("Update Metrics", self)
         self.updateButton.clicked.connect(lambda: \
                                           self.updateMetricsList(
             self.transformer.availableMetrics()))
@@ -240,7 +240,7 @@ class PongServerWidget(TransformerWidget):
         self.client = Client(address)
         self.transformer.setClient(self.client)
         self.client.start()
-        module_logger.info("Connected to pong server")
+        module_logger.info("Connecting to pong server")
 
     def close(self) -> None:
         """

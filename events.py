@@ -120,17 +120,21 @@ class Server(QObject, QRunnable):
 
         self.msgQueue = Queue()
 
+        self.address = address
         self.sel = DefaultSelector()
         self.sock = socket.create_server(address)
         self.sock.listen(5)
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
         self.shouldClose = False
+        module_logger.debug(f"Setup Event Server listening on {self.address}")
 
     def run(self) -> None:
         """
         Run the server until it is closed. Select for the client connections
         and process the message queue repeatedly.
         """
+        module_logger.debug(f"Started Event Server listening on {self.address}")
+
         while not self.shouldClose:
             events = self.sel.select(0.001)
             for key, mask in events:
@@ -158,6 +162,8 @@ class Server(QObject, QRunnable):
             conn.close()
         self.connToBuffer.clear()
         self.sock.close()
+
+        module_logger.debug(f"Closed Event Server listening on {self.address}")
 
     def start(self, threadPool = QThreadPool.globalInstance()) -> None:
         """
@@ -242,6 +248,9 @@ class Client(QObject, QRunnable):
         self.msgQueue: Queue[Event] = Queue()
         self.conn = socket.create_connection(address)
         self.conn.settimeout(0.001)
+        self.address = address
+
+        module_logger.debug(f"Setup Event Client connected to {self.address}")
 
         self.shouldClose = False
         self.buffer = ""
@@ -251,6 +260,7 @@ class Client(QObject, QRunnable):
         Run the client until it is closed. Receive events and send events
         repeatedly.
         """
+        module_logger.debug(f"Started Event Client connected to {self.address}")
         while not self.shouldClose:
             timedOut = False
             try:
@@ -286,6 +296,7 @@ class Client(QObject, QRunnable):
                     break
 
         self.conn.close()
+        module_logger.debug(f"Closed Event Client connected to {self.address}")
 
     def start(self, threadPool = QThreadPool.globalInstance()) -> None:
         """

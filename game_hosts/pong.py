@@ -729,7 +729,7 @@ class SoloBallStormPongGame(PongGame):
 
         if orientation != self.orientation:
             self.orientation = orientation
-            self.updateScore(self.scoreBoard.scoreRight, self.scoreBoard.scoreRight)
+            self.updateScore(self.scoreBoard.scoreRight, self.scoreBoard.scoreLeft)
             self.balls.clear()
             self.addBall()
 

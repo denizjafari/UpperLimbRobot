@@ -291,6 +291,7 @@ class PongClient(TransformerStage):
 
         if client is not None:
             client.eventReceived.connect(self.handleEvent)
+            self.setOrientation(self.pongData["orientation"])
 
     def handleEvent(self, event: Event) -> None:
         """
