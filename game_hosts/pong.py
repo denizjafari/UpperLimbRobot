@@ -543,7 +543,11 @@ class TwoPlayerPongGame(PongGame):
         """
         super().__init__(parent)
 
-        self.balls.append(Ball())
+        ball = Ball()
+        ball.direction = 1, 2
+        ball.speed = 2.5
+
+        self.balls.append(ball)
         self.bottomPaddle.setActive(False)
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
@@ -572,7 +576,7 @@ class TwoPlayerPongGame(PongGame):
         """
         self.stop()
 
-    def setOrientation(self) -> None:
+    def setOrientation(self, orientation: str) -> None:
         """
         Do nothing. Orientation is not supported in the two player game.
         """
@@ -657,7 +661,7 @@ class SoloBallStormPongGame(PongGame):
         """
         Same as onLeftEdgeHit, but happens when the orientation is reversed.
         """
-        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         if self.orientation == "RIGHT":
             self.eventReady.emit(Event("miss", ["RIGHT"]))
         self.balls.remove(ball)
@@ -725,6 +729,7 @@ class SoloBallStormPongGame(PongGame):
 
         if orientation != self.orientation:
             self.orientation = orientation
+            self.updateScore(self.scoreBoard.scoreRight, self.scoreBoard.scoreRight)
             self.balls.clear()
             self.addBall()
 
