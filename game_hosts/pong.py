@@ -111,8 +111,8 @@ class Paddle:
         """
         Move the paddle immediately, so that the center of the paddle is at
         the specified relative position. Relative here means one a scale from
-        0.0 to 1.0, where 0.0 is at the bottom / left and 1.0 is at the
-        top / right.
+        0.0 to 1.0, where 0.0 is at the bottom and 1.0 is at the
+        top.
         """
         self.position = (1 - relativePosition) * SQUARE_SIZE
 
@@ -178,6 +178,15 @@ class HorizontalPaddle(Paddle):
         Return the bottom most y coordinate.
         """
         return SQUARE_SIZE
+    
+    def moveTo(self, relativePosition: float) -> None:
+        """
+        Move the paddle immediately, so that the center of the paddle is at
+        the specified relative position. Relative here means one a scale from
+        0.0 to 1.0, where 0.0 is at the left and 1.0 is at the
+        right.
+        """
+        self.position = relativePosition * SQUARE_SIZE
 
     def isHit(self, ball: Ball) -> bool:
         """
