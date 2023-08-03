@@ -123,6 +123,7 @@ class Server(QObject, QRunnable):
         self.address = address
         self.sel = DefaultSelector()
         self.sock = socket.create_server(address)
+        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.sock.listen(5)
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
         self.shouldClose = False
@@ -247,6 +248,7 @@ class Client(QObject, QRunnable):
 
         self.msgQueue: Queue[Event] = Queue()
         self.conn = socket.create_connection(address)
+        self.conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.conn.settimeout(0.001)
         self.address = address
 
