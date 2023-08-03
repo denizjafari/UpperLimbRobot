@@ -624,13 +624,9 @@ class MinMaxWidget(TransformerWidget):
         Initialize it.
         """
         TransformerWidget.__init__(self, "Min/Max Selector", parent)
-        self.transformer = MinMaxTransformer()
 
-        self.updateButton = QPushButton("Update Metrics")
-        self.updateButton.clicked.connect(lambda: \
-                                          self.updateMetricsList(
-            self.transformer.availableMetrics()))
-        self.vLayout.addWidget(self.updateButton)
+        self.transformer = MinMaxTransformer()
+        self.transformer.availableMetricsUpdated.connect(self.updateMetricsList)
 
         self.transformerSelector = QComboBox(self)
         self.vLayout.addWidget(self.transformerSelector)
@@ -657,6 +653,8 @@ class MinMaxWidget(TransformerWidget):
         newTransformerSelector = QComboBox(self)
         for metric in metrics:
             newTransformerSelector.addItem(metric)
+            if metric == self.transformerSelector.currentText():
+                newTransformerSelector.setCurrentText(metric)
         
         self.vLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
         self.transformerSelector.deleteLater()
@@ -668,7 +666,8 @@ class MinMaxWidget(TransformerWidget):
         Save the state of the widget to a dictionary.
         """
         TransformerWidget.save(self, d)
-        d["availableMetrics"] = self.transformer.availableMetrics()
+        d["availableMetrics"] = [self.transformerSelector.itemText(i) \
+                                 for i in range(self.transformerSelector.count())]
         d["selectedMetric"] = self.transformerSelector.currentText()
         d["min"] = self.transformer._min
         d["max"] = self.transformer._max

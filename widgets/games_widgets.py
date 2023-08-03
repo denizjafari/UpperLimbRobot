@@ -149,6 +149,7 @@ class PongServerWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Pong Server", parent)
 
         self.transformer = PongClient()
+        self.transformer.availableMetricsUpdated.connect(self.updateMetricsList)
 
         self.formLayout = QFormLayout()
         self.vLayout.addLayout(self.formLayout)
@@ -168,12 +169,6 @@ class PongServerWidget(TransformerWidget):
 
         self.metricDropdown = QComboBox(self)
         self.vLayout.addWidget(self.metricDropdown)
-
-        self.updateButton = QPushButton("Update Metrics", self)
-        self.updateButton.clicked.connect(lambda: \
-                                          self.updateMetricsList(
-            self.transformer.availableMetrics()))
-        self.vLayout.addWidget(self.updateButton)
 
         self.buttonLayout = QVBoxLayout()
         self.vLayout.addLayout(self.buttonLayout)
@@ -221,6 +216,8 @@ class PongServerWidget(TransformerWidget):
         newMetricDropdown = QComboBox(self)
         for metric in metrics:
             newMetricDropdown.addItem(metric)
+            if metric == self.metricDropdown.currentText():
+                newMetricDropdown.setCurrentText(metric)
 
         newMetricDropdown.currentTextChanged.connect(self.transformer.setFollowMetrics)
         
@@ -254,7 +251,8 @@ class PongServerWidget(TransformerWidget):
         Save the state of the widget to a dictionary.
         """
         TransformerWidget.save(self, d)
-        d["availableMetrics"] = self.transformer.availableMetrics()
+        d["availableMetrics"] = [self.metricDropdown.itemText(i) \
+                                 for i in range(self.metricDropdown.count())]
         d["selectedMetric"] = self.transformer.followMetric
         
         d["mode"] = self.buttonGroup.checkedButton().text()

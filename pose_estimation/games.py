@@ -257,7 +257,7 @@ class SnakeClient(TransformerStage, QObject):
         self.next(frameData)
 
 
-class PongClient(TransformerStage):
+class PongClient(TransformerStage, QObject):
     """
     The pong game.
     The height of the hand will determine the height of the left paddle.
@@ -265,12 +265,14 @@ class PongClient(TransformerStage):
     events: Queue[Event]
     pongData: dict[str, object]
     followMetrics: str
+    availableMetricsUpdated = Signal(object)
 
     def __init__(self, previous: Optional[Transformer] = None) -> None:
         """
         Initialize the pong client.
         """
         TransformerStage.__init__(self, True, previous)
+        QObject.__init__(self)
         self.events = Queue()
 
         self.mode = "absolute"
@@ -359,7 +361,16 @@ class PongClient(TransformerStage):
         Control the paddle.
         """
         if "metrics" in frameData:
-            self._availableMetrics = list(frameData["metrics"].keys())
+            newAvailableMetrics = set(frameData["metrics"].keys())
+            if len(newAvailableMetrics) != len(self._availableMetrics):
+                self._availableMetrics = list(newAvailableMetrics)
+                self.availableMetricsUpdated.emit(self._availableMetrics)
+            else:
+                for metric in self._availableMetrics:
+                    if metric not in newAvailableMetrics:
+                        self._availableMetrics = list(newAvailableMetrics)
+                        self.availableMetricsUpdated.emit(self._availableMetrics)
+                        break
 
         client = self.pongData["client"]
 

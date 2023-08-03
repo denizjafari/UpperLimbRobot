@@ -1069,19 +1069,22 @@ class ButterworthTransformer(TransformerStage):
 
         self.next(frameData)
 
-class MinMaxTransformer(TransformerStage):
+class MinMaxTransformer(TransformerStage, QObject):
     metrics: Optional[dict[str, list[float]]]
     _min: dict[str, float]
     _max: dict[str, float]
+    availableMetricsUpdated = Signal(object)
 
     def __init__(self) -> None:
         """
         Initialize it.
         """
         TransformerStage.__init__(self, True)
+        QObject.__init__(self)
         self.metrics = None
         self._min = {}
         self._max = {}
+        self._availableMetrics = []
 
     def setMinForMetric(self, metric: str) -> None:
         """
@@ -1099,7 +1102,7 @@ class MinMaxTransformer(TransformerStage):
         """
         Get the available metrics.
         """
-        return list(self.metrics.keys()) if self.metrics is not None else []
+        return self._availableMetrics
 
     def transform(self, frameData: FrameData) -> None:
         """
@@ -1107,6 +1110,16 @@ class MinMaxTransformer(TransformerStage):
         """
         if "metrics" in frameData:
             self.metrics = frameData["metrics"].copy()
+            newAvailableMetrics = set(self.metrics)
+            if len(newAvailableMetrics) != len(self._availableMetrics):
+                self._availableMetrics = list(newAvailableMetrics)
+                self.availableMetricsUpdated.emit(self._availableMetrics)
+            else:
+                for metric in self._availableMetrics:
+                    if metric not in newAvailableMetrics:
+                        self._availableMetrics = list(newAvailableMetrics)
+                        self.availableMetricsUpdated.emit(self._availableMetrics)
+                        break
 
         if self.active():
             frameData["metrics_max"] = self._max.copy()
