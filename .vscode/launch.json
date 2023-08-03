@@ -12,6 +12,15 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Python game_host.py",
+            "type": "python",
+            "request": "launch",
+            "program": "game_host.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

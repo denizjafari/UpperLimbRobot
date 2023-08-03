@@ -19,9 +19,11 @@ from PySide6.QtGui import QColor
 from pose_estimation.registry import GLOBAL_PROPS, WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.video import CVVideoFileSource, QVideoSource
-from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, CsvExporter, \
-    CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
-        RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, VideoSourceTransformer
+from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, \
+    CsvExporter, CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, \
+        MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
+            RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, \
+                VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
@@ -656,7 +658,8 @@ class MinMaxWidget(TransformerWidget):
             if metric == self.transformerSelector.currentText():
                 newTransformerSelector.setCurrentText(metric)
         
-        self.vLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
+        self.vLayout.replaceWidget(self.transformerSelector,
+                                   newTransformerSelector)
         self.transformerSelector.deleteLater()
         self.transformerSelector = newTransformerSelector
 

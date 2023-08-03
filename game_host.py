@@ -14,6 +14,7 @@ from PySide6.QtGui import QIntValidator
 
 from events import GameAdapter, Server
 from game_hosts.pong import PongGameWindow, PongServerAdapter, SoloBallStormPongGame, TwoPlayerPongGame
+from game_hosts.reach import ReachBoard, ReachServerAdapter, ReachWindow
 from game_hosts.snake import SnakeGame, SnakeServerAdapter
 
 
@@ -83,8 +84,15 @@ if __name__ == "__main__":
                                        PongServerAdapter(PongGameWindow(TwoPlayerPongGame())),
                                            address=(hostField.text(),
                                                     int(portField.text()))))
-
     selectorLayout.addWidget(pongButton)
+    
+    reachButton = QPushButton("Reach")
+    reachButton.clicked.connect(lambda:
+                               addGame(window,
+                                       ReachServerAdapter(ReachWindow(ReachBoard())),
+                                           address=(hostField.text(),
+                                                    int(portField.text()))))
+    selectorLayout.addWidget(reachButton)
 
     window.show()
 
