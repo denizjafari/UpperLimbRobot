@@ -9,8 +9,10 @@ import sys
 import os
 import json
 import importlib
+import time
 
 from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QThreadPool
 
 from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
 from pose_estimation.profiles import UserProfile, UserProfileSelector
@@ -143,6 +145,12 @@ if __name__ == "__main__":
     code = app.exec()
     if userProfile is not None:
         save(modularPoseProcessor)
+
+    module_logger.debug("Waiting for all threads to finish")
+    start = time.time()
+    QThreadPool.globalInstance().waitForDone()
+    elapsed = time.time() - start
+    module_logger.debug(f"Threads all finished ({int(1000 * elapsed)}ms)")
 
     sys.exit(code)
     
