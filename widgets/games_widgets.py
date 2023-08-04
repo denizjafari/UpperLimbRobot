@@ -15,9 +15,9 @@ from events import Client
 from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import PONG_CONTROLLER_REGISTRY, WIDGET_REGISTRY
 
-from pose_estimation.ui_utils import LabeledQSlider
+from pose_estimation.ui_utils import ConnectionWidget, LabeledQSlider
 from pose_estimation.games import PongClient, PongControllerWrapper, \
-    PoseFeedbackTransformer, Snake, SnakeClient
+    PoseFeedbackTransformer, ReachClient, Snake, SnakeClient
 from widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
@@ -365,8 +365,67 @@ class PongControllerWidget(TransformerWidget):
             self.controller().restore(d["controller_state"])
 
 
+class ReachServerWidget(TransformerWidget):
+    """
+    Widget for controlling a reach server.
+    """
+    transformer: ReachClient
+
+    def __init__(self) -> None:
+        """
+        Initialize the ReachServerWidget.
+        """
+        super().__init__("Reach Server")
+
+        self.transformer = ReachClient()
+        self.transformer.metricsListProvider.availableMetricsUpdated.connect(
+            self.updateMetricsList)
+
+        self.connectionWidget = ConnectionWidget()
+        self.connectionWidget.clientConnected.connect(self.setClient)
+        self.vLayout.addWidget(self.connectionWidget)
+
+        self.metricDropdown = QComboBox(self)
+        self.vLayout.addWidget(self.metricDropdown)
+        self.metricDropdown.currentTextChanged.connect(self.transformer.setFollowMetric)
+
+        self.client = None
+
+    def updateMetricsList(self, metrics) -> None:
+        """
+        Update the metrics list.
+        """
+        newMetricDropdown = QComboBox(self)
+        for metric in metrics:
+            newMetricDropdown.addItem(metric)
+            if metric == self.metricDropdown.currentText():
+                newMetricDropdown.setCurrentText(metric)
+
+        newMetricDropdown.currentTextChanged.connect(self.transformer.setFollowMetric)
+        
+        self.vLayout.replaceWidget(self.metricDropdown, newMetricDropdown)
+        self.metricDropdown.deleteLater()
+        self.metricDropdown = newMetricDropdown
+
+    def setClient(self, client: Client) -> None:
+        """
+        Set the client to use for the transformer.
+        """
+        self.transformer.setClient(client)
+
+        if self.client:
+            self.client.close()
+        
+        self.client = client
+
+    def close(self) -> None:
+        if self.client:
+            self.client.close()
+
+
 WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")
 WIDGET_REGISTRY.register(SnakeWidget, "Snake Game")
 WIDGET_REGISTRY.register(SnakeServerWidget, "Snake Server")
 WIDGET_REGISTRY.register(PongServerWidget, "Pong Server")
 WIDGET_REGISTRY.register(PongControllerWidget, "Pong Controller")
+WIDGET_REGISTRY.register(ReachServerWidget, "Reach Server")

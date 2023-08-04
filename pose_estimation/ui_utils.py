@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
     QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
+from events import Client
 
 from models.models import PoseModel
 from pose_estimation.registry import MODEL_REGISTRY
@@ -311,3 +312,42 @@ class LabeledQSlider(QSlider):
             QToolTip.showText(
                 self.mapToGlobal(QPoint(bottomRight.x(), bottomRight.y())),
                 str(self.value()))
+            
+
+class ConnectionWidget(QWidget):
+    """
+    A widget to setup and connect to a server.
+    """
+    clientConnected = Signal(Client)
+
+    def __init__(self) -> None:
+        """
+        Initialize the connection widget.
+        """
+        QWidget.__init__(self)
+        
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
+
+        self.hostField = QLineEdit("localhost")
+        self.vLayout.addWidget(self.hostField)
+
+        self.portField = QLineEdit("9876")
+        self.vLayout.addWidget(self.portField)
+        
+        self.connectButton = QPushButton("Connect")
+        self.vLayout.addWidget(self.connectButton)
+
+        self.connectButton.clicked.connect(self.connectClient)
+
+
+    def connectClient(self) -> None:
+        """
+        Create a client object and attempt to connect to the server with the
+        host and port specified in the text fields.
+        """
+        address = (self.hostField.text(), int(self.portField.text()))
+        self.client = Client(address)
+        self.client.start()
+        module_logger.info("Connecting to server")
+        self.clientConnected.emit(self.client)

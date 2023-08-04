@@ -5,15 +5,20 @@ around to catch apples
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
+from typing import Optional
 
 import random
-from typing import Optional
+import logging
+
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout
 from PySide6.QtGui import QPainter, QBrush, QPen, QColor, QPaintEvent, QKeyEvent
 
-from events import GameAdapter
+from events import Event, GameAdapter
+
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.DEBUG)
 
 
 SQUARE_SIZE = 500
@@ -307,3 +312,8 @@ class ReachServerAdapter(GameAdapter):
         Return the window widget that is wrapped.
         """
         return self.window
+    
+    def eventReceived(self, e: Event) -> None:
+        module_logger.debug("Received event: " + str(e))
+        if e.name == "moveToY":
+            self.window.board.players[0].moveToY(float(e.payload[0]))
