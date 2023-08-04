@@ -32,6 +32,38 @@ TICK_SPEED = 50
 # The default apple lifetime in seconds
 APPLE_DEFAULT_LIFETIME = 5
 
+
+class ScoreBoard:
+    """
+    Basic Scoreboard capable of tracking the scores for both sides,
+    left and right.
+    """
+    score: int
+
+    def __init__(self, screenSize: int) -> None:
+        """
+        Initialize the scoreboard.
+        """
+        self.score = 0
+        self.screenSize = screenSize
+
+    def paint(self, painter: QPainter) -> None:
+        """
+        Paint the scoreboard to an active painter.
+        """
+        rect = QRect(self.screenSize / 2 - 30, 0, 60, 30)
+        painter.drawRect(rect)
+        boundings = painter.boundingRect(rect, "Score")
+        painter.drawText((self.screenSize - boundings.width()) / 2,
+                         12,
+                         "Score")
+
+        scoreStr = str(self.score)
+        boundings = painter.boundingRect(rect, scoreStr)
+        painter.drawText((self.screenSize - boundings.width()) / 2,
+                         25,
+                         scoreStr)
+
 class Apple:
     """
     An apple that needs to be caught by the player.
@@ -177,6 +209,8 @@ class ReachBoard(QLabel):
         self.sideLength = SQUARE_SIZE
         self.setFixedSize(self.sideLength, self.sideLength)
 
+        self.scoreBoard = ScoreBoard(self.sideLength)
+
         self.apples: list[Apple] = []
         self.apples.append(Apple())
         
@@ -209,6 +243,7 @@ class ReachBoard(QLabel):
             else:
                 for player in self.players:
                     if player.canConsume(apple):
+                        self.scoreBoard.score += 1
                         self.apples.remove(apple)
                         self.addApple()
 
@@ -246,6 +281,8 @@ class ReachBoard(QLabel):
         painter.setPen(pen)
         painter.setBrush(QBrush())
         painter.drawRect(0, 0, SQUARE_SIZE, SQUARE_SIZE)
+
+        self.scoreBoard.paint(painter)
 
         painter.end()
 
