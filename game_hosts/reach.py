@@ -11,7 +11,7 @@ from typing import Optional
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout
-from PySide6.QtGui import QPainter, QBrush, QColor, QPaintEvent, QKeyEvent
+from PySide6.QtGui import QPainter, QBrush, QPen, QColor, QPaintEvent, QKeyEvent
 
 from events import GameAdapter
 
@@ -84,20 +84,28 @@ class Player:
         Move the player according to the current key presses.
         """
         if self.movingUp:
-            self.y -= self.speed
+            if self.y > 0:
+                self.y -= self.speed
         elif self.movingDown:
-            self.y += self.speed
+            if self.y < SQUARE_SIZE:
+                self.y += self.speed
 
         if self.movingLeft:
-            self.x -= self.speed
+            if self.x > 0:
+                self.x -= self.speed
         elif self.movingRight:
-            self.x += self.speed
+            if self.x < SQUARE_SIZE:
+                self.x += self.speed
 
     def moveToX(self, relativeX: float) -> None:
         """
         Move the player to the specified relative position along the x axis.
         0.0 is the left edge of the board, 1.0 is the right edge.
         """
+        if relativeX < 0.0:
+            relativeX = 0.0
+        elif relativeX > 1.0:
+            relativeX = 1.0
         self.x = relativeX * SQUARE_SIZE
 
 
@@ -106,6 +114,10 @@ class Player:
         Move the player to the specified relative position along the y axis.
         0.0 is the bottom edge of the board, 1.0 is the top edge.
         """
+        if relativeY < 0.0:
+            relativeY = 0.0
+        elif relativeY > 1.0:
+            relativeY = 1.0
         self.y = (1 - relativeY) * SQUARE_SIZE
 
 
@@ -199,6 +211,13 @@ class ReachBoard(QLabel):
         for player in self.players:
             player.paint(painter)
 
+        pen = QPen()
+        pen.setColor(QColor(0, 0, 0))
+        pen.setWidth(5)
+        painter.setPen(pen)
+        painter.setBrush(QBrush())
+        painter.drawRect(0, 0, SQUARE_SIZE, SQUARE_SIZE)
+
         painter.end()
 
     
@@ -245,7 +264,7 @@ class ReachWindow(QWidget):
         self.setLayout(self.vLayout)
 
         self.board = board
-        self.vLayout.addWidget(board)
+        self.vLayout.addWidget(board, alignment=Qt.AlignCenter)
 
 
 class ReachServerAdapter(GameAdapter):
