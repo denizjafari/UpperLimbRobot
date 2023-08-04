@@ -15,7 +15,7 @@ from events import Client
 from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import PONG_CONTROLLER_REGISTRY, WIDGET_REGISTRY
 
-from pose_estimation.ui_utils import ConnectionWidget, LabeledQSlider
+from pose_estimation.ui_utils import ConnectionWidget, LabeledQSlider, MetricSelector
 from pose_estimation.games import PongClient, PongControllerWrapper, \
     PoseFeedbackTransformer, ReachClient, Snake, SnakeClient
 from widgets.transformer_widgets import TransformerWidget
@@ -378,34 +378,18 @@ class ReachServerWidget(TransformerWidget):
         super().__init__("Reach Server")
 
         self.transformer = ReachClient()
-        self.transformer.metricsListProvider.availableMetricsUpdated.connect(
-            self.updateMetricsList)
 
         self.connectionWidget = ConnectionWidget()
         self.connectionWidget.clientConnected.connect(self.setClient)
         self.vLayout.addWidget(self.connectionWidget)
 
-        self.metricDropdown = QComboBox(self)
-        self.vLayout.addWidget(self.metricDropdown)
-        self.metricDropdown.currentTextChanged.connect(self.transformer.setFollowMetric)
+        self.metricSelector = MetricSelector()
+        self.metricSelector.metricSelected.connect(self.transformer.setFollowMetric)
+        self.transformer.metricsListProvider.availableMetricsUpdated.connect(
+            self.metricSelector.updateMetricsList)
+        self.vLayout.addWidget(self.metricSelector)
 
         self.client = None
-
-    def updateMetricsList(self, metrics) -> None:
-        """
-        Update the metrics list.
-        """
-        newMetricDropdown = QComboBox(self)
-        for metric in metrics:
-            newMetricDropdown.addItem(metric)
-            if metric == self.metricDropdown.currentText():
-                newMetricDropdown.setCurrentText(metric)
-
-        newMetricDropdown.currentTextChanged.connect(self.transformer.setFollowMetric)
-        
-        self.vLayout.replaceWidget(self.metricDropdown, newMetricDropdown)
-        self.metricDropdown.deleteLater()
-        self.metricDropdown = newMetricDropdown
 
     def setClient(self, client: Client) -> None:
         """

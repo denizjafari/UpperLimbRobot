@@ -10,7 +10,7 @@ import logging
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
     QPushButton, QFileDialog, QLineEdit, QLabel, QGroupBox, QSlider, \
-    QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip
+    QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip, QComboBox
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
 from events import Client
@@ -351,3 +351,33 @@ class ConnectionWidget(QWidget):
         self.client.start()
         module_logger.info("Connecting to server")
         self.clientConnected.emit(self.client)
+
+
+class MetricSelector(QWidget):
+    metricSelected = Signal(str)
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        QWidget.__init__(self, parent)
+
+        self.vLayout = QVBoxLayout()
+        self.setLayout(self.vLayout)
+
+        self.metricDropdown = QComboBox()
+        self.vLayout.addWidget(self.metricDropdown)
+
+    def updateMetricsList(self, metricsList: list) -> None:
+        """
+        Update the metrics list.
+        """
+        newMetricDropdown = QComboBox(self)
+        for metric in metricsList:
+            newMetricDropdown.addItem(metric)
+            if metric == self.metricDropdown.currentText():
+                newMetricDropdown.setCurrentText(metric)
+
+        newMetricDropdown.currentTextChanged.connect(self.metricSelected)
+        
+        self.vLayout.replaceWidget(self.metricDropdown, newMetricDropdown)
+        self.metricDropdown.deleteLater()
+        self.metricDropdown = newMetricDropdown
+        
