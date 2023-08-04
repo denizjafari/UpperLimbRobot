@@ -18,25 +18,50 @@ from events import GameAdapter
 
 SQUARE_SIZE = 500
 APPLE_SIZE = 20
+PLAYER_SIZE = 40
 
 class Apple:
+    """
+    An apple that needs to be caught by the player.
+    """
+
     def __init__(self) -> None:
+        """
+        Initialize the apple at the top left corner.
+        """
         self.x = 0
         self.y = 0
 
     def paint(self, painter: QPainter) -> None:
+        """
+        Paint the apple to the painter.
+        """
         painter.setBrush(QBrush(QColor(255, 0, 0)))
-        painter.drawRect(self.x, self.y, APPLE_SIZE, APPLE_SIZE)
+        painter.drawRect(self.x - APPLE_SIZE / 2, self.y - APPLE_SIZE / 2,
+                         APPLE_SIZE, APPLE_SIZE)
 
     def centerX(self) -> int:
-        return self.x + APPLE_SIZE / 2
+        """
+        Return the x coordinate of the center of the apple.
+        """
+        return self.x
     
     def centerY(self) -> int:
-        return self.y + APPLE_SIZE / 2
+        """
+        Return the y coordinate of the center of the apple.
+        """
+        return self.y
 
 
 class Player:
+    """
+    The player that is controlled by the user.
+    """
+    
     def __init__(self) -> None:
+        """
+        Initialize the player at the center of the board.
+        """
         self.x = SQUARE_SIZE / 2
         self.y = SQUARE_SIZE / 2
         self.movingUp = False
@@ -47,10 +72,17 @@ class Player:
         self.speed = 4
 
     def paint(self, painter: QPainter) -> None:
+        """
+        Paint the player to the painter.
+        """
         painter.setBrush(QBrush(QColor(0, 255, 0)))
-        painter.drawRect(self.x, self.y, 40, 40)
+        painter.drawRect(self.x - PLAYER_SIZE / 2, self.y - PLAYER_SIZE / 2,
+                         PLAYER_SIZE, PLAYER_SIZE)
 
     def move(self) -> None:
+        """
+        Move the player according to the current key presses.
+        """
         if self.movingUp:
             self.y -= self.speed
         elif self.movingDown:
@@ -61,18 +93,51 @@ class Player:
         elif self.movingRight:
             self.x += self.speed
 
+    def moveToX(self, relativeX: float) -> None:
+        """
+        Move the player to the specified relative position along the x axis.
+        0.0 is the left edge of the board, 1.0 is the right edge.
+        """
+        self.x = relativeX * SQUARE_SIZE
+
+
+    def moveToY(self, relativeY: float) -> None:
+        """
+        Move the player to the specified relative position along the y axis.
+        0.0 is the bottom edge of the board, 1.0 is the top edge.
+        """
+        self.y = (1 - relativeY) * SQUARE_SIZE
+
+
     def centerX(self) -> int:
-        return self.x + 20
+        """
+        Return the x coordinate of the center of the player.
+        """
+        return self.x
     
     def centerY(self) -> int:
-        return self.y + 20
+        """
+        Return the y coordinate of the center of the player.
+        """
+        return self.y
 
     def canConsume(self, apple: Apple) -> bool:
-        return abs(self.centerX() - apple.centerX()) < 30 and abs(self.centerY() - apple.centerY()) < 30
+        """
+        Determine whether this player is close enough to the apple to consume
+        it.
+        """
+        return abs(self.centerX() - apple.centerX()) < 30 \
+            and abs(self.centerY() - apple.centerY()) < 30
 
 
 class ReachBoard(QLabel):
+    """
+    The playing board for the reach game.
+    """
     def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initilize the board with one apple and one player.
+        """
         QLabel.__init__(self, parent)
         self.sideLength = SQUARE_SIZE
         self.setFixedSize(self.sideLength, self.sideLength)
@@ -80,7 +145,7 @@ class ReachBoard(QLabel):
         self.apples: list[Apple] = []
         self.apples.append(Apple())
         
-        self.player = Player()
+        self.players = [Player()]
 
         self._timer = QTimer(self)
         self._timer.setInterval(20)
@@ -93,17 +158,26 @@ class ReachBoard(QLabel):
 
 
     def updateState(self) -> None:
-        self.player.move()
+        """
+        Update the state of the game by moving the player and checking whether
+        any player can consume an apple. Then repaint the board.
+        """
+        for player in self.players:
+            player.move()
 
         for apple in self.apples:
-            if self.player.canConsume(apple):
-                self.apples.remove(apple)
-                self.addApple()
+            for player in self.players:
+                if player.canConsume(apple):
+                    self.apples.remove(apple)
+                    self.addApple()
 
         self.repaint()
 
 
     def addApple(self) -> None:
+        """
+        Add an apple to a random position on the board.
+        """
         apple = Apple()
 
         apple.x = random.randint(0, SQUARE_SIZE - APPLE_SIZE)
@@ -113,13 +187,17 @@ class ReachBoard(QLabel):
 
 
     def paintEvent(self, event: QPaintEvent) -> None:
+        """
+        Paint the board.
+        """
         painter = QPainter(self)
         painter.setRenderHints(QPainter.Antialiasing, True)
 
         for apple in self.apples:
             apple.paint(painter)
 
-        self.player.paint(painter)
+        for player in self.players:
+            player.paint(painter)
 
         painter.end()
 
@@ -130,13 +208,13 @@ class ReachBoard(QLabel):
         """
         key = e.key()
         if key == Qt.Key_W:
-            self.player.movingUp = True
+            self.players[0].movingUp = True
         elif key == Qt.Key_S:
-            self.player.movingDown = True
+            self.players[0].movingDown = True
         elif key == Qt.Key_A:
-            self.player.movingLeft = True
+            self.players[0].movingLeft = True
         elif key == Qt.Key_D:
-            self.player.movingRight = True
+            self.players[0].movingRight = True
 
     def keyReleaseEvent(self, e: QKeyEvent) -> None:
         """
@@ -144,17 +222,23 @@ class ReachBoard(QLabel):
         """
         key = e.key()
         if key == Qt.Key_W:
-            self.player.movingUp = False
+            self.players[0].movingUp = False
         elif key == Qt.Key_S:
-            self.player.movingDown = False
+            self.players[0].movingDown = False
         elif key == Qt.Key_A:
-            self.player.movingLeft = False
+            self.players[0].movingLeft = False
         elif key == Qt.Key_D:
-            self.player.movingRight = False
+            self.players[0].movingRight = False
 
 
 class ReachWindow(QWidget):
+    """
+    The window for the reach game. Contains the board itself and control buttons.
+    """
     def __init__(self, board: ReachBoard) -> None:
+        """
+        Initialize the window with the given board.
+        """
         QWidget.__init__(self)
 
         self.vLayout = QVBoxLayout()
@@ -164,14 +248,22 @@ class ReachWindow(QWidget):
         self.vLayout.addWidget(board)
 
 
-
 class ReachServerAdapter(GameAdapter):
+    """
+    A wrapper around the reach window game that allows the game to be controlled
+    by a pose tracking client.
+    """
     def __init__(self, window: ReachWindow) -> None:
+        """
+        Initialize the adapter with the given window.
+        """
         GameAdapter.__init__(self)
 
         self.window = window
-
         self.window.show()
 
     def widget(self) -> QWidget:
+        """
+        Return the window widget that is wrapped.
+        """
         return self.window
