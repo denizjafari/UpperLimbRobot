@@ -8,8 +8,7 @@ from typing import Optional
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
-    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QLineEdit, QComboBox
-from PySide6.QtGui import QIntValidator
+    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QComboBox
 from PySide6.QtCore import Qt
 from events import Client
 from pose_estimation.pong_controllers import PongController
@@ -149,26 +148,19 @@ class PongServerWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Pong Server", parent)
 
         self.transformer = PongClient()
-        self.transformer.availableMetricsUpdated.connect(self.updateMetricsList)
 
         self.formLayout = QFormLayout()
         self.vLayout.addLayout(self.formLayout)
 
-        self.hostField = QLineEdit()
-        self.hostField.setText("localhost")
-        self.formLayout.addRow("Host", self.hostField)
+        self.connectionWidget = ConnectionWidget()
+        self.connectionWidget.clientConnected.connect(self.setClient)
+        self.vLayout.addWidget(self.connectionWidget)
 
-        self.portField = QLineEdit()
-        self.portField.setText("9876")
-        self.portField.setValidator(QIntValidator(1024, 65535))
-        self.formLayout.addRow("Port", self.portField)
-
-        self.connectButton = QPushButton("Connect", self)
-        self.connectButton.clicked.connect(self.connectClient)
-        self.vLayout.addWidget(self.connectButton)
-
-        self.metricDropdown = QComboBox(self)
-        self.vLayout.addWidget(self.metricDropdown)
+        self.metricSelector = MetricSelector()
+        self.transformer.availableMetricsUpdated.connect(
+            self.metricSelector.updateMetricsList)
+        self.metricSelector.metricSelected.connect(self.transformer.setFollowMetric)
+        self.vLayout.addWidget(self.metricSelector)
 
         self.buttonLayout = QVBoxLayout()
         self.vLayout.addLayout(self.buttonLayout)
@@ -209,35 +201,18 @@ class PongServerWidget(TransformerWidget):
         self.left.setChecked(True)
         
 
-    def updateMetricsList(self, metrics) -> None:
+    def setClient(self, client: Client) -> None:
         """
-        Update the metrics list.
+        Set the client connection in this widget and the transformer. Close any
+        previous connection.
         """
-        newMetricDropdown = QComboBox(self)
-        for metric in metrics:
-            newMetricDropdown.addItem(metric)
-            if metric == self.metricDropdown.currentText():
-                newMetricDropdown.setCurrentText(metric)
+        self.transformer.setClient(client)
 
-        newMetricDropdown.currentTextChanged.connect(self.transformer.setFollowMetrics)
-        
-        self.vLayout.replaceWidget(self.metricDropdown, newMetricDropdown)
-        self.metricDropdown.deleteLater()
-        self.metricDropdown = newMetricDropdown
-
-    def connectClient(self) -> None:
-        """
-        Create a client object and attempt to connect to the server with the
-        host and port specified in the text fields.
-        """
         if self.client is not None:
             self.client.close()
 
-        address = (self.hostField.text(), int(self.portField.text()))
-        self.client = Client(address)
-        self.transformer.setClient(self.client)
-        self.client.start()
-        module_logger.info("Connecting to pong server")
+        self.client = client
+
 
     def close(self) -> None:
         """
@@ -251,9 +226,7 @@ class PongServerWidget(TransformerWidget):
         Save the state of the widget to a dictionary.
         """
         TransformerWidget.save(self, d)
-        d["availableMetrics"] = [self.metricDropdown.itemText(i) \
-                                 for i in range(self.metricDropdown.count())]
-        d["selectedMetric"] = self.transformer.followMetric
+        self.metricSelector.save(d)
         
         d["mode"] = self.buttonGroup.checkedButton().text()
         d["orientation"] = self.directionButtonGroup.checkedButton().text()
@@ -263,8 +236,7 @@ class PongServerWidget(TransformerWidget):
         Save the state of the widget to a dictionary.
         """
         TransformerWidget.save(self, d)
-        self.updateMetricsList(d["availableMetrics"])
-        self.metricDropdown.setCurrentText(d["selectedMetric"])
+        self.metricSelector.restore(d)
 
         if "mode" in d:
             mode = d["mode"]
@@ -393,7 +365,8 @@ class ReachServerWidget(TransformerWidget):
 
     def setClient(self, client: Client) -> None:
         """
-        Set the client to use for the transformer.
+        Set the client connection in this widget and the transformer. Close any
+        previous connection.
         """
         self.transformer.setClient(client)
 
@@ -405,6 +378,12 @@ class ReachServerWidget(TransformerWidget):
     def close(self) -> None:
         if self.client:
             self.client.close()
+
+    def restore(self, d: dict) -> None:
+        self.metricSelector.restore(d)
+
+    def save(self, d: dict) -> None:
+        self.metricSelector.save(d)
 
 
 WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")

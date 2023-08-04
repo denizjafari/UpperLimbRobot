@@ -25,7 +25,7 @@ from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer
             RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, \
                 VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
-    LabeledQSlider, ModelSelector
+    LabeledQSlider, MetricSelector, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
 
 
@@ -628,40 +628,28 @@ class MinMaxWidget(TransformerWidget):
         TransformerWidget.__init__(self, "Min/Max Selector", parent)
 
         self.transformer = MinMaxTransformer()
-        self.transformer.availableMetricsUpdated.connect(self.updateMetricsList)
 
-        self.transformerSelector = QComboBox(self)
-        self.vLayout.addWidget(self.transformerSelector)
+        self.selectedMetric = ""
+
+        self.metricSelector = MetricSelector()
+        self.metricSelector.metricSelected.connect(self.setSelectedMetric)
+        self.vLayout.addWidget(self.metricSelector)
 
         self.maxButton = QPushButton("Set Maximum")
         self.maxButton.clicked.connect(lambda: \
                                        self.transformer.setMaxForMetric(
-            self.transformerSelector.currentText()))
+            self.selectedMetric))
         self.vLayout.addWidget(self.maxButton)
 
         self.minButton = QPushButton("Set Minimum")
         self.minButton.clicked.connect(lambda: \
                                        self.transformer.setMinForMetric(
-            self.transformerSelector.currentText()))
+            self.selectedMetric))
         self.vLayout.addWidget(self.minButton)
 
-        self.updateMetricsList(self.transformer.availableMetrics())
-
-
-    def updateMetricsList(self, metrics) -> None:
-        """
-        Updates the list of available metrics.
-        """
-        newTransformerSelector = QComboBox(self)
-        for metric in metrics:
-            newTransformerSelector.addItem(metric)
-            if metric == self.transformerSelector.currentText():
-                newTransformerSelector.setCurrentText(metric)
-        
-        self.vLayout.replaceWidget(self.transformerSelector,
-                                   newTransformerSelector)
-        self.transformerSelector.deleteLater()
-        self.transformerSelector = newTransformerSelector
+    
+    def setSelectedMetric(self, metric: str) -> None:
+        self.selectedMetric = metric
 
 
     def save(self, d: dict) -> None:
@@ -669,9 +657,7 @@ class MinMaxWidget(TransformerWidget):
         Save the state of the widget to a dictionary.
         """
         TransformerWidget.save(self, d)
-        d["availableMetrics"] = [self.transformerSelector.itemText(i) \
-                                 for i in range(self.transformerSelector.count())]
-        d["selectedMetric"] = self.transformerSelector.currentText()
+        self.metricSelector.save(d)
         d["min"] = self.transformer._min
         d["max"] = self.transformer._max
     
@@ -681,8 +667,7 @@ class MinMaxWidget(TransformerWidget):
         Save the state of the widget to a dictionary.
         """
         TransformerWidget.restore(self, d)
-        self.updateMetricsList(d["availableMetrics"])
-        self.transformerSelector.setCurrentText(d["selectedMetric"])
+        self.metricSelector.restore(d)
         self.transformer._min = d["min"]
         self.transformer._max = d["max"]
 

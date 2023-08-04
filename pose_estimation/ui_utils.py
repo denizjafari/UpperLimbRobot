@@ -380,4 +380,19 @@ class MetricSelector(QWidget):
         self.vLayout.replaceWidget(self.metricDropdown, newMetricDropdown)
         self.metricDropdown.deleteLater()
         self.metricDropdown = newMetricDropdown
-        
+
+    def save(self, d: dict[str, object]) -> None:
+        """
+        Save the current state of the widget.
+        """
+        d["availableMetrics"] = [self.metricDropdown.itemText(i) \
+                                 for i in range(self.metricDropdown.count())]
+        d["selectedMetric"] = self.metricDropdown.currentText()
+
+    def restore(self, d: dict[str, object]) -> None:
+        """
+        Restore the state of the widget.
+        """
+        if "availableMetrics" in d and "selectedMetric" in d:
+            self.updateMetricsList(d["availableMetrics"])
+            self.metricDropdown.setCurrentText(d["selectedMetric"])

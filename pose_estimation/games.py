@@ -414,7 +414,7 @@ class PongClient(TransformerStage, QObject):
         """
         return self._availableMetrics
     
-    def setFollowMetrics(self, metric: str) -> None:
+    def setFollowMetric(self, metric: str) -> None:
         """
         Set the metric that should be followed for determining the paddle's
         position.
