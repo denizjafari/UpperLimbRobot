@@ -11,9 +11,10 @@ import random
 import logging
 
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer, Qt, QRect
 from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout
-from PySide6.QtGui import QPainter, QBrush, QPen, QColor, QPaintEvent, QKeyEvent
+from PySide6.QtGui import QPainter, QBrush, QPen, QColor, QPaintEvent, \
+    QKeyEvent, QImage
 
 from events import Event, GameAdapter
 
@@ -22,7 +23,7 @@ module_logger.setLevel(logging.DEBUG)
 
 
 SQUARE_SIZE = 500
-APPLE_SIZE = 20
+APPLE_SIZE = 40
 PLAYER_SIZE = 40
 
 # The speed of the game in ticks per second
@@ -49,10 +50,12 @@ class Apple:
         """
         Paint the apple to the painter.
         """
-        colorR = (self.lifetime * 255) // self.maxLifetime
-        painter.setBrush(QBrush(QColor(colorR, 0, 0)))
-        painter.drawRect(self.x - APPLE_SIZE / 2, self.y - APPLE_SIZE / 2,
-                         APPLE_SIZE, APPLE_SIZE)
+        target = QRect(self.x - APPLE_SIZE / 2, self.y - APPLE_SIZE / 2,
+                       APPLE_SIZE, APPLE_SIZE)
+        source = QRect(0, 0, appleImage.width(), appleImage.height())
+        painter.setOpacity(self.lifetime / self.maxLifetime)
+        painter.drawImage(target, appleImage, source)
+        painter.setOpacity(1.0)
         
     def age(self) -> None:
         """
@@ -317,3 +320,6 @@ class ReachServerAdapter(GameAdapter):
         module_logger.debug("Received event: " + str(e))
         if e.name == "moveToY":
             self.window.board.players[0].moveToY(float(e.payload[0]))
+
+appleImage = QImage()
+appleImage.load("assets/graphics/apple.png")
