@@ -20,6 +20,12 @@ SQUARE_SIZE = 500
 APPLE_SIZE = 20
 PLAYER_SIZE = 40
 
+# The speed of the game in ticks per second
+TICK_SPEED = 50
+
+# The default apple lifetime in seconds
+APPLE_DEFAULT_LIFETIME = 5
+
 class Apple:
     """
     An apple that needs to be caught by the player.
@@ -31,14 +37,23 @@ class Apple:
         """
         self.x = 0
         self.y = 0
+        self.maxLifetime = APPLE_DEFAULT_LIFETIME * TICK_SPEED
+        self.lifetime = self.maxLifetime
 
     def paint(self, painter: QPainter) -> None:
         """
         Paint the apple to the painter.
         """
-        painter.setBrush(QBrush(QColor(255, 0, 0)))
+        colorR = (self.lifetime * 255) // self.maxLifetime
+        painter.setBrush(QBrush(QColor(colorR, 0, 0)))
         painter.drawRect(self.x - APPLE_SIZE / 2, self.y - APPLE_SIZE / 2,
                          APPLE_SIZE, APPLE_SIZE)
+        
+    def age(self) -> None:
+        """
+        Age the apple by dt milliseconds.
+        """
+        self.lifetime -= 1
 
     def centerX(self) -> int:
         """
@@ -160,7 +175,7 @@ class ReachBoard(QLabel):
         self.players = [Player()]
 
         self._timer = QTimer(self)
-        self._timer.setInterval(20)
+        self._timer.setInterval(1000 // TICK_SPEED)
         self._timer.timeout.connect(self.updateState)
         self.isRunning = False
         self._timer.start()
@@ -172,16 +187,22 @@ class ReachBoard(QLabel):
     def updateState(self) -> None:
         """
         Update the state of the game by moving the player and checking whether
-        any player can consume an apple. Then repaint the board.
+        any player can consume an apple. Apples are also "aged" and when their
+        remaining lifetime is too low, they are removed. Then repaint the board.
         """
         for player in self.players:
             player.move()
 
         for apple in self.apples:
-            for player in self.players:
-                if player.canConsume(apple):
-                    self.apples.remove(apple)
-                    self.addApple()
+            apple.age()
+            if apple.lifetime <= 0:
+                self.apples.remove(apple)
+                self.addApple()
+            else:
+                for player in self.players:
+                    if player.canConsume(apple):
+                        self.apples.remove(apple)
+                        self.addApple()
 
         self.repaint()
 
