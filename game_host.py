@@ -13,7 +13,8 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, \
 from PySide6.QtGui import QIntValidator
 
 from events import GameAdapter, Server
-from game_hosts.pong import PongGameWindow, PongServerAdapter, SoloBallStormPongGame, TwoPlayerPongGame
+from game_hosts.pong import PongGameWindow, PongServerAdapter, \
+    SharedScreenPongGame, SoloBallStormPongGame, TwoPlayerPongGame
 from game_hosts.reach import ReachBoard, ReachServerAdapter, ReachWindow
 from game_hosts.snake import SnakeGame, SnakeServerAdapter
 
@@ -85,6 +86,14 @@ if __name__ == "__main__":
                                            address=(hostField.text(),
                                                     int(portField.text()))))
     selectorLayout.addWidget(pongButton)
+
+    splitPongButton = QPushButton("Split Pong")
+    splitPongButton.clicked.connect(lambda:
+                               addGame(window,
+                                       PongServerAdapter(PongGameWindow(SharedScreenPongGame())),
+                                           address=(hostField.text(),
+                                                    int(portField.text()))))
+    selectorLayout.addWidget(splitPongButton)
     
     reachButton = QPushButton("Reach")
     reachButton.clicked.connect(lambda:

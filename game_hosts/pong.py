@@ -39,7 +39,10 @@ class Paddle:
     """
     One paddle that can be moved up and down by the player.
     """
-    def __init__(self, side:int=LEFT, active: bool = True) -> None:
+    def __init__(self,
+                 side:int=LEFT,
+                 movementRange: tuple[int, int]=(0, SQUARE_SIZE),
+                 active: bool = True) -> None:
         """
         Initialize the paddle.
         """
@@ -47,6 +50,7 @@ class Paddle:
         self.position = SQUARE_SIZE // 2
         self.thickness = DEFAULT_PADDLE_THICKNESS
         self.side = side
+        self.movementRange = movementRange
         self.speed = DEFAULT_PADDLE_SPEED
         self.movingUp = False
         self.movingDown = False
@@ -114,7 +118,9 @@ class Paddle:
         0.0 to 1.0, where 0.0 is at the bottom and 1.0 is at the
         top.
         """
-        self.position = (1 - relativePosition) * SQUARE_SIZE
+        delta = self.movementRange[1] - self.movementRange[0]
+        self.position = self.movementRange[0] + \
+            (1 - relativePosition) * delta
 
     def setSpeedMultiplier(self, speedMultiplier: float) -> None:
         """
@@ -754,6 +760,21 @@ class SoloBallStormPongGame(PongGame):
             return self.rightPaddle
         elif self.orientation == "BOTTOM":
             return self.bottomPaddle
+        
+class SharedScreenPongGame(TwoPlayerPongGame):
+    def __init__(self) -> None:
+        """
+        Initialize the game by creating the paddles and the ball.
+        """
+        TwoPlayerPongGame.__init__(self)
+        
+        self.leftPaddle.movementRange = (0, SQUARE_SIZE // 2)
+        self.rightPaddle.movementRange = (SQUARE_SIZE // 2, SQUARE_SIZE)
+        self.rightPaddle.side = LEFT
+        self.orientation = "LEFT"
+
+    def onRightEdgeHit(self, ball: Ball) -> None:
+        ball.reflectHorizontally()
 
 class PongGameWindow(QWidget):
     def __init__(self, pongGame: Optional[PongGame] = None) -> None:
