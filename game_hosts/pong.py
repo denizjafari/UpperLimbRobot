@@ -50,6 +50,7 @@ class Paddle:
         self.position = SQUARE_SIZE // 2
         self.thickness = DEFAULT_PADDLE_THICKNESS
         self.side = side
+        self.offset = side
         self.movementRange = movementRange
         self.speed = DEFAULT_PADDLE_SPEED
         self.movingUp = False
@@ -74,13 +75,31 @@ class Paddle:
         """
         Return the left x coordinate of the paddle.
         """
-        return self.thickness
+        if self.side == LEFT:
+            if self.offset == LEFT:
+                return 0
+            else:
+                return self.thickness
+        else:
+            if self.offset == LEFT:
+                return SQUARE_SIZE - 2 * self.thickness
+            else:
+                return SQUARE_SIZE - self.thickness
     
     def rightEdge(self) -> float:
         """
-        Return the bottom y coordinate of the paddle.
+        Return the right x coordinate of the paddle.
         """
-        return SQUARE_SIZE - self.thickness
+        if self.side == LEFT:
+            if self.offset == LEFT:
+                return self.thickness
+            else:
+                return 2 * self.thickness
+        else:
+            if self.offset == LEFT:
+                return SQUARE_SIZE - self.thickness
+            else:
+                return SQUARE_SIZE
     
     def isHit(self, ball: Ball) -> bool:
         """
@@ -89,9 +108,9 @@ class Paddle:
         """
         if not self.active(): return False
         if self.side == LEFT:
-            inXRange = ball.leftEdge() <= self.leftEdge()
+            inXRange = ball.leftEdge() <= self.rightEdge()
         else:
-            inXRange = ball.rightEdge() >= self.rightEdge()
+            inXRange = ball.rightEdge() >= self.leftEdge()
         
         inYRange = self.bottomEdge() >= ball.centerY() >= self.topEdge()
             
@@ -134,7 +153,7 @@ class Paddle:
         Paint the paddle to an active painter.
         """
         if not self.active(): return
-        painter.fillRect(0 if self.side == LEFT else SQUARE_SIZE - self.thickness,
+        painter.fillRect(self.leftEdge(),
                          self.position - self.size // 2,
                          self.thickness,
                          self.size,
@@ -768,9 +787,8 @@ class SharedScreenPongGame(TwoPlayerPongGame):
         """
         TwoPlayerPongGame.__init__(self)
         
-        self.leftPaddle.movementRange = (0, SQUARE_SIZE // 2)
-        self.rightPaddle.movementRange = (SQUARE_SIZE // 2, SQUARE_SIZE)
         self.rightPaddle.side = LEFT
+        self.rightPaddle.offet = RIGHT
         self.orientation = "LEFT"
 
     def onRightEdgeHit(self, ball: Ball) -> None:
