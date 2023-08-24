@@ -14,7 +14,7 @@ from PySide6.QtGui import QIntValidator
 
 from events import GameAdapter, Server
 from game_hosts.pong import PongGameWindow, PongServerAdapter, \
-    SharedScreenPongGame, SoloBallStormPongGame, TwoPlayerPongGame
+    SharedScreenPongGame, SoloBallStormPongGame, SplitScreenPongGame, TwoPlayerPongGame
 from game_hosts.reach import ReachBoard, ReachServerAdapter, ReachWindow
 from game_hosts.snake import SnakeGame, SnakeServerAdapter
 
@@ -87,10 +87,18 @@ if __name__ == "__main__":
                                                     int(portField.text()))))
     selectorLayout.addWidget(pongButton)
 
+    sharedPongButton = QPushButton("Shared Pong")
+    sharedPongButton.clicked.connect(lambda:
+                               addGame(window,
+                                       PongServerAdapter(PongGameWindow(SharedScreenPongGame())),
+                                           address=(hostField.text(),
+                                                    int(portField.text()))))
+    selectorLayout.addWidget(sharedPongButton)
+
     splitPongButton = QPushButton("Split Pong")
     splitPongButton.clicked.connect(lambda:
                                addGame(window,
-                                       PongServerAdapter(PongGameWindow(SharedScreenPongGame())),
+                                       PongServerAdapter(PongGameWindow(SplitScreenPongGame())),
                                            address=(hostField.text(),
                                                     int(portField.text()))))
     selectorLayout.addWidget(splitPongButton)

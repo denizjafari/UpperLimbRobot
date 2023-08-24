@@ -51,7 +51,7 @@ class Paddle:
         self.thickness = DEFAULT_PADDLE_THICKNESS
         self.side = side
         self.offset = side
-        self.movementRange = movementRange
+        self.setMovementRange(movementRange)
         self.speed = DEFAULT_PADDLE_SPEED
         self.movingUp = False
         self.movingDown = False
@@ -130,6 +130,8 @@ class Paddle:
             elif self.movingDown:
                 self.position += self.speed
 
+        self.placeBackInBounds()
+
     def moveTo(self, relativePosition: float) -> None:
         """
         Move the paddle immediately, so that the center of the paddle is at
@@ -140,6 +142,18 @@ class Paddle:
         delta = self.movementRange[1] - self.movementRange[0]
         self.position = self.movementRange[0] + \
             (1 - relativePosition) * delta
+        
+        self.placeBackInBounds()
+        
+    def placeBackInBounds(self) -> None:
+        if self.topEdge() < self.movementRange[0]:
+            self.position = self.movementRange[0] + self.size // 2
+        elif self.bottomEdge() > self.movementRange[1]:
+            self.position = self.movementRange[1] - self.size // 2
+
+    def setMovementRange(self, range: tuple[int, int]) -> None:
+        self.movementRange = range
+        self.position = (range[0] + range[1]) // 2
 
     def setSpeedMultiplier(self, speedMultiplier: float) -> None:
         """
@@ -788,7 +802,22 @@ class SharedScreenPongGame(TwoPlayerPongGame):
         TwoPlayerPongGame.__init__(self)
         
         self.rightPaddle.side = LEFT
-        self.rightPaddle.offet = RIGHT
+        self.orientation = "LEFT"
+
+    def onRightEdgeHit(self, ball: Ball) -> None:
+        ball.reflectHorizontally()
+
+class SplitScreenPongGame(TwoPlayerPongGame):
+    def __init__(self) -> None:
+        """
+        Initialize the game by creating the paddles and the ball.
+        """
+        TwoPlayerPongGame.__init__(self)
+        
+        self.rightPaddle.side = LEFT
+        self.rightPaddle.offset = LEFT
+        self.leftPaddle.setMovementRange((0, SQUARE_SIZE // 2))
+        self.rightPaddle.setMovementRange((SQUARE_SIZE // 2, SQUARE_SIZE))
         self.orientation = "LEFT"
 
     def onRightEdgeHit(self, ball: Ball) -> None:
