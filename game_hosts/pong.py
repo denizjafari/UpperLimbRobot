@@ -146,12 +146,18 @@ class Paddle:
         self.placeBackInBounds()
         
     def placeBackInBounds(self) -> None:
+        """
+        Place the paddle back in the movement range if it is outside of it.
+        """
         if self.topEdge() < self.movementRange[0]:
             self.position = self.movementRange[0] + self.size // 2
         elif self.bottomEdge() > self.movementRange[1]:
             self.position = self.movementRange[1] - self.size // 2
 
     def setMovementRange(self, range: tuple[int, int]) -> None:
+        """
+        Set the movement range for this paddle.
+        """
         self.movementRange = range
         self.position = (range[0] + range[1]) // 2
 
@@ -794,7 +800,32 @@ class SoloBallStormPongGame(PongGame):
         elif self.orientation == "BOTTOM":
             return self.bottomPaddle
         
-class SharedScreenPongGame(TwoPlayerPongGame):
+class SameSidePongGame(TwoPlayerPongGame):
+    def setOrientation(self, orientation: str) -> None:
+        if orientation == "LEFT":
+            self.rightPaddle.side = LEFT
+            self.leftPaddle.side = LEFT
+            self.bottomPaddle.setActive(False)
+        elif orientation == "RIGHT":
+            self.rightPaddle.side = RIGHT
+            self.leftPaddle.side = RIGHT
+            self.bottomPaddle.setActive(False)
+
+        self.orientation = orientation
+
+    def onRightEdgeHit(self, ball: Ball) -> None:
+        if self.orientation == "LEFT":
+            ball.reflectHorizontally()
+        else:
+            self.stop()
+
+    def onLeftEdgeHit(self, ball: Ball) -> None:
+        if self.orientation == "RIGHT":
+            ball.reflectHorizontally()
+        else:
+            self.stop()
+        
+class SharedScreenPongGame(SameSidePongGame):
     def __init__(self) -> None:
         """
         Initialize the game by creating the paddles and the ball.
@@ -804,10 +835,7 @@ class SharedScreenPongGame(TwoPlayerPongGame):
         self.rightPaddle.side = LEFT
         self.orientation = "LEFT"
 
-    def onRightEdgeHit(self, ball: Ball) -> None:
-        ball.reflectHorizontally()
-
-class SplitScreenPongGame(TwoPlayerPongGame):
+class SplitScreenPongGame(SameSidePongGame):
     def __init__(self) -> None:
         """
         Initialize the game by creating the paddles and the ball.
@@ -819,9 +847,6 @@ class SplitScreenPongGame(TwoPlayerPongGame):
         self.leftPaddle.setMovementRange((0, SQUARE_SIZE // 2))
         self.rightPaddle.setMovementRange((SQUARE_SIZE // 2, SQUARE_SIZE))
         self.orientation = "LEFT"
-
-    def onRightEdgeHit(self, ball: Ball) -> None:
-        ball.reflectHorizontally()
 
 class PongGameWindow(QWidget):
     def __init__(self, pongGame: Optional[PongGame] = None) -> None:
