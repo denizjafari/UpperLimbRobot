@@ -408,6 +408,16 @@ class PongClient(TransformerStage, QObject):
         self.pongData["orientation"] = orientation
         module_logger.info(f"Pong orientation set to {orientation}")
 
+    def setPaddle(self, paddle: str) -> None:
+        """
+        Set the paddle that should be steered from this transformer
+        """
+        if "client" in self.pongData and self.pongData["client"] is not None:
+            self.pongData["client"].send(Event("setPaddle", [paddle]))
+        
+        self.pongData["paddle"] = paddle
+        module_logger.info(f"Pong paddle set to {paddle}")
+
     def availableMetrics(self) -> list[str]:
         """
         Return the list of available metrics.

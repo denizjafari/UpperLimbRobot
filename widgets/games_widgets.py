@@ -8,7 +8,7 @@ from typing import Optional
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
-    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QComboBox
+    QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QComboBox, QGroupBox
 from PySide6.QtCore import Qt
 from events import Client
 from pose_estimation.pong_controllers import PongController
@@ -164,41 +164,51 @@ class PongServerWidget(TransformerWidget):
 
         self.buttonLayout = QVBoxLayout()
         self.vLayout.addLayout(self.buttonLayout)
-
-        self.absolute = QRadioButton("absolute")
-        self.threshold = QRadioButton("threshold")
-        self.speed = QRadioButton("speed")
-        self.buttonLayout.addWidget(self.absolute)
-        self.buttonLayout.addWidget(self.threshold)
-        self.buttonLayout.addWidget(self.speed)
-
-        self.buttonGroup = QButtonGroup(self)
-        self.buttonGroup.addButton(self.absolute)
-        self.buttonGroup.addButton(self.threshold)
-        self.buttonGroup.addButton(self.speed)
-        self.buttonGroup.buttonClicked.connect(
-            lambda btn: self.transformer.setMode(btn.text()))
-        self.absolute.setChecked(True)
         
         self.client = None
-        
-        self.hDirectionLayout = QHBoxLayout()
-        self.vLayout.addLayout(self.hDirectionLayout)
 
-        self.left = QRadioButton("left")
-        self.right = QRadioButton("right")
-        self.bottom = QRadioButton("bottom")
-        self.hDirectionLayout.addWidget(self.left)
-        self.hDirectionLayout.addWidget(self.right)
-        self.hDirectionLayout.addWidget(self.bottom)
+        self.orientationGroup = QGroupBox("Orientation", self)
+        self.hOrientationLayout = QHBoxLayout()
+        self.orientationGroup.setLayout(self.hOrientationLayout)
+        self.vLayout.addWidget(self.orientationGroup)
 
-        self.directionButtonGroup = QButtonGroup(self)
-        self.directionButtonGroup.addButton(self.left)
-        self.directionButtonGroup.addButton(self.right)
-        self.directionButtonGroup.addButton(self.bottom)
-        self.directionButtonGroup.buttonClicked.connect(
+        self.orientationLeft = QRadioButton("left")
+        self.orientationRight = QRadioButton("right")
+        self.orientationBottom = QRadioButton("bottom")
+        self.hOrientationLayout.addWidget(self.orientationLeft)
+        self.hOrientationLayout.addWidget(self.orientationRight)
+        self.hOrientationLayout.addWidget(self.orientationBottom)
+
+        self.orientationButtonGroup = QButtonGroup(self)
+        self.orientationButtonGroup.addButton(self.orientationLeft)
+        self.orientationButtonGroup.addButton(self.orientationRight)
+        self.orientationButtonGroup.addButton(self.orientationBottom)
+        self.orientationButtonGroup.buttonClicked.connect(
             lambda btn: self.transformer.setOrientation(btn.text().upper()))
-        self.left.setChecked(True)
+        self.orientationLeft.setChecked(True)
+
+        self.paddleGroup = QGroupBox("Paddle", self)
+        self.hPaddleLayout = QHBoxLayout()
+        self.paddleGroup.setLayout(self.hPaddleLayout)
+        self.vLayout.addWidget(self.paddleGroup)
+
+        self.paddleLeft = QRadioButton("left")
+        self.paddleRight = QRadioButton("right")
+        self.paddleTop = QRadioButton("top")
+        self.paddleBottom = QRadioButton("bottom")
+        self.hPaddleLayout.addWidget(self.paddleLeft)
+        self.hPaddleLayout.addWidget(self.paddleRight)
+        self.hPaddleLayout.addWidget(self.paddleTop)
+        self.hPaddleLayout.addWidget(self.paddleBottom)
+
+        self.paddleButtonGroup = QButtonGroup(self)
+        self.paddleButtonGroup.addButton(self.paddleLeft)
+        self.paddleButtonGroup.addButton(self.paddleRight)
+        self.paddleButtonGroup.addButton(self.paddleTop)
+        self.paddleButtonGroup.addButton(self.paddleBottom)
+        self.paddleButtonGroup.buttonClicked.connect(
+            lambda btn: self.transformer.setPaddle(btn.text().upper()))
+        self.orientationLeft.setChecked(True)
         
 
     def setClient(self, client: Client) -> None:
@@ -228,8 +238,8 @@ class PongServerWidget(TransformerWidget):
         TransformerWidget.save(self, d)
         self.metricSelector.save(d)
         
-        d["mode"] = self.buttonGroup.checkedButton().text()
-        d["orientation"] = self.directionButtonGroup.checkedButton().text()
+        d["orientation"] = self.orientationButtonGroup.checkedButton().text()
+        d["paddle"] = self.paddleButtonGroup.checkedButton().text()
 
     def restore(self, d: dict) -> None:
         """
@@ -237,24 +247,26 @@ class PongServerWidget(TransformerWidget):
         """
         TransformerWidget.save(self, d)
         self.metricSelector.restore(d)
-
-        if "mode" in d:
-            mode = d["mode"]
-            if mode == "absolute":
-                self.absolute.setChecked(True)
-            elif mode == "threshold":
-                self.threshold.setChecked(True)
-            elif mode == "speed":
-                self.speed.setChecked(True)
         
         if "orientation" in d:
             orientation = d["orientation"]
             if orientation == "left":
-                self.left.setChecked(True)
+                self.orientationLeft.setChecked(True)
             elif orientation == "right":
-                self.right.setChecked(True)
+                self.orientationRight.setChecked(True)
             elif orientation == "bottom":
-                self.bottom.setChecked(True)
+                self.orientationBottom.setChecked(True)
+        
+        if "paddle" in d:
+            paddle = d["paddle"]
+            if paddle == "left":
+                self.paddleLeft.setChecked(True)
+            elif paddle == "right":
+                self.paddleRight.setChecked(True)
+            elif paddle == "top":
+                self.paddleTop.setChecked(True)
+            elif paddle == "bottom":
+                self.paddleBottom.setChecked(True)
 
     def __str__(self) -> str:
         return "Pong Server"

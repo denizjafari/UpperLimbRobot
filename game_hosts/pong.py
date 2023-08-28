@@ -972,17 +972,67 @@ class SplitScreenPongGame(SameSidePongGame):
         Initialize the game by creating the paddles and the ball.
         """
         SameSidePongGame.__init__(self)
-        
-        self.rightPaddle.side = LEFT
-        self.rightPaddle.offset = LEFT
-        self.leftPaddle.setMovementRange((0, SQUARE_SIZE // 2))
-        self.rightPaddle.setMovementRange((SQUARE_SIZE // 2, SQUARE_SIZE))
+
         self.orientation = "LEFT"
+
+        self.reset()
 
     def reset(self) -> None:
         super().reset()
+
+        self.leftPaddle = HorizontalPaddle(side=BOTTOM)
+        self.rightPaddle = HorizontalPaddle(side=BOTTOM)
+        self.topPaddle = Paddle(side=self.orientation)
+        self.bottomPaddle = Paddle(side=self.orientation)
+        
+        if self.orientation == "BOTTOM":
+            self.leftPaddle.setActive(True)
+            self.rightPaddle.setActive(True)
+            self.topPaddle.setActive(False)
+            self.bottomPaddle.setActive(False)
+        else:
+            self.leftPaddle.setActive(False)
+            self.rightPaddle.setActive(False)
+            self.topPaddle.setActive(True)
+            self.bottomPaddle.setActive(True)
+
         self.leftPaddle.setMovementRange((0, SQUARE_SIZE // 2))
+        self.topPaddle.setMovementRange((0, SQUARE_SIZE // 2))
+
         self.rightPaddle.setMovementRange((SQUARE_SIZE // 2, SQUARE_SIZE))
+        self.bottomPaddle.setMovementRange((SQUARE_SIZE // 2, SQUARE_SIZE))
+
+    def setOrientation(self, orientation: str) -> None:
+        if orientation == "BOTTOM":
+            self.leftPaddle.setActive(True)
+            self.rightPaddle.setActive(True)
+            self.topPaddle.setActive(False)
+            self.bottomPaddle.setActive(False)
+        else:
+            if orientation == "LEFT":
+                self.topPaddle.side = LEFT
+                self.bottomPaddle.side = LEFT
+                self.topPaddle.offset = LEFT
+                self.bottomPaddle.offset = LEFT
+            else:
+                self.topPaddle.side = RIGHT
+                self.bottomPaddle.side = RIGHT
+                self.topPaddle.offset = RIGHT
+                self.bottomPaddle.offset = RIGHT
+            self.leftPaddle.setActive(False)
+            self.rightPaddle.setActive(False)
+            self.topPaddle.setActive(True)
+            self.bottomPaddle.setActive(True)
+
+        self.orientation = orientation
+        self.balls.clear()
+        self.addBall()
+
+    def onLeftPaddleHit(self, ball) -> None:
+        ball.reflectVertically()
+
+    def onRightPaddleHit(self, ball) -> None:
+        ball.reflectVertically()
 
 class PongGameWindow(QWidget):
     def __init__(self, pongGame: Optional[PongGame] = None) -> None:
@@ -1039,11 +1089,14 @@ class PongServerAdapter(GameAdapter):
             self.window.game.setBallSpeed(float(e.payload[0]))
             self.eventReady.emit(e.reply(
                 Event("ballSpeedUpdated", [float(e.payload[0])])))
+        elif e.name == "setPaddle":
+            self.eventReady.emit(e.reply(
+                Event("paddleUpdated", [e.payload[0]])))
+            self.addrToOrientation[e.source] = e.payload[0]
         elif e.name == "setOrientation":
             self.window.game.setOrientation(e.payload[0])
             self.eventReady.emit(e.reply(
                 Event("orientationUpdated", [e.payload[0]])))
-            self.addrToOrientation[e.source] = e.payload[0]
         elif e.source in self.addrToOrientation:
             orientation = self.addrToOrientation[e.source]
 
