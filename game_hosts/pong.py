@@ -1003,6 +1003,10 @@ class SplitScreenPongGame(SameSidePongGame):
         self.bottomPaddle.setMovementRange((SQUARE_SIZE // 2, SQUARE_SIZE))
 
     def setOrientation(self, orientation: str) -> None:
+        """
+        Set the orientation of the playing field (LEFT, RIGHT, or BOTTOM).
+        This affects which paddles are active and respond to inputs.
+        """
         if orientation == "BOTTOM":
             self.leftPaddle.setActive(True)
             self.rightPaddle.setActive(True)
@@ -1029,9 +1033,17 @@ class SplitScreenPongGame(SameSidePongGame):
         self.addBall()
 
     def onLeftPaddleHit(self, ball) -> None:
+        """
+        When the left paddle (at the bottom left!) is hit, the ball is
+        reflected vertically.
+        """
         ball.reflectVertically()
 
     def onRightPaddleHit(self, ball) -> None:
+        """
+        When the right paddle (at the bottom right!) is hit, the ball is
+        reflected vertically.
+        """
         ball.reflectVertically()
 
 class PongGameWindow(QWidget):

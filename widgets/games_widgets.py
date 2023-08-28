@@ -137,6 +137,11 @@ class PongServerWidget(TransformerWidget):
     Widget controlling the sending of events to a pong game running remotely.
     For the connection, it allows selection the host and port of the server.
     For the game, it allows the selection of the metrics that should be followed.
+
+    Orientation and paddle selection is also possible. Orientation means on
+    which side the paddles appear. Paddle selection means which of the paddles
+    the player controls. With split screen pong, the player might use the paddle
+    on the top left (orientation: left, paddle: top).
     """
     transformer: PongClient
     client: Optional[Client]
