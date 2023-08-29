@@ -1038,22 +1038,23 @@ class SameSidePongGame(PongGame):
         """
         Reflect.
         """
-        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
-        ball.reflectHorizontally()
+        self.onRightPaddleHit(ball)
 
     def onRightPaddleHit(self, ball: Ball) -> None:
         """
         Reflect.
         """
-        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+        if self.orientation == "LEFT":
+            self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
+        else:
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         ball.reflectHorizontally()
 
     def onBottomPaddleHit(self, ball: Ball) -> None:
         """
         Reflect.
         """
-        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
-        ball.reflectVertically()
+        self.onTopPaddleHit(ball)
 
     def onTopPaddleHit(self, ball: Ball) -> None:
         """
