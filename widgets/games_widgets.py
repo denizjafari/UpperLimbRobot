@@ -393,13 +393,22 @@ class ReachServerWidget(TransformerWidget):
         self.client = client
 
     def close(self) -> None:
+        """
+        Close the client to free up resources.
+        """
         if self.client:
             self.client.close()
 
     def restore(self, d: dict) -> None:
+        """
+        Restore the state of the widget from a dictionary.
+        """
         self.metricSelector.restore(d)
 
     def save(self, d: dict) -> None:
+        """
+        Save the state of the widget to the dictionary.
+        """
         self.metricSelector.save(d)
 
 

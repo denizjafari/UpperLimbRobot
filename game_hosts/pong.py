@@ -59,6 +59,7 @@ class Paddle:
         self.useVariableSpeed = False
 
         self._active = active
+        self.debouncing = False
 
     def topEdge(self) -> float:
         """
@@ -115,7 +116,16 @@ class Paddle:
         
         inYRange = self.bottomEdge() >= ball.centerY() >= self.topEdge()
             
-        return inXRange and inYRange
+        if self.debouncing:
+            if not (inXRange and inYRange):
+                self.debouncing = False
+            return False
+        else:
+            if inXRange and inYRange:
+                self.debouncing = True
+                return True
+            else:
+                return False
     
     def move(self) -> None:
         """
@@ -267,8 +277,17 @@ class HorizontalPaddle(Paddle):
             inYRange = ball.topEdge() <= self.bottomEdge()
 
         inXRange = self.leftEdge() <= ball.centerX() <= self.rightEdge()
-            
-        return inXRange and inYRange
+
+        if self.debouncing:
+            if not (inXRange and inYRange):
+                self.debouncing = False
+            return False
+        else:
+            if inXRange and inYRange:
+                self.debouncing = True
+                return True
+            else:
+                return False
     
     def paint(self, painter: QPainter) -> None:
         """
@@ -441,6 +460,9 @@ class PongGame(QLabel):
     eventReady = Signal(Event)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the game by creating the paddles and the ball.
+        """
         QLabel.__init__(self, parent)
         self.sideLength = SQUARE_SIZE
 
@@ -863,6 +885,11 @@ class SoloBallStormPongGame(PongGame):
         self.orientation = orientation
         
 class SameSidePongGame(PongGame):
+    """
+    A game of pong where the paddles for both players are on the same side of
+    the playing field.
+    """
+    
     def __init__(self) -> None:
         PongGame.__init__(self)
 
