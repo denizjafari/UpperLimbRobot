@@ -528,12 +528,6 @@ class PongGame(QLabel):
             self.scoreBoard.position = LEFT
         else:
             self.scoreBoard.position = TOP
-    
-    def userControlledPaddle(self) -> None:
-        """
-        Return the paddle that is controlled by the user.
-        """
-        raise NotImplementedError
 
     def updateState(self) -> None:
         """
@@ -600,6 +594,9 @@ class PongGame(QLabel):
         self.setFocus()
 
     def reset(self) -> None:
+        """
+        Reset the game state.
+        """
         self.lostGame = False
         self.isRunning = False
 
@@ -711,12 +708,6 @@ class TwoPlayerPongGame(PongGame):
         Do nothing. Orientation is not supported in the two player game.
         """
         pass
-
-    def userControlledPaddle(self) -> Paddle:
-        """
-        Always return the left paddle.
-        """
-        return self.leftPaddle
 
 class SoloBallStormPongGame(PongGame):
     """
@@ -870,17 +861,6 @@ class SoloBallStormPongGame(PongGame):
             self.addBall()
 
         self.orientation = orientation
-
-    def userControlledPaddle(self) -> Paddle:
-        """
-        Return the paddle that is currently controlled by the user.
-        """
-        if self.orientation == "LEFT":
-            return self.leftPaddle
-        elif self.orientation == "RIGHT":
-            return self.rightPaddle
-        elif self.orientation == "BOTTOM":
-            return self.bottomPaddle
         
 class SameSidePongGame(PongGame):
     def __init__(self) -> None:
@@ -965,41 +945,66 @@ class SameSidePongGame(PongGame):
         self.addBall()
 
     def onRightEdgeHit(self, ball: Ball) -> None:
+        """
+        Reflect unless the paddles are on the right.
+        """
         if self.orientation == "RIGHT":
             self.stop()
         else:
             ball.reflectHorizontally()
 
     def onLeftEdgeHit(self, ball: Ball) -> None:
+        """
+        Reflect unless the paddles are on the left.
+        """
         if self.orientation == "LEFT":
             self.stop()
         else:
             ball.reflectHorizontally()
 
     def onTopEdgeHit(self, ball: Ball) -> None:
+        """
+        Reflect unless the paddles are on the top.
+        """
         if self.orientation == "TOP":
             self.stop()
         else:
             ball.reflectVertically()
 
     def onBottomEdgeHit(self, ball: Ball) -> None:
+        """
+        Reflect unless the paddles are on the bottom.
+        """
         if self.orientation == "BOTTOM":
             self.stop()
         else:
             ball.reflectVertically()
 
     def onLeftPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect.
+        """
         ball.reflectHorizontally()
 
     def onRightPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect.
+        """
         ball.reflectHorizontally()
 
     def onBottomPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect.
+        """
         ball.reflectVertically()
 
     def onTopPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect.
+        """
         ball.reflectVertically()
         
+
 class SharedScreenPongGame(SameSidePongGame):
     def __init__(self) -> None:
         """
@@ -1022,6 +1027,9 @@ class SplitScreenPongGame(SameSidePongGame):
         self.reset()
 
     def reset(self) -> None:
+        """
+        Reset the board to its original state, keeping orientation.
+        """
         super().reset()
 
         self.leftPaddle = HorizontalPaddle(side=BOTTOM)
