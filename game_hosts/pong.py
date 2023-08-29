@@ -13,10 +13,11 @@ import logging
 import math
 import random
 
-from PySide6.QtCore import QTimer, Qt, QRect, Signal
+from PySide6.QtCore import QTimer, Qt, QRect, Signal, QPoint
 from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
     QPushButton
-from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent
+from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent, QBrush, QPen, \
+    QColor
 
 from events import Event, GameAdapter
 
@@ -26,7 +27,7 @@ module_logger.setLevel(logging.DEBUG)
 
 SQUARE_SIZE = 300
 DEFAULT_PADDLE_SIZE = 50
-DEFAULT_PADDLE_THICKNESS = 10
+DEFAULT_PADDLE_THICKNESS = 12
 DEFAULT_PADDLE_SPEED = 5
 
 NEUTRAL = 0
@@ -179,16 +180,17 @@ class Paddle:
         """
         self.speedMultiplier = speedMultiplier
 
-    def paint(self, painter: QPainter) -> None:
+    def paint(self, painter: QPainter, color: QColor = Qt.black) -> None:
         """
         Paint the paddle to an active painter.
         """
         if not self.active(): return
+
         painter.fillRect(self.leftEdge(),
                          self.position - self.size // 2,
                          self.thickness,
                          self.size,
-                         Qt.black)
+                         color)
         
     def active(self) -> bool:
         """
@@ -289,11 +291,13 @@ class HorizontalPaddle(Paddle):
             else:
                 return False
     
-    def paint(self, painter: QPainter) -> None:
+    def paint(self, painter: QPainter, color: QColor = Qt.black) -> None:
         """
         Paint the paddle to an active painter.
         """
         if not self.active(): return
+
+        painter.setBrush(QBrush(color))
         painter.fillRect(self.position - self.size // 2,
                          self.topEdge(),
                          self.size,
@@ -380,6 +384,7 @@ class Ball:
         """
         Paint the ball to an active painter.
         """
+        painter.setBrush(QBrush(Qt.red))
         painter.drawEllipse(self.position[0] - self.radius,
                             self.position[1] - self.radius,
                             self.radius * 2,
@@ -441,6 +446,9 @@ class ScoreBoard:
         Paint the scoreboard to an active painter.
         """
         rect = QRect(self.x(), self.y(), self.width, self.height)
+        painter.setBrush(QBrush(Qt.white))
+        painter.setPen(Qt.black)
+
         painter.drawRect(rect)
         boundings = painter.boundingRect(rect, "Score")
         painter.drawText(self.x() + (self.width - boundings.width()) / 2,
@@ -637,14 +645,25 @@ class PongGame(QLabel):
         painter = QPainter(self)
         painter.setRenderHints(QPainter.Antialiasing, True)
 
+        pen = QPen(Qt.black)
+        pen.setWidth(3)
+        painter.setPen(pen)
+        painter.drawRect(QRect(0, 0, self.sideLength, self.sideLength))
+
+        pen = QPen()
+        pen.setStyle(Qt.DashLine)
+        painter.setPen(pen)
+        painter.drawLine(QPoint(self.sideLength // 2, 0),
+                         QPoint(self.sideLength // 2, self.sideLength))
+
         self.scoreBoard.paint(painter)
 
         for ball in self.balls:
             ball.paint(painter)
-        self.leftPaddle.paint(painter)
-        self.rightPaddle.paint(painter)
-        self.topPaddle.paint(painter)
-        self.bottomPaddle.paint(painter)
+        self.leftPaddle.paint(painter, color=Qt.blue)
+        self.rightPaddle.paint(painter, color=Qt.red)
+        self.topPaddle.paint(painter, color=Qt.green)
+        self.bottomPaddle.paint(painter, color=Qt.yellow)
         
         painter.end()
 
