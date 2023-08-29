@@ -367,6 +367,9 @@ class Ball:
                             self.radius * 2)
         
 
+SCOREBOARD_WIDTH = 60
+SCOREBOARD_HEIGHT = 30
+
 class ScoreBoard:
     """
     Basic Scoreboard capable of tracking the scores for both sides,
@@ -381,23 +384,54 @@ class ScoreBoard:
         """
         self.scoreLeft = 0
         self.scoreRight = 0
+        self.width = SCOREBOARD_WIDTH
+        self.height = SCOREBOARD_HEIGHT
         self.screenSize = screenSize
+        self.position = TOP
+
+    def y(self, height: int = None) -> None:
+        """
+        Determine the y coordinate of the top left corner of the score board.
+        By default assumes the true height of the score board is self.height.
+        """
+        if height is None: height = self.height
+
+        if self.position == TOP:
+            return 0
+        elif self.position == BOTTOM:
+            return self.screenSize - self.height
+        else:
+            return (self.screenSize - self.height) / 2
+    
+    def x(self, width: int = None) -> None:
+        """
+        Determine the x coordinate of the top left corner of the score board.
+        By default assumes the true width of the score board is self.width.
+        """
+        if width is None: width = self.width
+
+        if self.position == LEFT:
+            return 0
+        elif self.position == RIGHT:
+            return self.screenSize - self.width
+        else:
+            return (self.screenSize - self.width) / 2
 
     def paint(self, painter: QPainter) -> None:
         """
         Paint the scoreboard to an active painter.
         """
-        rect = QRect(self.screenSize / 2 - 30, 0, 60, 30)
+        rect = QRect(self.x(), self.y(), self.width, self.height)
         painter.drawRect(rect)
         boundings = painter.boundingRect(rect, "Score")
-        painter.drawText((self.screenSize - boundings.width()) / 2,
-                         12,
+        painter.drawText(self.x() + (self.width - boundings.width()) / 2,
+                         self.y() + 12,
                          "Score")
 
         scoreStr = str(self.scoreLeft) + " : " + str(self.scoreRight)
         boundings = painter.boundingRect(rect, scoreStr)
-        painter.drawText((self.screenSize - boundings.width()) / 2,
-                         25,
+        painter.drawText(self.x() + (self.width - boundings.width()) / 2,
+                         self.y() + 25,
                          scoreStr)
 
 class PongGame(QLabel):
@@ -486,11 +520,14 @@ class PongGame(QLabel):
         for ball in self.balls:
             ball.speed = speed
 
-    def setOrientation(self) -> None:
+    def setOrientation(self, orientation: str) -> None:
         """
-        Set the orientation of the paddles.
+        Set the orientation of the playing field.
         """
-        raise NotImplementedError
+        if orientation == "TOP" or orientation == "BOTTOM":
+            self.scoreBoard.position = LEFT
+        else:
+            self.scoreBoard.position = TOP
     
     def userControlledPaddle(self) -> None:
         """
@@ -811,6 +848,8 @@ class SoloBallStormPongGame(PongGame):
         Set the orientation of the playing field (LEFT, RIGHT, or BOTTOM).
         Replace the ball at its new start point.
         """
+        super().setOrientation(orientation)
+
         if orientation == "LEFT":
             self.rightPaddle.setActive(False)
             self.bottomPaddle.setActive(False)
@@ -894,6 +933,11 @@ class SameSidePongGame(PongGame):
         self.balls.append(ball)
 
     def setOrientation(self, orientation: str) -> None:
+        """
+        Set the orientation of the playing field (LEFT, RIGHT, or BOTTOM).
+        """
+        super().setOrientation(orientation)
+
         if orientation == "LEFT":
             self.rightPaddle.side = LEFT
             self.leftPaddle.side = LEFT
@@ -1007,6 +1051,8 @@ class SplitScreenPongGame(SameSidePongGame):
         Set the orientation of the playing field (LEFT, RIGHT, or BOTTOM).
         This affects which paddles are active and respond to inputs.
         """
+        super().setOrientation(orientation)
+
         if orientation == "BOTTOM":
             self.leftPaddle.setActive(True)
             self.rightPaddle.setActive(True)
