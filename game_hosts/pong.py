@@ -266,6 +266,16 @@ class HorizontalPaddle(Paddle):
         """
         delta = self.movementRange[1] - self.movementRange[0]
         self.position = self.movementRange[0] + relativePosition * delta
+        self.placeBackInBounds()
+
+    def placeBackInBounds(self) -> None:
+        """
+        Place the paddle back in the movement range if it is outside of it.
+        """
+        if self.leftEdge() < self.movementRange[0]:
+            self.position = self.movementRange[0] + self.size // 2
+        elif self.rightEdge() > self.movementRange[1]:
+            self.position = self.movementRange[1] - self.size // 2
 
     def isHit(self, ball: Ball) -> bool:
         """
@@ -296,13 +306,11 @@ class HorizontalPaddle(Paddle):
         Paint the paddle to an active painter.
         """
         if not self.active(): return
-
-        painter.setBrush(QBrush(color))
         painter.fillRect(self.position - self.size // 2,
                          self.topEdge(),
                          self.size,
                          self.thickness,
-                         Qt.black)
+                         color)
 
 class Ball:
     """
@@ -495,6 +503,8 @@ class PongGame(QLabel):
 
         self.ballSpeed = 2.0
 
+        self._orientation = "LEFT"
+
         self.setFixedSize(self.sideLength, self.sideLength)
         self.lostGame = False
 
@@ -571,6 +581,12 @@ class PongGame(QLabel):
         else:
             self.scoreBoard.position = TOP
 
+    def orientation(self) -> None:
+        """
+        Return the orientation of the playing field.
+        """
+        return self._orientation
+
     def updateState(self) -> None:
         """
         Move the ball and paddles and check for collisions. Then paint the new
@@ -599,6 +615,8 @@ class PongGame(QLabel):
 
         self.leftPaddle.move()
         self.rightPaddle.move()
+        self.topPaddle.move()
+        self.bottomPaddle.move()
 
         self.repaint()
 
@@ -665,8 +683,13 @@ class PongGame(QLabel):
         pen = QPen()
         pen.setStyle(Qt.DashLine)
         painter.setPen(pen)
-        painter.drawLine(QPoint(self.sideLength // 2, 0),
-                         QPoint(self.sideLength // 2, self.sideLength))
+
+        if self.orientation() == "LEFT" or self.orientation() == "RIGHT":
+            painter.drawLine(QPoint(self.sideLength // 2, 0),
+                             QPoint(self.sideLength // 2, self.sideLength))
+        else:
+            painter.drawLine(QPoint(0, self.sideLength // 2),
+                             QPoint(self.sideLength, self.sideLength // 2))
 
         self.scoreBoard.paint(painter)
 
@@ -692,6 +715,14 @@ class PongGame(QLabel):
             self.rightPaddle.movingUp = True
         elif key == Qt.Key_Down:
             self.rightPaddle.movingDown = True
+        elif key == Qt.Key_A:
+            self.bottomPaddle.movingUp = True
+        elif key == Qt.Key_D:
+            self.bottomPaddle.movingDown = True
+        elif key == Qt.Key_Left:
+            self.topPaddle.movingUp = True
+        elif key == Qt.Key_Right:
+            self.topPaddle.movingDown = True
 
     def keyReleaseEvent(self, e: QKeyEvent) -> None:
         """
@@ -706,6 +737,14 @@ class PongGame(QLabel):
             self.rightPaddle.movingUp = False
         elif key == Qt.Key_Down:
             self.rightPaddle.movingDown = False
+        elif key == Qt.Key_A:
+            self.bottomPaddle.movingUp = False
+        elif key == Qt.Key_D:
+            self.bottomPaddle.movingDown = False
+        elif key == Qt.Key_Left:
+            self.topPaddle.movingUp = False
+        elif key == Qt.Key_Right:
+            self.topPaddle.movingDown = False
 
 
 class TwoPlayerPongGame(PongGame):
@@ -779,7 +818,7 @@ class SoloBallStormPongGame(PongGame):
         self.bottomPaddle.setActive(False)
         self.topPaddle.setActive(False)
         self.lastBallUp = True
-        self.orientation = "LEFT"
+        self._orientation = "LEFT"
 
         self.addBall()
 
@@ -808,7 +847,7 @@ class SoloBallStormPongGame(PongGame):
         The player has scored. Replace the ball at its original position.
         """
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
-        if self.orientation == "LEFT":
+        if self.orientation() == "LEFT":
             self.eventReady.emit(Event("hit", ["LEFT"]))
         self.balls.remove(ball)
         self.addBall()
@@ -818,7 +857,7 @@ class SoloBallStormPongGame(PongGame):
         The player missed the ball. Replace the ball at its original position.
         """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-        if self.orientation == "LEFT":
+        if self.orientation() == "LEFT":
             self.eventReady.emit(Event("miss", ["LEFT"]))
         self.balls.remove(ball)
         self.addBall()
@@ -828,7 +867,7 @@ class SoloBallStormPongGame(PongGame):
         Same as onLeftPaddleHit, but happens when the orientation is reversed.
         """
         self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
-        if self.orientation == "RIGHT":
+        if self.orientation() == "RIGHT":
             self.eventReady.emit(Event("hit", ["RIGHT"]))
         self.balls.remove(ball)
         self.addBall()
@@ -838,7 +877,7 @@ class SoloBallStormPongGame(PongGame):
         Same as onLeftEdgeHit, but happens when the orientation is reversed.
         """
         self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
-        if self.orientation == "RIGHT":
+        if self.orientation() == "RIGHT":
             self.eventReady.emit(Event("miss", ["RIGHT"]))
         self.balls.remove(ball)
         self.addBall()
@@ -848,7 +887,7 @@ class SoloBallStormPongGame(PongGame):
         Same as onLeftPaddleHit, but happens when the orientation is changed
         to BOTTOM.
         """
-        if self.orientation == "BOTTOM":
+        if self.orientation() == "BOTTOM":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
             self.eventReady.emit(Event("hit", ["BOTTOM"]))
             self.balls.remove(ball)
@@ -859,7 +898,7 @@ class SoloBallStormPongGame(PongGame):
         Same as onLeftEdgeHit, but happens when the orientation is changed
         to BOTTOM.
         """
-        if self.orientation == "BOTTOM":
+        if self.orientation() == "BOTTOM":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
             self.eventReady.emit(Event("miss", ["BOTTOM"]))
             self.balls.remove(ball)
@@ -873,13 +912,13 @@ class SoloBallStormPongGame(PongGame):
         alternating the sides it travels to.
         """
         ball = Ball()
-        if self.orientation == "LEFT":
+        if self.orientation() == "LEFT":
             ball.position = SQUARE_SIZE - 20, SQUARE_SIZE // 2
             ball.direction = -2, 1 if self.lastBallUp else -1
-        elif self.orientation == "RIGHT":
+        elif self.orientation() == "RIGHT":
             ball.position = 20, SQUARE_SIZE // 2
             ball.direction = 2, 1 if self.lastBallUp else -1
-        elif self.orientation == "BOTTOM":
+        elif self.orientation() == "BOTTOM":
             ball.position = SQUARE_SIZE // 2, 30
             ball.direction = 1 if self.lastBallUp else -1, 2
 
@@ -907,13 +946,13 @@ class SoloBallStormPongGame(PongGame):
             self.rightPaddle.setActive(False)
             self.bottomPaddle.setActive(True)
 
-        if orientation != self.orientation:
-            self.orientation = orientation
+        if orientation != self.orientation():
+            self._orientation = orientation
             self.updateScore(self.scoreBoard.scoreRight, self.scoreBoard.scoreLeft)
             self.balls.clear()
             self.addBall()
 
-        self.orientation = orientation
+        self._orientation = orientation
         
 class SameSidePongGame(PongGame):
     """
@@ -927,7 +966,7 @@ class SameSidePongGame(PongGame):
         self.topPaddle.setActive(False)
         self.bottomPaddle.setActive(False)
 
-        self.orientation = "LEFT"
+        self._orientation = "LEFT"
         
         self.addBall()
 
@@ -945,7 +984,7 @@ class SameSidePongGame(PongGame):
         self.bottomPaddle = HorizontalPaddle(side=BOTTOM)
         self.topPaddle = HorizontalPaddle(side=TOP)
         
-        self.setOrientation(self.orientation)
+        self.setOrientation(self.orientation())
 
         self.scoreBoard = ScoreBoard(self.sideLength)
 
@@ -957,13 +996,13 @@ class SameSidePongGame(PongGame):
         """
         ball = Ball()
         spread = random.uniform(0.5, 1.5)
-        if self.orientation == "LEFT":
+        if self.orientation() == "LEFT":
             ball.position = SQUARE_SIZE - 20, SQUARE_SIZE // 2
             ball.direction = -2, spread
-        elif self.orientation == "RIGHT":
+        elif self.orientation() == "RIGHT":
             ball.position = 20, SQUARE_SIZE // 2
             ball.direction = 2, spread
-        elif self.orientation == "BOTTOM":
+        elif self.orientation() == "BOTTOM":
             ball.position = SQUARE_SIZE // 2, 30
             ball.direction = spread, 2
 
@@ -1001,7 +1040,7 @@ class SameSidePongGame(PongGame):
             self.bottomPaddle.setActive(True)
             self.scoreBoard.scoresToShow = LEFT
 
-        self.orientation = orientation
+        self._orientation = orientation
         self.balls.clear()
         self.addBall()
 
@@ -1009,7 +1048,7 @@ class SameSidePongGame(PongGame):
         """
         Reflect unless the paddles are on the right.
         """
-        if self.orientation == "RIGHT":
+        if self.orientation() == "RIGHT":
             self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
             self.balls.remove(ball)
             self.addBall()
@@ -1020,7 +1059,7 @@ class SameSidePongGame(PongGame):
         """
         Reflect unless the paddles are on the left.
         """
-        if self.orientation == "LEFT":
+        if self.orientation() == "LEFT":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
             self.balls.remove(ball)
             self.addBall()
@@ -1031,7 +1070,7 @@ class SameSidePongGame(PongGame):
         """
         Reflect unless the paddles are on the top.
         """
-        if self.orientation == "TOP":
+        if self.orientation() == "TOP":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
             self.balls.remove(ball)
             self.addBall()
@@ -1042,7 +1081,7 @@ class SameSidePongGame(PongGame):
         """
         Reflect unless the paddles are on the bottom.
         """
-        if self.orientation == "BOTTOM":
+        if self.orientation() == "BOTTOM":
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
             self.balls.remove(ball)
             self.addBall()
@@ -1059,7 +1098,7 @@ class SameSidePongGame(PongGame):
         """
         Reflect.
         """
-        if self.orientation == "LEFT":
+        if self.orientation() == "LEFT":
             self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         else:
             self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
@@ -1086,7 +1125,7 @@ class SharedScreenPongGame(SameSidePongGame):
         SameSidePongGame.__init__(self)
         
         self.rightPaddle.side = LEFT
-        self.orientation = "LEFT"
+        self._orientation = "LEFT"
 
 class SplitScreenPongGame(SameSidePongGame):
     def __init__(self) -> None:
@@ -1095,7 +1134,7 @@ class SplitScreenPongGame(SameSidePongGame):
         """
         SameSidePongGame.__init__(self)
 
-        self.orientation = "LEFT"
+        self._orientation = "LEFT"
 
         self.reset()
 
@@ -1110,7 +1149,7 @@ class SplitScreenPongGame(SameSidePongGame):
         self.topPaddle = Paddle(side=self.orientation)
         self.bottomPaddle = Paddle(side=self.orientation)
         
-        if self.orientation == "BOTTOM":
+        if self.orientation() == "BOTTOM":
             self.leftPaddle.setActive(True)
             self.rightPaddle.setActive(True)
             self.topPaddle.setActive(False)
@@ -1155,7 +1194,7 @@ class SplitScreenPongGame(SameSidePongGame):
             self.topPaddle.setActive(True)
             self.bottomPaddle.setActive(True)
 
-        self.orientation = orientation
+        self._orientation = orientation
         self.balls.clear()
         self.addBall()
 
