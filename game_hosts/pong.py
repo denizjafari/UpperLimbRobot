@@ -995,7 +995,9 @@ class SameSidePongGame(PongGame):
         Reflect unless the paddles are on the right.
         """
         if self.orientation == "RIGHT":
-            self.stop()
+            self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
+            self.balls.remove(ball)
+            self.addBall()
         else:
             ball.reflectHorizontally()
 
@@ -1004,7 +1006,9 @@ class SameSidePongGame(PongGame):
         Reflect unless the paddles are on the left.
         """
         if self.orientation == "LEFT":
-            self.stop()
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+            self.balls.remove(ball)
+            self.addBall()
         else:
             ball.reflectHorizontally()
 
@@ -1013,7 +1017,9 @@ class SameSidePongGame(PongGame):
         Reflect unless the paddles are on the top.
         """
         if self.orientation == "TOP":
-            self.stop()
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+            self.balls.remove(ball)
+            self.addBall()
         else:
             ball.reflectVertically()
 
@@ -1022,7 +1028,9 @@ class SameSidePongGame(PongGame):
         Reflect unless the paddles are on the bottom.
         """
         if self.orientation == "BOTTOM":
-            self.stop()
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
+            self.balls.remove(ball)
+            self.addBall()
         else:
             ball.reflectVertically()
 
@@ -1030,27 +1038,30 @@ class SameSidePongGame(PongGame):
         """
         Reflect.
         """
+        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         ball.reflectHorizontally()
 
     def onRightPaddleHit(self, ball: Ball) -> None:
         """
         Reflect.
         """
+        self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + 1)
         ball.reflectHorizontally()
 
     def onBottomPaddleHit(self, ball: Ball) -> None:
         """
         Reflect.
         """
+        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         ball.reflectVertically()
 
     def onTopPaddleHit(self, ball: Ball) -> None:
         """
         Reflect.
         """
+        self.updateScore(self.scoreBoard.scoreLeft + 1, self.scoreBoard.scoreRight)
         ball.reflectVertically()
         
-
 class SharedScreenPongGame(SameSidePongGame):
     def __init__(self) -> None:
         """
