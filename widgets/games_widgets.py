@@ -257,21 +257,28 @@ class PongServerWidget(TransformerWidget):
             orientation = d["orientation"]
             if orientation == "left":
                 self.orientationLeft.setChecked(True)
+                self.transformer.setOrientation("LEFT")
             elif orientation == "right":
                 self.orientationRight.setChecked(True)
+                self.transformer.setOrientation("RIGHT")
             elif orientation == "bottom":
                 self.orientationBottom.setChecked(True)
+                self.transformer.setOrientation("BOTTOM")
         
         if "paddle" in d:
             paddle = d["paddle"]
             if paddle == "left":
                 self.paddleLeft.setChecked(True)
+                self.transformer.setPaddle("LEFT")
             elif paddle == "right":
                 self.paddleRight.setChecked(True)
+                self.transformer.setPaddle("RIGHT")
             elif paddle == "top":
                 self.paddleTop.setChecked(True)
+                self.transformer.setPaddle("TOP")
             elif paddle == "bottom":
                 self.paddleBottom.setChecked(True)
+                self.transformer.setPaddle("BOTTOM")
 
     def __str__(self) -> str:
         return "Pong Server"

@@ -347,6 +347,7 @@ class PongClient(TransformerStage, QObject):
             "client":  None,
             "orientation": "LEFT",
             "ballSpeed": 2.0,
+            "paddle": "LEFT"
         }
 
     def setClient(self, client: Client) -> None:
@@ -359,6 +360,7 @@ class PongClient(TransformerStage, QObject):
         if client is not None:
             client.eventReceived.connect(self.handleEvent)
             self.setOrientation(self.pongData["orientation"])
+            self.setPaddle(self.pongData["paddle"])
 
     def handleEvent(self, event: Event) -> None:
         """

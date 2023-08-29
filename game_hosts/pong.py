@@ -398,9 +398,15 @@ class ScoreBoard:
     """
     Basic Scoreboard capable of tracking the scores for both sides,
     left and right.
+
+    Scores to show indicates which of the scores should be shown in the UI.
+    By default, both scores are shown. If only the left score should be shown,
+    set scoresToShow to LEFT. If only the right score should be shown, set
+    scoresToShow to RIGHT.
     """
     scoreLeft: int
     scoreRight: int
+    scoresToShow: int
 
     def __init__(self, screenSize: int) -> None:
         """
@@ -412,6 +418,7 @@ class ScoreBoard:
         self.height = SCOREBOARD_HEIGHT
         self.screenSize = screenSize
         self.position = TOP
+        self.scoresToShow = NEUTRAL
 
     def y(self, height: int = None) -> None:
         """
@@ -455,7 +462,12 @@ class ScoreBoard:
                          self.y() + 12,
                          "Score")
 
-        scoreStr = str(self.scoreLeft) + " : " + str(self.scoreRight)
+        if self.scoresToShow == LEFT:
+            scoreStr = str(self.scoreLeft)
+        elif self.scoresToShow == RIGHT:
+            scoreStr = str(self.scoreRight)
+        else:
+            scoreStr = str(self.scoreLeft) + " : " + str(self.scoreRight)
         boundings = painter.boundingRect(rect, scoreStr)
         painter.drawText(self.x() + (self.width - boundings.width()) / 2,
                          self.y() + 25,
@@ -971,6 +983,7 @@ class SameSidePongGame(PongGame):
             self.rightPaddle.setActive(True)
             self.bottomPaddle.setActive(False)
             self.topPaddle.setActive(False)
+            self.scoreBoard.scoresToShow = LEFT
         elif orientation == "RIGHT":
             self.rightPaddle.side = RIGHT
             self.leftPaddle.side = RIGHT
@@ -978,6 +991,7 @@ class SameSidePongGame(PongGame):
             self.rightPaddle.setActive(True)
             self.bottomPaddle.setActive(False)
             self.topPaddle.setActive(False)
+            self.scoreBoard.scoresToShow = RIGHT
         elif orientation == "BOTTOM":
             self.topPaddle.side = BOTTOM
             self.bottomPaddle.side = BOTTOM
@@ -985,6 +999,7 @@ class SameSidePongGame(PongGame):
             self.leftPaddle.setActive(False)
             self.topPaddle.setActive(True)
             self.bottomPaddle.setActive(True)
+            self.scoreBoard.scoresToShow = LEFT
 
         self.orientation = orientation
         self.balls.clear()
