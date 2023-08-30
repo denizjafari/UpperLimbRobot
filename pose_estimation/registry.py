@@ -86,6 +86,7 @@ MODEL_REGISTRY = Registry()
 WIDGET_REGISTRY = Registry()
 SOUND_REGISTRY = Registry()
 PONG_CONTROLLER_REGISTRY = Registry()
+EXPORTER_REGISTRY = Registry()
 GLOBAL_PROPS = GlobalProps()
 
 GLOBAL_PROPS["WORKING_DIR"] = os.getcwd()

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from PySide6.QtGui import QColor
 
-from pose_estimation.registry import GLOBAL_PROPS, WIDGET_REGISTRY
+from pose_estimation.registry import EXPORTER_REGISTRY, GLOBAL_PROPS, WIDGET_REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, \
@@ -27,6 +27,7 @@ from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, MetricSelector, ModelSelector
 from pose_estimation.video import CVVideoRecorder, VideoRecorder
+from widgets.exporter_widgets import ExporterWidget
 
 
 module_logger = logging.getLogger(__name__)
@@ -417,6 +418,93 @@ class RecorderTransformerWidget(TransformerWidget):
         self.outputFileSelector.setPath(d["output_path"])
         for path in d["csv_exporter_paths"]:
             self.addExporter(path)
+
+
+class ExporterTransformerWidget(TransformerWidget):
+    transformer: Pipeline
+    exporters: list[ExporterWidget]
+
+    def __init__(self) -> None:
+        """
+        Initiaize the ExporterTransformerWidget.
+        """
+        self.exporters: list[ExporterWidget] = []
+        self.recordingActive = False
+
+        self.transformer = Pipeline()
+
+        self.vExportersLayout = QVBoxLayout()
+        self.vLayout.addLayout(self.vExportersLayout)
+        
+        self.exporterTypeSelector = QComboBox()
+        self.exporterTypeSelector.addItems(EXPORTER_REGISTRY.items())
+        EXPORTER_REGISTRY.itemsChanged.connect(self.onExporterItemsChanged)
+        self.vLayout.addWidget(self.exporterTypeSelector)
+
+        self.addExporterButton = QPushButton("Add Exporter")
+        self.addExporterButton.clicked.connect(self.addExporter)
+        self.vLayout.addWidget(self.addExporterButton)
+
+        self.toggleRecordingButton = QPushButton("Start Recording")
+        self.toggleRecordingButton.clicked.connect(self.toggleRecording)
+        self.vLayout.addWidget(self.toggleRecordingButton)
+
+
+    def onExporterItemsChanged(self) -> None:
+        """
+        When the available exporters have been updated, update the dropdown.
+        """
+        self.exporterTypeSelector.clear()
+        self.exporterTypeSelector.addItems(EXPORTER_REGISTRY.items())
+    
+    def removeExporter(self, exporter: ExporterWidget) -> None:
+        """
+        Remove an exporter from the display.
+        """
+        transformer = exporter.transformer()
+
+        self.transformer.lock()
+        self.transformer.remove(transformer)
+        self.transformer.unlock()
+
+        self.exporters.remove(exporter)
+        exporter.deleteLater()
+
+    def addExporter(self) -> None:
+        """
+        Add an exporter to the display.
+        """
+        exporter: ExporterWidget = \
+            EXPORTER_REGISTRY.createItem(self.exporterTypeSelector.currentText())
+
+        exporter.removed.connect(lambda: self.removeExporter(exporter))
+        self.exporters.append(exporter)
+
+        self.transformer.lock()
+        self.transformer.append(exporter.transformer())
+        self.transformer.unlock()
+    
+    def toggleRecording(self) -> None:
+        """
+        Start/stop recording by simultaneously loading/unloading transformers.
+        """
+        if self.recordingActive:
+            self.transformer.lock()
+
+            for exporter in self.exporters:
+                exporter.load()
+            self.transformer.unlock()
+
+            self.toggleRecordingButton.setText("Start Recording")
+            self.recordingActive = False
+        else:
+            self.transformer.lock()
+            for exporter in self.exporters:
+                exporter.unload()
+            self.transformer.unlock()
+
+            self.toggleRecordingButton.setText("Stop Recording")
+            self.recordingActive = True
 
 
 class QCameraSourceWidget(TransformerWidget):
