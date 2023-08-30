@@ -103,6 +103,23 @@ class Paddle:
                 return SQUARE_SIZE - self.thickness
             else:
                 return SQUARE_SIZE
+            
+
+    def isInXRange(self, ball: Ball) -> None:
+        """
+        Return whether the paddle is in the y range of the ball.
+        """
+        if self.side == LEFT:
+            return ball.leftEdge() <= self.rightEdge()
+        else:
+            return ball.rightEdge() >= self.leftEdge()
+            
+
+    def isInYRange(self, ball: Ball) -> None:
+        """
+        Return whether the paddle is in the y range of the ball.
+        """
+        return self.bottomEdge() >= ball.centerY() >= self.topEdge()
     
     def isHit(self, ball: Ball) -> bool:
         """
@@ -110,12 +127,9 @@ class Paddle:
         paddle.
         """
         if not self.active(): return False
-        if self.side == LEFT:
-            inXRange = ball.leftEdge() <= self.rightEdge()
-        else:
-            inXRange = ball.rightEdge() >= self.leftEdge()
         
-        inYRange = self.bottomEdge() >= ball.centerY() >= self.topEdge()
+        inXRange = self.isInXRange(ball)
+        inYRange = self.isInYRange(ball)
             
         if self.debouncing:
             if not (inXRange and inYRange):
@@ -277,18 +291,30 @@ class HorizontalPaddle(Paddle):
         elif self.rightEdge() > self.movementRange[1]:
             self.position = self.movementRange[1] - self.size // 2
 
+    def isInYRange(self, ball: Ball) -> None:
+        """
+        Return whether the paddle is in the y range of the ball
+        """
+        if self.side == BOTTOM:
+            return ball.bottomEdge() >= self.topEdge()
+        else:
+            return ball.topEdge() <= self.bottomEdge()
+
+    def isInXRange(self, ball: Ball) -> None:
+        """
+        Return whether the paddle is in the x range of the ball.
+        """
+        return self.leftEdge() <= ball.centerX() <= self.rightEdge()
+
     def isHit(self, ball: Ball) -> bool:
         """
         Determine whether the paddle is active and the ball is hit by the
         paddle.
         """
         if not self.active(): return False
-        if self.side == BOTTOM:
-            inYRange = ball.bottomEdge() >= self.topEdge()
-        else:
-            inYRange = ball.topEdge() <= self.bottomEdge()
 
-        inXRange = self.leftEdge() <= ball.centerX() <= self.rightEdge()
+        inYRange = self.isInYRange(ball)
+        inXRange = self.isInXRange(ball)
 
         if self.debouncing:
             if not (inXRange and inYRange):
@@ -1126,6 +1152,38 @@ class SharedScreenPongGame(SameSidePongGame):
         
         self.rightPaddle.side = LEFT
         self._orientation = "LEFT"
+
+    def onLeftPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect. Count double points if both paddles where behind the ball.
+        """
+        self.onRightPaddleHit()
+
+    def onRightPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect. Count double points if both paddles where behind the ball.
+        """
+        points = self.leftPaddle.isInYRange(ball) + self.rightPaddle.isInYRange(ball)
+        if self.orientation() == "LEFT":
+            self.updateScore(self.scoreBoard.scoreLeft + points, self.scoreBoard.scoreRight)
+        else:
+            self.updateScore(self.scoreBoard.scoreLeft, self.scoreBoard.scoreRight + points)
+
+        ball.reflectHorizontally()
+
+    def onTopPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect. Count double points if both paddles where behind the ball.
+        """
+        self.onBottomPaddleHit(ball)
+
+    def onBottomPaddleHit(self, ball: Ball) -> None:
+        """
+        Reflect. Count double points if both paddles where behind the ball.
+        """
+        points = self.topPaddle.isInXRange(ball) + self.bottomPaddle.isInXRange(ball)
+        self.updateScore(self.scoreBoard.scoreLeft + points, self.scoreBoard.scoreRight)
+        ball.reflectVertically()
 
 class SplitScreenPongGame(SameSidePongGame):
     def __init__(self) -> None:
