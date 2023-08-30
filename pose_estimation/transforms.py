@@ -175,20 +175,32 @@ class Transformer:
 
         frameData["timings"].append((str(self), time.time()))
         if self._next is not None:
-            self._next.lock()
-        self.unlock()
+            self._next.flowLock()
+        self.flowUnlock()
         if self._next is not None:
             self._next.transform(frameData)
 
-    def lock(self) -> None:
+    def flowLock(self) -> None:
         """
-        Lock this stage to multithreading.
+        Lock this stage (or only the first part of it) to multithreading.
         """
         raise NotImplementedError
 
-    def unlock(self) -> None:
+    def flowUnlock(self) -> None:
         """
-        Unlock this stage to multithreading.
+        Unlock this stage (or only the first part of it) to multithreading.
+        """
+        raise NotImplementedError
+    
+    def recursiveLock(self) -> None:
+        """
+        Recursively lock all lower stages.
+        """
+        raise NotImplementedError
+    
+    def recursiveUnlock(self) -> None:
+        """
+        Recursively unlock all lower stages.
         """
         raise NotImplementedError
 
@@ -228,17 +240,29 @@ class TransformerStage(Transformer):
 
         self._mutex = QMutex()
 
-    def lock(self) -> None:
+    def flowLock(self) -> None:
         """
         Lock the stage. Now, no other thread can enter this stage.
         """
         self._mutex.lock()
 
-    def unlock(self) -> None:
+    def flowUnlock(self) -> None:
         """
         Unlock the stage. Allow other threads to enter this stage.
         """
         self._mutex.unlock()
+
+    def recursiveLock(self) -> None:
+        """
+        Lock the stage. Now, no other thread can enter this stage.
+        """
+        self.flowLock()
+
+    def recursiveUnlock(self) -> None:
+        """
+        Unlock the stage. Allow other threads to enter this stage.
+        """
+        self.flowUnlock()
     
 class Pipeline(Transformer):
     """
@@ -295,22 +319,36 @@ class Pipeline(Transformer):
         Stat the pipeline by locking the first stage and beginning
         transformation.
         """
-        self.lock()
+        self.flowLock()
         self.transform(frameData)
 
-    def lock(self) -> None:
+    def flowLock(self) -> None:
         """
         Lock the first stage in the pipeline.
         """
         if len(self.transformers) > 0:
-            self.transformers[0].lock()
+            self.transformers[0].flowLock()
 
-    def unlock(self) -> None:
+    def flowUnlock(self) -> None:
         """
         Do nothing. Unlocking the first stage is done by the first stage itself
         upon completion of its transformation.
         """
         pass
+
+    def recursiveLock(self) -> None:
+        """
+        Lock all stages in the pipeline.
+        """
+        for t in self.transformers:
+            t.recursiveLock()
+
+    def fullUnlock(self) -> None:
+        """
+        Unlock all stages in the pipeline.
+        """
+        for t in self.transformers:
+            t.recursiveUnlock()
 
     def next(self, frameData: FrameData) -> None:
         """
@@ -845,7 +883,7 @@ class TransformerRunner(QRunnable, QObject):
 
     def transform(self) -> None:
         self.frameData["timings"] = [("Start", time.time())]
-        self._transformer.lock()
+        self._transformer.flowLock()
         self.transformerStarted.emit(self.frameData)
         self._transformer.transform(self.frameData)
         self.transformerCompleted.emit(self.frameData)

@@ -463,9 +463,9 @@ class ExporterTransformerWidget(TransformerWidget):
         """
         transformer = exporter.transformer()
 
-        self.transformer.lock()
+        self.transformer.flowLock()
         self.transformer.remove(transformer)
-        self.transformer.unlock()
+        self.transformer.flowUnlock()
 
         self.exporters.remove(exporter)
         exporter.deleteLater()
@@ -480,28 +480,28 @@ class ExporterTransformerWidget(TransformerWidget):
         exporter.removed.connect(lambda: self.removeExporter(exporter))
         self.exporters.append(exporter)
 
-        self.transformer.lock()
+        self.transformer.flowLock()
         self.transformer.append(exporter.transformer())
-        self.transformer.unlock()
+        self.transformer.flowUnlock()
     
     def toggleRecording(self) -> None:
         """
         Start/stop recording by simultaneously loading/unloading transformers.
         """
         if self.recordingActive:
-            self.transformer.lock()
+            self.transformer.flowLock()
 
             for exporter in self.exporters:
                 exporter.load()
-            self.transformer.unlock()
+            self.transformer.flowUnlock()
 
             self.toggleRecordingButton.setText("Start Recording")
             self.recordingActive = False
         else:
-            self.transformer.lock()
+            self.transformer.flowLock()
             for exporter in self.exporters:
                 exporter.unload()
-            self.transformer.unlock()
+            self.transformer.flowUnlock()
 
             self.toggleRecordingButton.setText("Stop Recording")
             self.recordingActive = True
