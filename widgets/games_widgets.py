@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout
 from PySide6.QtCore import Qt
 from events import Client
 from pose_estimation.pong_controllers import PongController
-from pose_estimation.registry import PONG_CONTROLLER_REGISTRY, WIDGET_REGISTRY
+from pose_estimation.registry import REGISTRY
 
 from pose_estimation.ui_utils import ConnectionWidget, LabeledQSlider, MetricSelector
 from pose_estimation.games import PongClient, PongControllerWrapper, \
@@ -286,7 +286,7 @@ class PongServerWidget(TransformerWidget):
 class PongControllerWidget(TransformerWidget):
     """
     Widget controlling pong controllers. It allows the selection of a controller
-    from the ones registered to the PONG_CONTROLLER_REGISTRY via a combobox.
+    from the ones registered to the REGISTRY via a combobox.
     """
     transformer: PongControllerWrapper
 
@@ -308,20 +308,23 @@ class PongControllerWidget(TransformerWidget):
 
         self.controllerSelector.currentTextChanged.connect(self.setController)
         self.updateControllerList()
-        PONG_CONTROLLER_REGISTRY.itemsChanged.connect(self.updateControllerList)
+        REGISTRY.itemsChanged.connect(self.updateControllerList)
 
-    def updateControllerList(self) -> None:
+    def updateControllerList(self, category: str) -> None:
         """
         Update the controller list when the registry changes.
         """
+        if category != "pong_controllers":
+            return
+
         self.controllerSelector.clear()
-        self.controllerSelector.addItems(PONG_CONTROLLER_REGISTRY.items())
+        self.controllerSelector.addItems(REGISTRY.items("pong_controllers"))
 
     def setController(self, controllerName: str) -> None:
         """
         Set the controller when it is selected in the combobox.
         """
-        controller: PongController = PONG_CONTROLLER_REGISTRY.createItem(controllerName)
+        controller: PongController = REGISTRY.createItem(controllerName)
         self._controller = controller
         widget = controller.widget()
         self.transformer.setController(controller)
@@ -419,9 +422,9 @@ class ReachServerWidget(TransformerWidget):
         self.metricSelector.save(d)
 
 
-WIDGET_REGISTRY.register(PoseFeedbackWidget, "Feedback")
-WIDGET_REGISTRY.register(SnakeWidget, "Snake Game")
-WIDGET_REGISTRY.register(SnakeServerWidget, "Snake Server")
-WIDGET_REGISTRY.register(PongServerWidget, "Pong Server")
-WIDGET_REGISTRY.register(PongControllerWidget, "Pong Controller")
-WIDGET_REGISTRY.register(ReachServerWidget, "Reach Server")
+REGISTRY.register(PoseFeedbackWidget, "widgets.Feedback")
+REGISTRY.register(SnakeWidget, "widgets.Snake Game")
+REGISTRY.register(SnakeServerWidget, "widgets.Snake Server")
+REGISTRY.register(PongServerWidget, "widgets.Pong Server")
+REGISTRY.register(PongControllerWidget, "widgets.Pong Controller")
+REGISTRY.register(ReachServerWidget, "widgets.Reach Server")

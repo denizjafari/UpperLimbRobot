@@ -16,8 +16,8 @@ class Registry(QObject):
     """
     One registry for one type of assets.
     """
-    itemsChanged = Signal()
-    _items: dict[str, type]
+    itemsChanged = Signal(str)
+    _items: dict[str, dict[str, Callable[[], object]]]
 
     def __init__(self) -> None:
         """
@@ -34,21 +34,25 @@ class Registry(QObject):
         class which will be instantiated on createItem() or a function which
         will be called.
         """
-        self._items[name] = itemClass
-        self.itemsChanged.emit()
+        category, name = name.split(".")
+        if category not in self._items:
+            self._items[category] = {}
+        self._items[category][name] = itemClass
+        self.itemsChanged.emit(category)
         
-    def items(self) -> list[str]:
+    def items(self, category: str) -> list[str]:
         """
         List all items by name.
         """
-        return [str(key) for key in self._items.keys()]
+        return [f"{category}.{str(key)}" for key in self._items[category].keys()]
     
     def createItem(self, key: str) -> object:
         """
         Create an item by name. Either instantiate the class or calls the
         registered function.
         """
-        widget = self._items[key]()
+        category, name = key.split(".")
+        widget = self._items[category][name]()
         widget.setKey(key)
 
         return widget
@@ -81,12 +85,7 @@ class GlobalProps:
     def __setitem__(self, key, item) -> None:
         self._props[key] = item
 
-
-MODEL_REGISTRY = Registry()
-WIDGET_REGISTRY = Registry()
-SOUND_REGISTRY = Registry()
-PONG_CONTROLLER_REGISTRY = Registry()
-EXPORTER_REGISTRY = Registry()
+REGISTRY = Registry()
 GLOBAL_PROPS = GlobalProps()
 
 GLOBAL_PROPS["WORKING_DIR"] = os.getcwd()

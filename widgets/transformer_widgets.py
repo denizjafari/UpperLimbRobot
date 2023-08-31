@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
 from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
 from PySide6.QtGui import QColor
 
-from pose_estimation.registry import EXPORTER_REGISTRY, GLOBAL_PROPS, WIDGET_REGISTRY
+from pose_estimation.registry import GLOBAL_PROPS, REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.video import CVVideoFileSource, QVideoSource
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, \
@@ -26,7 +26,6 @@ from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer
                 VideoSourceTransformer
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, MetricSelector, ModelSelector
-from pose_estimation.video import CVVideoRecorder, VideoRecorder
 from widgets.exporter_widgets import ExporterWidget
 
 
@@ -262,13 +261,13 @@ class ExporterTransformerWidget(TransformerWidget):
         self.vLayout.addLayout(self.vExportersLayout)
         
         self.exporterTypeSelector = QComboBox()
-        self.exporterTypeSelector.addItems(EXPORTER_REGISTRY.items())
-        EXPORTER_REGISTRY.itemsChanged.connect(self.onExporterItemsChanged)
+        self.exporterTypeSelector.addItems(REGISTRY.items("exporters"))
+        REGISTRY.itemsChanged.connect(self.onExporterItemsChanged)
         self.vLayout.addWidget(self.exporterTypeSelector)
 
         self.addExporterButton = QPushButton("Add Exporter")
         self.addExporterButton.clicked.connect(
-            lambda: self.addExporter(EXPORTER_REGISTRY.createItem(
+            lambda: self.addExporter(REGISTRY.createItem(
                 self.exporterTypeSelector.currentText())))
         self.vLayout.addWidget(self.addExporterButton)
 
@@ -277,12 +276,15 @@ class ExporterTransformerWidget(TransformerWidget):
         self.vLayout.addWidget(self.toggleRecordingButton)
 
 
-    def onExporterItemsChanged(self) -> None:
+    def onExporterItemsChanged(self, category: str) -> None:
         """
         When the available exporters have been updated, update the dropdown.
         """
+        if category != "exporters":
+            return
+        
         self.exporterTypeSelector.clear()
-        self.exporterTypeSelector.addItems(EXPORTER_REGISTRY.items())
+        self.exporterTypeSelector.addItems(REGISTRY.items("category"))
     
     def removeExporter(self, exporter: ExporterWidget) -> None:
         """
@@ -344,7 +346,7 @@ class ExporterTransformerWidget(TransformerWidget):
             for exporter in d["exporters"]:
                 if isinstance(exporter, list) and len(exporter) == 2:
                     exporterWidget: ExporterWidget = \
-                        EXPORTER_REGISTRY.createItem(exporter[0])
+                        REGISTRY.createItem(exporter[0])
                     exporterWidget.restore(exporter[1])
                     self.addExporter(exporterWidget)
 
@@ -616,17 +618,17 @@ class DerivativeWidget(TransformerWidget):
         self.transformer = DerivativeTransformer()
 
     
-WIDGET_REGISTRY.register(QCameraSourceWidget, "Camera Source")
-WIDGET_REGISTRY.register(VideoSourceWidget, "Video Source")
-WIDGET_REGISTRY.register(ImageMirrorWidget, "Mirror")
-WIDGET_REGISTRY.register(ScalerWidget, "Scaler")
-WIDGET_REGISTRY.register(BackgroundRemoverWidget, "Background Remover")
-WIDGET_REGISTRY.register(ModelRunnerWidget, "Model")
-WIDGET_REGISTRY.register(SkeletonDrawerWidget, "Skeleton")
-WIDGET_REGISTRY.register(LandmarkDrawerWidget, "Landmarks")
-WIDGET_REGISTRY.register(ExporterTransformerWidget, "Exporter")
-WIDGET_REGISTRY.register(MetricViewWidget, "Metrics")
-WIDGET_REGISTRY.register(SlidingAverageWidget, "Sliding Average")
-WIDGET_REGISTRY.register(ButterworthWidget, "Butterworth Filter")
-WIDGET_REGISTRY.register(MinMaxWidget, "Min/Max Selector")
-WIDGET_REGISTRY.register(DerivativeWidget, "Derivatives")
+REGISTRY.register(QCameraSourceWidget, "widgets.Camera Source")
+REGISTRY.register(VideoSourceWidget, "widgets.Video Source")
+REGISTRY.register(ImageMirrorWidget, "widgets.Mirror")
+REGISTRY.register(ScalerWidget, "widgets.Scaler")
+REGISTRY.register(BackgroundRemoverWidget, "widgets.Background Remover")
+REGISTRY.register(ModelRunnerWidget, "widgets.Model")
+REGISTRY.register(SkeletonDrawerWidget, "widgets.Skeleton")
+REGISTRY.register(LandmarkDrawerWidget, "widgets.Landmarks")
+REGISTRY.register(ExporterTransformerWidget, "widgets.Exporter")
+REGISTRY.register(MetricViewWidget, "widgets.Metrics")
+REGISTRY.register(SlidingAverageWidget, "widgets.Sliding Average")
+REGISTRY.register(ButterworthWidget, "widgets.Butterworth Filter")
+REGISTRY.register(MinMaxWidget, "widgets.Min/Max Selector")
+REGISTRY.register(DerivativeWidget, "widgets.Derivatives")

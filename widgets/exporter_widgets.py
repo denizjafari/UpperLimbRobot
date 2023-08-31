@@ -10,7 +10,7 @@ import io
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Signal
 
-from pose_estimation.registry import EXPORTER_REGISTRY
+from pose_estimation.registry import REGISTRY
 from pose_estimation.transforms import CsvExporter, MetricsExporter, PongDataExporter, \
     RecorderTransformer, Transformer
 from pose_estimation.ui_utils import FileSelector
@@ -273,7 +273,7 @@ class MetricsExporterWidget(ExporterWidget):
             self.file.close()
     
 
-EXPORTER_REGISTRY.register(VideoExporterWidget, "Video Exporter")
-EXPORTER_REGISTRY.register(CsvExporterWidget, "CSV Exporter")
-EXPORTER_REGISTRY.register(PongDataExporterWidget, "Pong Data Exporter")
-EXPORTER_REGISTRY.register(MetricsExporterWidget, "Metrics Exporter")
+REGISTRY.register(VideoExporterWidget, "exporters.Video Exporter")
+REGISTRY.register(CsvExporterWidget, "exporters.CSV Exporter")
+REGISTRY.register(PongDataExporterWidget, "exporters.Pong Data Exporter")
+REGISTRY.register(MetricsExporterWidget, "exporters.Metrics Exporter")

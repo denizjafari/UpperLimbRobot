@@ -18,7 +18,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 
 from pose_estimation.Models import KeypointSet, PoseModel, SimpleKeypointSet
 
-from pose_estimation.registry import MODEL_REGISTRY    
+from pose_estimation.registry import REGISTRY    
 
 class MoveNetLightning(PoseModel):
     """
@@ -235,8 +235,8 @@ class FeedThroughModel(PoseModel):
         return "None"
 
 
-MODEL_REGISTRY.register(FeedThroughModel, "None")
-MODEL_REGISTRY.register(BlazePose, "BlazePose")
-#MODEL_REGISTRY.register(BlazePoseHeavy, "BlazePose (Heavy)")
-#MODEL_REGISTRY.register(BlazePoseLite, "BlazePose (Lite)")
-#MODEL_REGISTRY.register(MoveNetLightning, "MoveNet (Lightning)")
+REGISTRY.register(FeedThroughModel, "models.None")
+REGISTRY.register(BlazePose, "models.BlazePose")
+#REGISTRY.register(BlazePoseHeavy, "models.BlazePose (Heavy)")
+#REGISTRY.register(BlazePoseLite, "models.BlazePose (Lite)")
+#REGISTRY.register(MoveNetLightning, "models.MoveNet (Lightning)")

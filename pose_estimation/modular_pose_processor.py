@@ -17,7 +17,7 @@ from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 
 from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup
-from pose_estimation.registry import WIDGET_REGISTRY
+from pose_estimation.registry import REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
     QImageProvider, Scaler, Transformer, TransformerHead
@@ -92,15 +92,15 @@ class PipelineWidget(QWidget):
         self.hLayout.addStretch()
         self.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
 
-        WIDGET_REGISTRY.itemsChanged.connect(self.onTransformerWidgetsChanged)
-        self.onTransformerWidgetsChanged()
+        REGISTRY.itemsChanged.connect(self.onTransformerWidgetsChanged)
+        self.onTransformerWidgetsChanged("widgets")
     
     @Slot()
     def onAdd(self, key: str) -> TransformerWidget:
         """
         When the add button is clicked to add a transformer
         """
-        widget: TransformerWidget = WIDGET_REGISTRY.createItem(key)
+        widget: TransformerWidget = REGISTRY.createItem(key)
 
         self._pipeline.append(widget.transformer)
         self.hTransformerLayout.addWidget(widget)
@@ -119,8 +119,11 @@ class PipelineWidget(QWidget):
         widget.deleteLater()
 
     @Slot(object)
-    def onTransformerWidgetsChanged(self) -> None:
-        items = WIDGET_REGISTRY.items()
+    def onTransformerWidgetsChanged(self, category: str) -> None:
+        if category != "widgets":
+            return
+        
+        items = REGISTRY.items("widgets")
         newTransformerSelector = QComboBox(self)
         self.hLayout.replaceWidget(self.transformerSelector, newTransformerSelector)
         self.transformerSelector.deleteLater()

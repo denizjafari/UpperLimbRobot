@@ -16,7 +16,7 @@ from PySide6.QtCore import Signal, Slot, QPoint
 from events import Client
 
 from models.models import PoseModel
-from pose_estimation.registry import MODEL_REGISTRY
+from pose_estimation.registry import REGISTRY
 
 
 # The frame dimensions and rate for which a suitable format is selected.
@@ -145,7 +145,7 @@ class ModelSelectorButton(QRadioButton):
         """
         QRadioButton.__init__(self, modelName)
 
-        self.model = MODEL_REGISTRY.createItem(modelName)
+        self.model = REGISTRY.createItem(modelName)
         self.toggled.connect(self.slotSelected)
 
     @Slot()
@@ -171,17 +171,20 @@ class ModelSelector(QGroupBox):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        MODEL_REGISTRY.itemsChanged.connect(self.addAllModels)
-        self.addAllModels()
+        REGISTRY.itemsChanged.connect(self.addAllModels)
+        self.addAllModels("models")
 
-    def addAllModels(self) -> None:
+    def addAllModels(self, category: str) -> None:
         """
         Add all available models to the selector.
         """
+        if category != "models":
+            return
+
         for item in self.layout().children():
             item.deleteLater()
 
-        for model in MODEL_REGISTRY.items():
+        for model in REGISTRY.items("models"):
             self.addModel(model)
 
     @Slot(PoseModel)

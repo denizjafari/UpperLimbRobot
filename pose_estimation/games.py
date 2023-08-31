@@ -15,7 +15,7 @@ import cv2
 from PySide6.QtCore import QObject, Signal
 from pose_estimation.audio import QSound
 from pose_estimation.pong_controllers import PongController
-from pose_estimation.registry import SOUND_REGISTRY
+from pose_estimation.registry import REGISTRY
 
 from game_hosts.snake import SnakeGame
 from pose_estimation.transforms import FrameData, Transformer, TransformerStage
@@ -178,7 +178,7 @@ class PoseFeedbackTransformer(TransformerStage):
 
         self.wasLeaningTooFar = False
         self.shouldersWereNotLevel = False
-        self.feedbackSound = SOUND_REGISTRY.createItem("feedback")
+        self.feedbackSound = REGISTRY.createItem("sounds.feedback")
 
     def setAngleLimit(self, angleLimit: int) -> None:
         """
@@ -576,4 +576,4 @@ class ReachClient(TransformerStage, QObject):
         self.next(frameData)
 
 
-SOUND_REGISTRY.register(lambda: QSound("assets/sounds/feedback.wav"), "feedback")
+REGISTRY.register(lambda: QSound("assets/sounds/feedback.wav"), "sounds.feedback")
