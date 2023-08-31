@@ -5,12 +5,13 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
 
 from typing import Optional
+import io
 
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Signal
 
-from pose_estimation.registry import EXPORTER_REGISTRY, GLOBAL_PROPS
-from pose_estimation.transforms import RecorderTransformer, Transformer
+from pose_estimation.registry import EXPORTER_REGISTRY
+from pose_estimation.transforms import CsvExporter, RecorderTransformer, Transformer
 from pose_estimation.ui_utils import FileSelector
 from pose_estimation.video import CVVideoRecorder
 
@@ -115,4 +116,45 @@ class VideoExporterWidget(ExporterWidget):
         return self.recorderTransformer
     
 
+class CsvExporterWidget(ExporterWidget):
+    """
+    Exporter for the CSV data.
+    """
+    csvTransformer: CsvExporter
+    file: Optional[io.TextIOBase]
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the CSV exporter.
+        """
+        ExporterWidget.__init__(self, parent)
+        self.typeLabel.setText("CSV Exporter")
+
+        self.csvTransformer = CsvExporter(0)
+        self.file = None
+
+    def transformer(self) -> None:
+        """
+        Return the transformer for the CSV exporter.
+        """
+        return self.csvTransformer
+    
+    def load(self) -> None:
+        """
+        Open the file and set the CSV transformer.
+        """
+        self.unload()
+        self.file = open(self.fileSelector.selectedFile(), "w", newline="")
+        self.csvTransformer.setFile(self.file)
+
+    def unload(self) -> None:
+        """
+        Close the file
+        """
+        if self.file is not None:
+            self.file.close()
+        self.csvTransformer.setFile(None)
+    
+
 EXPORTER_REGISTRY.register(VideoExporterWidget, "Video Exporter")
+EXPORTER_REGISTRY.register(CsvExporterWidget, "CSV Exporter")
