@@ -442,10 +442,10 @@ class LandmarkDrawer(TransformerStage):
         if self.active() and not frameData.dryRun:
             for s in frameData.keypointSets:
                 for keypoint in s.getKeypoints():
-                    x = round(keypoint[0] * frameData.width())
-                    y = round(keypoint[1] * frameData.height())
+                    y = round(keypoint[0] * frameData.height())
+                    x = round(keypoint[1] * frameData.width())
                     cv2.circle(frameData.image,
-                               (y, x),
+                               (x, y),
                                self.markerRadius,
                                color=self.color,
                                thickness=-1)
