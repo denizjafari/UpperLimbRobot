@@ -282,22 +282,30 @@ class Pipeline(Transformer):
         """
         Append a Transformer to the end of the pipeline.
         """
+        self.recursiveLock()
+
         module_logger.debug(f"Appended transformer {transformer} to the pipeline")
         if len(self.transformers) > 0:
             self.transformers[-1].setNextTransformer(transformer)
         self.transformers.append(transformer)
         transformer.setNextTransformer(self._next)
 
+        self.recursiveUnlock()
+
     def remove(self, transformer: Transformer) -> None:
         """
         Remove the given transformer from the pipeline.
         """
+        self.recursiveLock()
+
         module_logger.debug(f"Removed transformer {transformer} from the pipeline")
         index = self.transformers.index(transformer)
         if index > 0:
             self.transformers[index - 1].setNextTransformer(transformer.getNextTransformer())
         transformer.setNextTransformer(None)
         self.transformers.pop(index)
+
+        self.recursiveUnlock()
 
     def setNextTransformer(self, nextTransformer: Transformer | None) -> None:
         """

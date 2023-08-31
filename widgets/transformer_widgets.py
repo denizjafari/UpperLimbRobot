@@ -464,11 +464,9 @@ class ExporterTransformerWidget(TransformerWidget):
         """
         transformer = exporter.transformer()
 
-        self.transformer.recursiveLock()
         self.transformer.remove(transformer)
-        self.transformer.recursiveUnlock()
-
         self.exporters.remove(exporter)
+        
         exporter.deleteLater()
 
     def addExporter(self) -> None:
@@ -482,9 +480,7 @@ class ExporterTransformerWidget(TransformerWidget):
         self.exporters.append(exporter)
         self.vExportersLayout.addWidget(exporter)
 
-        self.transformer.recursiveLock()
         self.transformer.append(exporter.transformer())
-        self.transformer.recursiveUnlock()
     
     def toggleRecording(self) -> None:
         """
