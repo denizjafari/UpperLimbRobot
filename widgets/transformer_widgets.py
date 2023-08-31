@@ -443,7 +443,9 @@ class ExporterTransformerWidget(TransformerWidget):
         self.vLayout.addWidget(self.exporterTypeSelector)
 
         self.addExporterButton = QPushButton("Add Exporter")
-        self.addExporterButton.clicked.connect(self.addExporter)
+        self.addExporterButton.clicked.connect(
+            lambda: self.addExporter(EXPORTER_REGISTRY.createItem(
+                self.exporterTypeSelector.currentText())))
         self.vLayout.addWidget(self.addExporterButton)
 
         self.toggleRecordingButton = QPushButton("Start Recording")
@@ -466,16 +468,13 @@ class ExporterTransformerWidget(TransformerWidget):
 
         self.transformer.remove(transformer)
         self.exporters.remove(exporter)
-        
+
         exporter.deleteLater()
 
-    def addExporter(self) -> None:
+    def addExporter(self, exporter: ExporterWidget) -> None:
         """
         Add an exporter to the display.
         """
-        exporter: ExporterWidget = \
-            EXPORTER_REGISTRY.createItem(self.exporterTypeSelector.currentText())
-
         exporter.removed.connect(lambda: self.removeExporter(exporter))
         self.exporters.append(exporter)
         self.vExportersLayout.addWidget(exporter)
@@ -502,6 +501,28 @@ class ExporterTransformerWidget(TransformerWidget):
 
             self.toggleRecordingButton.setText("Start Recording")
             self.recordingActive = False
+
+    def save(self, d: dict) -> None:
+        super().save(d)
+
+        exporterStates = []
+        for exporter in self.exporters:
+            exporterState = {}
+            exporter.save(exporterState)
+            exporterStates.append([exporter.key(), exporterState])
+
+        d["exporters"] = exporterStates
+
+    def restore(self, d: dict) -> None:
+        super().restore(d)
+
+        if "exporters" in d:
+            for exporter in d["exporters"]:
+                if isinstance(exporter, list) and len(exporter) == 2:
+                    exporterWidget: ExporterWidget = \
+                        EXPORTER_REGISTRY.createItem(exporter[0])
+                    exporterWidget.restore(exporter[1])
+                    self.addExporter(exporterWidget)
 
 
 class QCameraSourceWidget(TransformerWidget):

@@ -761,6 +761,7 @@ class RecorderTransformer(TransformerStage):
         self.recorder = None
         self.width = 0
         self.height = 0
+        self.frameRate = 20
 
     def setVideoRecorder(self, recorder: VideoRecorder):
         """

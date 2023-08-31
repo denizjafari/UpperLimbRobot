@@ -74,6 +74,18 @@ class ExporterWidget(QWidget):
         """
         return self._key
     
+    def save(self, d: dict) -> None:
+        """
+        Save the exporter to a dictionary.
+        """
+        d["file"] = self.fileSelector.selectedFile()
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the exporter from a dictionary.
+        """
+        if "file" in d:
+            self.fileSelector.setPath(d["file"])
 
 class VideoExporterWidget(ExporterWidget):
     """
@@ -115,6 +127,27 @@ class VideoExporterWidget(ExporterWidget):
         """
         return self.recorderTransformer
     
+    def save(self, d: dict) -> None:
+        """
+        Save the exporter to a dictionary.
+        """
+        ExporterWidget.save(self, d)
+        d["frameRate"] = self.recorderTransformer.frameRate
+        d["width"] = self.recorderTransformer.width
+        d["height"] = self.recorderTransformer.height
+
+    def restore(self, d: dict) -> None:
+        """
+        Restore the exporter from a dictionary.
+        """
+        ExporterWidget.restore(self, d)
+        if "frameRate" in d:
+            self.recorderTransformer.frameRate = d["frameRate"]
+        if "width" in d:
+            self.recorderTransformer.width = d["width"]
+        if "height" in d:
+            self.recorderTransformer.height = d["height"]
+
 
 class CsvExporterWidget(ExporterWidget):
     """
