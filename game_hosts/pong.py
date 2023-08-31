@@ -1157,7 +1157,7 @@ class SharedScreenPongGame(SameSidePongGame):
         """
         Reflect. Count double points if both paddles where behind the ball.
         """
-        self.onRightPaddleHit()
+        self.onRightPaddleHit(ball)
 
     def onRightPaddleHit(self, ball: Ball) -> None:
         """

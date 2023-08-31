@@ -11,7 +11,8 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Signal
 
 from pose_estimation.registry import EXPORTER_REGISTRY
-from pose_estimation.transforms import CsvExporter, RecorderTransformer, Transformer
+from pose_estimation.transforms import CsvExporter, PongDataExporter, \
+    RecorderTransformer, Transformer
 from pose_estimation.ui_utils import FileSelector
 from pose_estimation.video import CVVideoRecorder
 
@@ -187,7 +188,49 @@ class CsvExporterWidget(ExporterWidget):
         if self.file is not None:
             self.file.close()
         self.csvTransformer.setFile(None)
+
+class PongDataExporterWidget(ExporterWidget):
+    """
+    Exporter for the pong data.
+    """
+    pongDataTransformer: PongDataExporter
+    file: Optional[io.TextIOBase]
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the CSV exporter.
+        """
+        ExporterWidget.__init__(self, parent)
+        self.typeLabel.setText("Pong Data Exporter")
+
+        self.pongDataTransformer = PongDataExporter()
+        self.file = None
+
+    def transformer(self) -> None:
+        """
+        Return the transformer for the CSV exporter.
+        """
+        return self.pongDataTransformer
+    
+    def load(self) -> None:
+        """
+        Open the file and set the CSV transformer.
+        """
+        self.file = open(self.fileSelector.selectedFile(), "w", newline="")
+        self.pongDataTransformer.setFile(self.file)
+        self.pongDataTransformer.startRecording()
+
+    def unload(self) -> None:
+        """
+        Close the file
+        """
+        self.pongDataTransformer.endRecording()
+        self.pongDataTransformer.setFile(None)
+
+        if self.file is not None:
+            self.file.close()
     
 
 EXPORTER_REGISTRY.register(VideoExporterWidget, "Video Exporter")
 EXPORTER_REGISTRY.register(CsvExporterWidget, "CSV Exporter")
+EXPORTER_REGISTRY.register(PongDataExporterWidget, "Pong Data Exporter")

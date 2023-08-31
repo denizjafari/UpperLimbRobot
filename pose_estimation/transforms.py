@@ -6,7 +6,7 @@ the frame data object.
 from __future__ import annotations
 from collections import defaultdict
 import logging
-import traceback
+import json
 from typing import Optional
 from enum import Enum
 import time
@@ -689,6 +689,66 @@ class CsvExporter(TransformerStage):
     def __str__(self) -> str:
         return "Exporter"
     
+class PongDataExporter(TransformerStage):
+    """
+    Exports key pong data frame by frame.
+    """
+    pongData: list[dict]
+    file: Optional[io.TextIOBase]
+
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True, previous)
+
+        self.file = None
+        self.record = False
+
+    def setFile(self, file: io.TextIOBase) -> None:
+        """
+        Set the file that the csv should be written to.
+        The previous file is NOT closed.
+        """
+        self.file = file
+
+    def startRecording(self) -> None:
+        """
+        Start recording pong data.
+        """
+        self.pongData = []
+        self.record = True
+
+    def endRecording(self) -> None:
+        """
+        End recording pong data.
+        """
+        if self.file is not None:
+            json.dump(self.pongData, self.file)
+        self.record = False
+        self.pongData = []
+
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Export the first set of keypoints from the list of keypoint sets. This
+        set is subsequently popped from the list.
+        """
+        if self.active() \
+            and "pong" in frameData \
+                and self.record \
+                    and not frameData.dryRun:
+            pongData: dict = frameData["pong"].copy()
+            del pongData["client"]
+            del pongData["events"]
+            self.pongData.append(pongData.copy())
+        
+        self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Pong Data Exporter"
+
+
 class QImageProvider(TransformerStage, QObject):
     """
     Emits a signal with the np.ndarray image converted to a QImage.
