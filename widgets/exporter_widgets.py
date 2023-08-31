@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Signal
 
 from pose_estimation.registry import EXPORTER_REGISTRY
-from pose_estimation.transforms import CsvExporter, PongDataExporter, \
+from pose_estimation.transforms import CsvExporter, MetricsExporter, PongDataExporter, \
     RecorderTransformer, Transformer
 from pose_estimation.ui_utils import FileSelector
 from pose_estimation.video import CVVideoRecorder
@@ -229,8 +229,51 @@ class PongDataExporterWidget(ExporterWidget):
 
         if self.file is not None:
             self.file.close()
+
+
+class MetricsExporterWidget(ExporterWidget):
+    """
+    Exporter for the metrics.
+    """
+    metricsTransformer: MetricsExporter
+    file: Optional[io.TextIOBase]
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        """
+        Initialize the CSV exporter.
+        """
+        ExporterWidget.__init__(self, parent)
+        self.typeLabel.setText("Metrics Exporter")
+
+        self.metricsTransformer = MetricsExporter()
+        self.file = None
+
+    def transformer(self) -> None:
+        """
+        Return the transformer for the CSV exporter.
+        """
+        return self.metricsTransformer
+    
+    def load(self) -> None:
+        """
+        Open the file and set the CSV transformer.
+        """
+        self.file = open(self.fileSelector.selectedFile(), "w", newline="")
+        self.metricsTransformer.setFile(self.file)
+        self.metricsTransformer.startRecording()
+
+    def unload(self) -> None:
+        """
+        Close the file
+        """
+        self.metricsTransformer.endRecording()
+        self.metricsTransformer.setFile(None)
+
+        if self.file is not None:
+            self.file.close()
     
 
 EXPORTER_REGISTRY.register(VideoExporterWidget, "Video Exporter")
 EXPORTER_REGISTRY.register(CsvExporterWidget, "CSV Exporter")
 EXPORTER_REGISTRY.register(PongDataExporterWidget, "Pong Data Exporter")
+EXPORTER_REGISTRY.register(MetricsExporterWidget, "Metrics Exporter")

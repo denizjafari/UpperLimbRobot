@@ -731,8 +731,7 @@ class PongDataExporter(TransformerStage):
 
     def transform(self, frameData: FrameData) -> None:
         """
-        Export the first set of keypoints from the list of keypoint sets. This
-        set is subsequently popped from the list.
+        Add the current pong data to the export.
         """
         if self.active() \
             and "pong" in frameData \
@@ -747,6 +746,72 @@ class PongDataExporter(TransformerStage):
 
     def __str__(self) -> str:
         return "Pong Data Exporter"
+
+
+class MetricsExporter(TransformerStage):
+    """
+    Exports metrics data frame by frame.
+    """
+    metricsData: dict[str, list[float]]
+    file: Optional[io.TextIOBase]
+
+    def __init__(self,
+                 previous: Optional[Transformer] = None) -> None:
+        """
+        Initialize it.
+        """
+        TransformerStage.__init__(self, True, previous)
+
+        self.file = None
+        self.record = False
+    
+    def setFile(self, file: io.TextIOBase) -> None:
+        """
+        Set the file that the csv should be written to.
+        The previous file is NOT closed.
+        """
+        self.file = file
+
+    def startRecording(self) -> None:
+        self.record = True
+        self.metricsData = {}
+
+    def endRecording(self) -> None:
+        self.record = False
+        if self.file is not None:
+            json.dump(self.metricsData, self.file)
+    
+    def transform(self, frameData: FrameData) -> None:
+        """
+        Add all current metrics data to the export.
+        """
+        if self.active() \
+            and "metrics" in frameData \
+                and "metrics_max" in frameData \
+                    and "metrics_min" in frameData \
+                        and self.record \
+                            and not frameData.dryRun:
+            metrics: dict = frameData["metrics"]
+            metricsMin: dict = frameData["metrics_min"]
+            metricsMax: dict = frameData["metrics_max"]
+
+            for key in metrics:
+                if key not in self.metricsData:
+                    self.metricsData[key] = []
+
+                d = {}
+                d["value"] = metrics[key]
+                if key in metricsMin:
+                    d["min"] = metricsMin[key]
+                if key in metricsMax:
+                    d["max"] = metricsMax[key]
+                    
+                self.metricsData[key].append(d)
+        
+        self.next(frameData)
+
+    def __str__(self) -> str:
+        return "Metrics Exporter"
 
 
 class QImageProvider(TransformerStage, QObject):
