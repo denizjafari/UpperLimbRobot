@@ -34,7 +34,7 @@ class ExporterWidget(QWidget):
         self.typeLabel = QLabel("Exporter")
         self.hLayout.addWidget(self.typeLabel)
 
-        self.fileSelector = FileSelector()
+        self.fileSelector = FileSelector(mode=FileSelector.MODE_SAVE)
         self.hLayout.addWidget(self.fileSelector)
         
         self.removeButton = QPushButton("Remove")
