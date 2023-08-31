@@ -292,7 +292,7 @@ class RecorderTransformerWidget(TransformerWidget):
     transformer: Pipeline
 
     def __init__(self,
-                 parent: Optional[QWidget] = None, ) -> None:
+                 parent: Optional[QWidget] = None) -> None:
         """
         Initialize the RecorderTransformerWidget.
         """
@@ -424,10 +424,11 @@ class ExporterTransformerWidget(TransformerWidget):
     transformer: Pipeline
     exporters: list[ExporterWidget]
 
-    def __init__(self) -> None:
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
         Initiaize the ExporterTransformerWidget.
         """
+        TransformerWidget.__init__(self, title="Exporter", parent=parent)
         self.exporters: list[ExporterWidget] = []
         self.recordingActive = False
 
@@ -463,9 +464,9 @@ class ExporterTransformerWidget(TransformerWidget):
         """
         transformer = exporter.transformer()
 
-        self.transformer.flowLock()
+        self.transformer.recursiveLock()
         self.transformer.remove(transformer)
-        self.transformer.flowUnlock()
+        self.transformer.recursiveUnlock()
 
         self.exporters.remove(exporter)
         exporter.deleteLater()
@@ -479,32 +480,32 @@ class ExporterTransformerWidget(TransformerWidget):
 
         exporter.removed.connect(lambda: self.removeExporter(exporter))
         self.exporters.append(exporter)
+        self.vExportersLayout.addWidget(exporter)
 
-        self.transformer.flowLock()
+        self.transformer.recursiveLock()
         self.transformer.append(exporter.transformer())
-        self.transformer.flowUnlock()
+        self.transformer.recursiveUnlock()
     
     def toggleRecording(self) -> None:
         """
         Start/stop recording by simultaneously loading/unloading transformers.
         """
-        if self.recordingActive:
-            self.transformer.flowLock()
-
+        if not self.recordingActive:
+            self.transformer.recursiveLock()
             for exporter in self.exporters:
                 exporter.load()
-            self.transformer.flowUnlock()
-
-            self.toggleRecordingButton.setText("Start Recording")
-            self.recordingActive = False
-        else:
-            self.transformer.flowLock()
-            for exporter in self.exporters:
-                exporter.unload()
-            self.transformer.flowUnlock()
+            self.transformer.recursiveUnlock()
 
             self.toggleRecordingButton.setText("Stop Recording")
             self.recordingActive = True
+        else:
+            self.transformer.recursiveLock()
+            for exporter in self.exporters:
+                exporter.unload()
+            self.transformer.recursiveUnlock()
+
+            self.toggleRecordingButton.setText("Start Recording")
+            self.recordingActive = False
 
 
 class QCameraSourceWidget(TransformerWidget):
@@ -783,6 +784,7 @@ WIDGET_REGISTRY.register(ModelRunnerWidget, "Model")
 WIDGET_REGISTRY.register(SkeletonDrawerWidget, "Skeleton")
 WIDGET_REGISTRY.register(LandmarkDrawerWidget, "Landmarks")
 WIDGET_REGISTRY.register(RecorderTransformerWidget, "Recorder")
+WIDGET_REGISTRY.register(ExporterTransformerWidget, "Exporter")
 WIDGET_REGISTRY.register(MetricViewWidget, "Metrics")
 WIDGET_REGISTRY.register(SlidingAverageWidget, "Sliding Average")
 WIDGET_REGISTRY.register(ButterworthWidget, "Butterworth Filter")

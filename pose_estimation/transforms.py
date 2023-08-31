@@ -168,7 +168,7 @@ class Transformer:
     def next(self, frameData: FrameData) -> None:
         """
         Run the next stage in the pipeline. First acquire the lock of the next
-        stage before unlockint this stage.
+        stage before unlocking this stage.
         """
         if "timings" not in frameData:
             frameData["timings"] = []
@@ -343,7 +343,7 @@ class Pipeline(Transformer):
         for t in self.transformers:
             t.recursiveLock()
 
-    def fullUnlock(self) -> None:
+    def recursiveUnlock(self) -> None:
         """
         Unlock all stages in the pipeline.
         """
