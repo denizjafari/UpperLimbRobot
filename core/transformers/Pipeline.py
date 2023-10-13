@@ -54,7 +54,7 @@ class Pipeline(ITransformer):
 
         self.recursiveUnlock()
 
-    def setNextITransformer(self, nextTransformer: Optional[ITransformer]) -> None:
+    def setNextTransformer(self, nextTransformer: Optional[ITransformer]) -> None:
         """
         Set the transformer that should be run after the pipeline is completed.
         """
