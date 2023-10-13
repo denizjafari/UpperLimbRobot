@@ -10,12 +10,12 @@ import io
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Signal
 
-from app.resource_management.registry import REGISTRY
-from app.transformers.transformers import RecorderTransformer
-from app.transformers.exporters import CsvExporter, PongDataExporter, MetricsExporter
-from app.transformers.ITransformer import ITransformer
-from app.ui.utils import FileSelector
-from app.resource_management.video.CVVideoRecorder import CVVideoRecorder
+from core.resource_management.registry import REGISTRY
+from core.transformers.transformers import RecorderTransformer
+from core.transformers.exporters import CsvExporter, PongDataExporter, MetricsExporter
+from core.transformers.ITransformer import ITransformer
+from core.ui.utils import FileSelector
+from core.resource_management.video.CVVideoRecorder import CVVideoRecorder
 
 
 class ExporterWidget(QWidget):

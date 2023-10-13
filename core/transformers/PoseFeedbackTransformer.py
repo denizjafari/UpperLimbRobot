@@ -4,10 +4,10 @@ import logging
 
 import cv2
 
-from app.transformers.ITransformer import ITransformer
-from app.transformers.ITransformerStage import ITransformerStage
-from app.transformers.utils import FrameData
-from app.resource_management.registry import REGISTRY
+from core.transformers.ITransformer import ITransformer
+from core.transformers.ITransformerStage import ITransformerStage
+from core.transformers.utils import FrameData
+from core.resource_management.registry import REGISTRY
 
 module_logger = logging.getLogger(__name__)
 

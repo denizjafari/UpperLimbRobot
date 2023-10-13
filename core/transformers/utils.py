@@ -2,8 +2,8 @@ from typing import Optional
 
 import numpy as np
 
-from app.ui.metric_widgets import MetricWidget
-from app.keypoint_sets.IKeyPointSet import IKeypointSet
+from core.ui.metric_widgets import MetricWidget
+from core.keypoint_sets.IKeyPointSet import IKeypointSet
 
 class FrameData:
     """

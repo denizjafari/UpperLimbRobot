@@ -8,10 +8,10 @@ from mediapipe.tasks.python import vision
 
 VisionRunningMode = mp.tasks.vision.RunningMode
 
-from app.resource_management.registry import REGISTRY
-from app.keypoint_sets.IKeyPointSet import IKeypointSet
-from app.keypoint_sets.SimpleyKeypointSet import SimpleKeypointSet
-from app.models.IModel import IModel
+from core.resource_management.registry import REGISTRY
+from core.keypoint_sets.IKeyPointSet import IKeypointSet
+from core.keypoint_sets.SimpleyKeypointSet import SimpleKeypointSet
+from core.models.IModel import IModel
 
 class BlazePose(IModel):
     """

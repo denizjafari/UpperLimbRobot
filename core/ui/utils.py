@@ -13,10 +13,10 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
     QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip, QComboBox
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
-from app.protocols.events import Client
+from core.protocols.events import Client
 
-from app.models.IModel import IModel
-from app.resource_management.registry import REGISTRY
+from core.models.IModel import IModel
+from core.resource_management.registry import REGISTRY
 
 
 # The frame dimensions and rate for which a suitable format is selected.

@@ -16,14 +16,14 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, \
 from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 
-from app.ui.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup
-from app.resource_management.registry import REGISTRY
-from app.ui.ITransformerWidget import TransformerWidget
-from app.transformers.utils import FrameData
-from app.transformers.Pipeline import Pipeline
-from app.transformers.ITransformer import ITransformer
-from app.transformers.transformers import FrameDataProvider, QImageProvider, Scaler
-from app.transformers.TransformerHead import TransformerHead
+from core.ui.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup
+from core.resource_management.registry import REGISTRY
+from core.ui.ITransformerWidget import TransformerWidget
+from core.transformers.utils import FrameData
+from core.transformers.Pipeline import Pipeline
+from core.transformers.ITransformer import ITransformer
+from core.transformers.transformers import FrameDataProvider, QImageProvider, Scaler
+from core.transformers.TransformerHead import TransformerHead
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

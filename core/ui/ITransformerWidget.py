@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QGroupBox, QCheckBox, QPushButton, QHBoxLayout, \
     QVBoxLayout, QLabel, QWidget
 from PySide6.QtCore import Signal
 
-from app.transformers.ITransformer import ITransformer
+from core.transformers.ITransformer import ITransformer
 
 class TransformerWidget(QGroupBox):
     """

@@ -1,6 +1,6 @@
 import numpy as np
 
-import app.keypoint_sets.IKeyPointSet as IKeypointSet
+from core.keypoint_sets.IKeyPointSet import IKeypointSet
 
 class IModel:
     """

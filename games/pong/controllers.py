@@ -12,9 +12,9 @@ import logging
 from PySide6.QtWidgets import QWidget, QFormLayout
 from PySide6.QtCore import Qt
 
-from app.protocols.events import Event, Client
-from app.resource_management.registry import REGISTRY
-from app.ui.utils import LabeledQSlider
+from core.protocols.events import Event, Client
+from core.resource_management.registry import REGISTRY
+from core.ui.utils import LabeledQSlider
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

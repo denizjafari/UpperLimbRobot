@@ -2,9 +2,9 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from app.models.IModel import IModel
-from app.keypoint_sets.IKeyPointSet import IKeypointSet
-from app.keypoint_sets.SimpleyKeypointSet import SimpleKeypointSet
+from core.models.IModel import IModel
+from core.keypoint_sets.IKeyPointSet import IKeypointSet
+from core.keypoint_sets.SimpleyKeypointSet import SimpleKeypointSet
 
 
 class MoveNetLightning(IModel):

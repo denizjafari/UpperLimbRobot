@@ -15,18 +15,18 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
 from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QColor
 
-from app.resource_management.registry import GLOBAL_PROPS, REGISTRY
-from app.ui.ITransformerWidget import TransformerWidget
-from app.resource_management.video.CVVideoFileSource import CVVideoFileSource
-from app.resource_management.video.QVideoSource import QVideoSource
+from core.resource_management.registry import GLOBAL_PROPS, REGISTRY
+from core.ui.ITransformerWidget import TransformerWidget
+from core.resource_management.video.CVVideoFileSource import CVVideoFileSource
+from core.resource_management.video.QVideoSource import QVideoSource
 
-from app.transformers.transformers import BackgroundRemover, ButterworthTransformer, \
+from core.transformers.transformers import BackgroundRemover, ButterworthTransformer, \
     CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, \
         MetricTransformer, MinMaxTransformer, ModelRunner, \
             Scaler, SkeletonDrawer, SlidingAverageTransformer, \
                 VideoSourceTransformer
-from app.transformers.Pipeline import Pipeline
-from app.ui.utils import CameraSelector, FileSelector, \
+from core.transformers.Pipeline import Pipeline
+from core.ui.utils import CameraSelector, FileSelector, \
     LabeledQSlider, MetricSelector, ModelSelector
 from extensions.widgets.exporter_widgets import ExporterWidget
 

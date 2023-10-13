@@ -14,9 +14,9 @@ import time
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThreadPool
 
-from app.ui.modular_pose_processing import ModularPoseProcessorWidget
-from app.profiles import UserProfile, UserProfileSelector
-from app.resource_management.registry import GLOBAL_PROPS
+from core.ui.modular_pose_processing import ModularPoseProcessorWidget
+from core.profiles import UserProfile, UserProfileSelector
+from core.resource_management.registry import GLOBAL_PROPS
 
 
 module_logger = logging.getLogger(__name__)

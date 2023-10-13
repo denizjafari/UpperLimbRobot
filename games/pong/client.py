@@ -6,12 +6,12 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-from app.transformers.ITransformer import ITransformer
-from app.transformers.ITransformerStage import ITransformerStage
-from app.transformers.utils import FrameData
-from app.protocols.events import Event, Client
-from app.resource_management.registry import REGISTRY
-from app.resource_management.audio.QSound import QSound
+from core.transformers.ITransformer import ITransformer
+from core.transformers.ITransformerStage import ITransformerStage
+from core.transformers.utils import FrameData
+from core.protocols.events import Event, Client
+from core.resource_management.registry import REGISTRY
+from core.resource_management.audio.QSound import QSound
 from .controllers import PongController
 
 module_logger = logging.getLogger(__name__)

@@ -22,13 +22,13 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
 from extensions.models.mediapipe import BlazePose
-from app.models.IModel import IModel
-from app.resource_management.video.IVideoRecorder import IVideoRecorder
-from app.resource_management.video.IVideoSource import IVideoSource
-from app.resource_management.video.utils import npArrayToQImage, NoMoreFrames
-from app.transformers.ITransformerStage import ITransformerStage
-from app.transformers.ITransformer import ITransformer
-from app.transformers.utils import FrameData
+from core.models.IModel import IModel
+from core.resource_management.video.IVideoRecorder import IVideoRecorder
+from core.resource_management.video.IVideoSource import IVideoSource
+from core.resource_management.video.utils import npArrayToQImage, NoMoreFrames
+from core.transformers.ITransformerStage import ITransformerStage
+from core.transformers.ITransformer import ITransformer
+from core.transformers.utils import FrameData
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

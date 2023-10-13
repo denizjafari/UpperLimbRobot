@@ -10,15 +10,15 @@ import logging
 from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
     QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QComboBox, QGroupBox
 from PySide6.QtCore import Qt
-from app.protocols.events import Client
+from core.protocols.events import Client
 from games.pong.controllers import PongController
-from app.resource_management.registry import REGISTRY
+from core.resource_management.registry import REGISTRY
 
-from app.ui.utils import ConnectionWidget, LabeledQSlider, MetricSelector
+from core.ui.utils import ConnectionWidget, LabeledQSlider, MetricSelector
 from games.pong.client import PongClient, PongControllerWrapper
 from games.reach.client import ReachClient
 from games.snake.client import SnakeClient
-from app.transformers.PoseFeedbackTransformer import PoseFeedbackTransformer
+from core.transformers.PoseFeedbackTransformer import PoseFeedbackTransformer
 from extensions.widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)

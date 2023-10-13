@@ -5,11 +5,11 @@ import logging
 
 from PySide6.QtCore import QObject
 
-from app.transformers.ITransformerStage import ITransformerStage
-from app.transformers.ITransformer import ITransformer
-from app.transformers.utils import FrameData
-from app.gestures.detectors import LeftChickenWingDetector, RightChickenWingDetector
-from app.protocols.events import Event, Client
+from core.transformers.ITransformerStage import ITransformerStage
+from core.transformers.ITransformer import ITransformer
+from core.transformers.utils import FrameData
+from core.gestures.detectors import LeftChickenWingDetector, RightChickenWingDetector
+from core.protocols.events import Event, Client
 
 module_logger = logging.getLogger(__name__)
 

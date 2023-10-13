@@ -6,9 +6,9 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
-from app.transformers.ITransformerStage import ITransformerStage
-from app.transformers.utils import FrameData
-from app.protocols.events import Event, Client
+from core.transformers.ITransformerStage import ITransformerStage
+from core.transformers.utils import FrameData
+from core.protocols.events import Event, Client
 
 module_logger = logging.getLogger(__name__)
 
