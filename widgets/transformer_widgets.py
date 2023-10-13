@@ -564,6 +564,8 @@ class MinMaxWidget(TransformerWidget):
         self.selectedMetric = ""
 
         self.metricSelector = MetricSelector()
+        self.transformer.availableMetricsUpdated.connect(
+            self.metricSelector.updateMetricsList)
         self.metricSelector.metricSelected.connect(self.setSelectedMetric)
         self.vLayout.addWidget(self.metricSelector)
 
