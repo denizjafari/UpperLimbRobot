@@ -302,6 +302,9 @@ class Pipeline(Transformer):
         index = self.transformers.index(transformer)
         if index > 0:
             self.transformers[index - 1].setNextTransformer(transformer.getNextTransformer())
+        if len(self.transformers) == 1:
+            # There is no other transformer to work with
+            self._next = transformer.getNextTransformer()
         transformer.setNextTransformer(None)
         self.transformers.pop(index)
 
@@ -311,16 +314,15 @@ class Pipeline(Transformer):
         """
         Set the transformer that should be run after the pipeline is completed.
         """
+        super().setNextTransformer(nextTransformer)
         if len(self.transformers) > 0:
             self.transformers[-1].setNextTransformer(nextTransformer)
-        super().setNextTransformer(nextTransformer)
 
-    def getNextTransformer(self) -> None:
+    def getNextTransformer(self) -> Optional[Transformer]:
         """
         Get the transformer that is run after the pipeline is completed.
         """
-        return self.transformers[-1].getNextTransformer() \
-            if len(self.transformers) > 0 else None
+        return self._next
 
     def start(self, frameData: FrameData) -> None:
         """
@@ -360,10 +362,12 @@ class Pipeline(Transformer):
 
     def next(self, frameData: FrameData) -> None:
         """
-        Do nothing. Running the first stage after this pipeline is coordinated
-        by the last stage in this pipeline.
+        If the next transformer is defined, run it.
         """
-        pass
+        nextTransformer = self.getNextTransformer()
+        if nextTransformer is not None:
+            nextTransformer.flowLock()
+            nextTransformer.transform(frameData)
     
     def transform(self, frameData: FrameData) -> None:
         """
@@ -371,6 +375,9 @@ class Pipeline(Transformer):
         """
         if self.active() and len(self.transformers) > 0:
             self.transformers[0].transform(frameData)
+        else:
+            self.next(frameData)
+
     
 class ImageMirror(TransformerStage):
     """
