@@ -19,7 +19,7 @@ from games.pong.client import PongClient, PongControllerWrapper
 from games.reach.client import ReachClient
 from games.snake.client import SnakeClient
 from app.transformers.PoseFeedbackTransformer import PoseFeedbackTransformer
-from widgets.transformer_widgets import TransformerWidget
+from extensions.widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

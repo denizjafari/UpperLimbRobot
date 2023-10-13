@@ -28,7 +28,7 @@ from app.transformers.transformers import BackgroundRemover, ButterworthTransfor
 from app.transformers.Pipeline import Pipeline
 from app.ui.utils import CameraSelector, FileSelector, \
     LabeledQSlider, MetricSelector, ModelSelector
-from widgets.exporter_widgets import ExporterWidget
+from extensions.widgets.exporter_widgets import ExporterWidget
 
 
 module_logger = logging.getLogger(__name__)

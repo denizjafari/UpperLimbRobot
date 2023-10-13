@@ -21,7 +21,7 @@ from scipy import signal
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
-from models.mediapipe import BlazePose
+from extensions.models.mediapipe import BlazePose
 from app.models.IModel import IModel
 from app.resource_management.video.IVideoRecorder import IVideoRecorder
 from app.resource_management.video.IVideoSource import IVideoSource

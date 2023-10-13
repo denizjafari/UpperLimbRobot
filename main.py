@@ -23,18 +23,19 @@ module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
 
 
-def importFrom(dir):
+def importFrom(rel, path):
     """
-    Import all modules from a directory relative to the script's location.
+    Import all modules from an absolute directory.
     """
-    basePath = os.path.dirname(__file__)
-    basePath = basePath + "/" if basePath != "" else ""
-    path = basePath + dir
-    module_logger.info("Importing from " + path)
     for module in os.listdir(path):
         if module == '__init__.py' or module[-3:] != '.py':
+            next_path = os.path.join(path, module)
+            if os.path.isdir(next_path):
+                importFrom(rel + "." + module, next_path)
             continue
-        importlib.import_module(dir + "." + module[:-3])
+        abs_mod_path = os.path.join(rel + "." + module[:-3])
+        print(f"Importing {abs_mod_path}")
+        importlib.import_module(abs_mod_path)
 
 def save(window: ModularPoseProcessorWidget):
     """
@@ -126,8 +127,10 @@ if __name__ == "__main__":
     loggingHandler.setLevel(logging.DEBUG)
     logging.getLogger().addHandler(loggingHandler)
 
-    importFrom("widgets")
-    importFrom("models")
+    basePath = os.path.dirname(__file__)
+    basePath = basePath + "/" if basePath != "" else ""
+    path = os.path.join(basePath, "extensions")
+    importFrom("extensions", path)
 
     app = QApplication(sys.argv)
 
