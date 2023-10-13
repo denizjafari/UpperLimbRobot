@@ -10,13 +10,15 @@ import logging
 from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout, \
     QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QComboBox, QGroupBox
 from PySide6.QtCore import Qt
-from events import Client
+from app.protocols.events import Client
 from pose_estimation.pong_controllers import PongController
 from app.resource_management.registry import REGISTRY
 
 from app.ui.utils import ConnectionWidget, LabeledQSlider, MetricSelector
-from pose_estimation.games import PongClient, PongControllerWrapper, \
-    PoseFeedbackTransformer, ReachClient, Snake, SnakeClient
+from games.pong.client import PongClient, PongControllerWrapper
+from games.reach.client import ReachClient
+from games.snake.client import SnakeClient
+from app.transformers.PoseFeedbackTransformer import PoseFeedbackTransformer
 from widgets.transformer_widgets import TransformerWidget
 
 module_logger = logging.getLogger(__name__)
@@ -64,31 +66,6 @@ class PoseFeedbackWidget(TransformerWidget):
     def __str__(self) -> str:
         return "Feedback"
 
-class SnakeWidget(TransformerWidget):
-    """
-    Widget controlling the snake game transformer and the game itself.
-    """
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        TransformerWidget.__init__(self, "Snake Game", parent)
-        self.transformer = Snake()
-
-        self.hLayout = QHBoxLayout()
-        self.vLayout.addLayout(self.hLayout)
-
-        self.hLayout.addWidget(QLabel("Timer Interval", self))
-        
-        self.timerIntervalSlider = LabeledQSlider(self, orientation=Qt.Orientation.Horizontal)
-        self.timerIntervalSlider.setMinimum(100)
-        self.timerIntervalSlider.setMaximum(3000)
-        self.timerIntervalSlider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.timerIntervalSlider.setTickInterval(500)
-        self.timerIntervalSlider.valueChanged.connect(self.transformer.setTimerInterval)
-        self.hLayout.addWidget(self.timerIntervalSlider)
-
-
-    def __str__(self) -> str:
-        return "Snake"
-    
 class SnakeServerWidget(TransformerWidget):
     """
     Widget controlloing the sending of events to a snake game running remotely.
@@ -423,7 +400,6 @@ class ReachServerWidget(TransformerWidget):
 
 
 REGISTRY.register(PoseFeedbackWidget, "widgets.Feedback")
-REGISTRY.register(SnakeWidget, "widgets.Snake Game")
 REGISTRY.register(SnakeServerWidget, "widgets.Snake Server")
 REGISTRY.register(PongServerWidget, "widgets.Pong Server")
 REGISTRY.register(PongControllerWidget, "widgets.Pong Controller")

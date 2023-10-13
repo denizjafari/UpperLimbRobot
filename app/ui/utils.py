@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QRadioButton, QHBoxLayout, \
     QAbstractSlider, QStyleOptionSlider, QStyle, QToolTip, QComboBox
 from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
-from events import Client
+from app.protocols.events import Client
 
 from app.models.IModel import IModel
 from app.resource_management.registry import REGISTRY

@@ -16,7 +16,7 @@ from PySide6.QtWidgets import QLabel, QWidget, QVBoxLayout
 from PySide6.QtGui import QPainter, QBrush, QPen, QColor, QPaintEvent, \
     QKeyEvent, QImage
 
-from events import Event, GameAdapter
+from app.protocols.events import Event, GameAdapter
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

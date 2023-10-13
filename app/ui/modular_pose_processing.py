@@ -18,7 +18,7 @@ from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 
 from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup
 from app.resource_management.registry import REGISTRY
-from pose_estimation.transformer_widgets import TransformerWidget
+from app.ui.ITransformerWidget import TransformerWidget
 from app.transformers.utils import FrameData
 from app.transformers.Pipeline import Pipeline
 from app.transformers.ITransformer import ITransformer

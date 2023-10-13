@@ -16,7 +16,7 @@ from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QColor
 
 from app.resource_management.registry import GLOBAL_PROPS, REGISTRY
-from pose_estimation.transformer_widgets import TransformerWidget
+from app.ui.ITransformerWidget import TransformerWidget
 from app.resource_management.video.CVVideoFileSource import CVVideoFileSource
 from app.resource_management.video.QVideoSource import QVideoSource
 

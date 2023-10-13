@@ -12,11 +12,11 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, \
     QStackedWidget, QPushButton, QFormLayout, QLineEdit
 from PySide6.QtGui import QIntValidator
 
-from events import GameAdapter, Server
-from game_hosts.pong import PongGameWindow, PongServerAdapter, \
+from app.protocols.events import GameAdapter, Server
+from games.pong.server import PongGameWindow, PongServerAdapter, \
     SharedScreenPongGame, SoloBallStormPongGame, SplitScreenPongGame, TwoPlayerPongGame
-from game_hosts.reach import ReachBoard, ReachServerAdapter, ReachWindow
-from game_hosts.snake import SnakeGame, SnakeServerAdapter
+from games.reach.server import ReachBoard, ReachServerAdapter, ReachWindow
+from games.snake.server import SnakeGame, SnakeServerAdapter
 
 
 def addGame(    window: QStackedWidget,

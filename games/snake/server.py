@@ -10,10 +10,10 @@ from typing import Optional
 import sys
 from random import randrange
 
-from PySide6.QtCore import QTimer, Qt, QThreadPool
-from PySide6.QtWidgets import QWidget, QLabel, QApplication
+from PySide6.QtCore import QTimer, Qt
+from PySide6.QtWidgets import QWidget, QLabel
 from PySide6.QtGui import QPaintEvent, QPainter
-from events import GameAdapter, Server, Event
+from app.protocols.events import GameAdapter, Event
 
 
 SQUARE_SIZE = 30

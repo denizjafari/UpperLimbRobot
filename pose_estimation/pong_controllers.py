@@ -11,7 +11,7 @@ import logging
 from PySide6.QtWidgets import QWidget, QFormLayout
 from PySide6.QtCore import Qt
 
-from events import Event, Client
+from app.protocols.events import Event, Client
 from app.resource_management.registry import REGISTRY
 from app.ui.utils import LabeledQSlider
 

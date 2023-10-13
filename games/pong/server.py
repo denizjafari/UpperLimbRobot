@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QApplication, QVBoxLayout, \
 from PySide6.QtGui import QPaintEvent, QPainter, QKeyEvent, QBrush, QPen, \
     QColor
 
-from events import Event, GameAdapter
+from app.protocols.events import Event, GameAdapter
 
 
 module_logger = logging.getLogger(__name__)
