@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from pose_estimation.metric_widgets import MetricWidget
+from app.ui.metric_widgets import MetricWidget
 from app.keypoint_sets.IKeyPointSet import IKeypointSet
 
 class FrameData:

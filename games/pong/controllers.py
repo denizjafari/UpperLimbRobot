@@ -4,6 +4,7 @@ pong game based on game data.
 
 Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 """
+
 from __future__ import annotations
 
 import logging

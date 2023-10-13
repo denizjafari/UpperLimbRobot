@@ -12,7 +12,7 @@ from app.transformers.utils import FrameData
 from app.protocols.events import Event, Client
 from app.resource_management.registry import REGISTRY
 from app.resource_management.audio.QSound import QSound
-from pose_estimation.pong_controllers import PongController
+from .controllers import PongController
 
 module_logger = logging.getLogger(__name__)
 

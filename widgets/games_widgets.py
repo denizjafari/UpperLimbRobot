@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout
     QButtonGroup, QRadioButton, QVBoxLayout, QFormLayout, QComboBox, QGroupBox
 from PySide6.QtCore import Qt
 from app.protocols.events import Client
-from pose_estimation.pong_controllers import PongController
+from games.pong.controllers import PongController
 from app.resource_management.registry import REGISTRY
 
 from app.ui.utils import ConnectionWidget, LabeledQSlider, MetricSelector
