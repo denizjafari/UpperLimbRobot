@@ -26,7 +26,7 @@ from app.transformers.transformers import BackgroundRemover, ButterworthTransfor
             Scaler, SkeletonDrawer, SlidingAverageTransformer, \
                 VideoSourceTransformer
 from app.transformers.Pipeline import Pipeline
-from pose_estimation.ui_utils import CameraSelector, FileSelector, \
+from app.ui.utils import CameraSelector, FileSelector, \
     LabeledQSlider, MetricSelector, ModelSelector
 from widgets.exporter_widgets import ExporterWidget
 

@@ -6,7 +6,7 @@ Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
 
 from __future__ import annotations
 import time
-from typing import  Callable, Optional
+from typing import Optional
 
 import logging
 import numpy as np

@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from pose_estimation.metric_widgets import MetricWidget
-from models.models import KeypointSet
+from app.keypoint_sets.IKeyPointSet import IKeypointSet
 
 class FrameData:
     """
@@ -30,7 +30,7 @@ class FrameData:
     streamEnded: bool
     metrics: dict[str, MetricWidget]
     image: Optional[np.ndarray]
-    keypointSets: list[KeypointSet]
+    keypointSets: list[IKeypointSet]
 
     def __init__(self,
                  width: int = -1,
@@ -39,7 +39,7 @@ class FrameData:
                  image: Optional[np.ndarray] = None,
                  streamEnded: bool = False,
                  frameRate: int = -1,
-                 keypointSets: Optional[list[KeypointSet]] = None):
+                 keypointSets: Optional[list[IKeypointSet]] = None):
         """
         Initialize the FrameData object.
         """

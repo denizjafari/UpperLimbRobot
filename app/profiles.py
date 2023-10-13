@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QVBoxLayout, \
     QPushButton, QLabel, QHBoxLayout, QGroupBox, QDialog
 from PySide6.QtCore import Signal
 
-from pose_estimation.ui_utils import FileSelector
+from app.ui.utils import FileSelector
 
 
 module_logger = logging.getLogger(__name__)

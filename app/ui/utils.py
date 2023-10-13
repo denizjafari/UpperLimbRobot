@@ -15,7 +15,7 @@ from PySide6.QtMultimedia import QCamera, QCameraDevice, QMediaDevices
 from PySide6.QtCore import Signal, Slot, QPoint
 from events import Client
 
-from models.models import PoseModel
+from app.models.IModel import IModel
 from app.resource_management.registry import REGISTRY
 
 
@@ -136,8 +136,8 @@ class ModelSelectorButton(QRadioButton):
     """
     A Radio button that allows selection of one model.
     """
-    model: PoseModel
-    selected = Signal(PoseModel)
+    model: IModel
+    selected = Signal(IModel)
 
     def __init__(self, modelName: str) -> None:
         """
@@ -160,7 +160,7 @@ class ModelSelector(QGroupBox):
     """
     A selector that can select all available models.
     """
-    modelSelected = Signal(PoseModel)
+    modelSelected = Signal(IModel)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         """
@@ -187,7 +187,7 @@ class ModelSelector(QGroupBox):
         for model in REGISTRY.items("models"):
             self.addModel(model)
 
-    @Slot(PoseModel)
+    @Slot(IModel)
     def addModel(self, modelName: str) -> None:
         button = ModelSelectorButton(modelName)
         button.selected.connect(self.modelSelected)

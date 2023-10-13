@@ -13,7 +13,7 @@ from PySide6.QtCore import Qt
 
 from events import Event, Client
 from app.resource_management.registry import REGISTRY
-from pose_estimation.ui_utils import LabeledQSlider
+from app.ui.utils import LabeledQSlider
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)

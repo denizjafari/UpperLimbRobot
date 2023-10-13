@@ -14,8 +14,8 @@ import time
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QThreadPool
 
-from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
-from pose_estimation.profiles import UserProfile, UserProfileSelector
+from app.ui.modular_pose_processing import ModularPoseProcessorWidget
+from app.profiles import UserProfile, UserProfileSelector
 from app.resource_management.registry import GLOBAL_PROPS
 
 

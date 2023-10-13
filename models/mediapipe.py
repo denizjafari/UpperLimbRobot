@@ -1,11 +1,3 @@
-"""
-Machine Learning models used for pose estimation. Includes full support for the
-MediaPipe BlazePose model and partial support for MoveNet. A model inteface is
-provided alongside an interface for keypoint sets.
-
-Author: Henrik Zimmermann <henrik.zimmermann@utoronto.ca>
-"""
-
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -16,75 +8,12 @@ from mediapipe.tasks.python import vision
 
 VisionRunningMode = mp.tasks.vision.RunningMode
 
-from pose_estimation.Models import KeypointSet, PoseModel, SimpleKeypointSet
+from app.resource_management.registry import REGISTRY
+from app.keypoint_sets.IKeyPointSet import IKeypointSet
+from app.keypoint_sets.SimpleyKeypointSet import SimpleKeypointSet
+from app.models.IModel import IModel
 
-from app.resource_management.registry import REGISTRY    
-
-class MoveNetLightning(PoseModel):
-    """
-    The MoveNet Model in lightning flavor.
-    """
-    def __init__(self) -> None:
-        """
-        Initialize the model by loading it from tensorflow hub.
-        """
-        module = hub.load("https://tfhub.dev/google/movenet/singlepose/lightning/4")
-        self.inputSize = 192
-        self.movenet = module.signatures['serving_default']
-            
-
-    def detect(self, image: np.ndarray) -> KeypointSet:
-        """
-        Detect the pose in the given image. The image has to have dimensions
-        (height, width, channels).
-
-        image - the image to analyze.
-        """
-        image = tf.expand_dims(image, axis=0)
-        image = tf.image.resize(image, (self.inputSize, self.inputSize))
-        image = tf.cast(image, dtype=np.int32)
-
-        output = self.movenet(image)["output_0"].numpy()[0, 0].tolist()
-
-        return SimpleKeypointSet(output, [])
-    
-    def __str__(self) -> str:
-        return "MoveNet (Lightning)"
-    
-
-class MoveNetThunder(PoseModel):
-    """
-    The MoveNet Model in thunder flavor.
-    """
-    def __init__(self) -> None:
-        """
-        Initialize the model by loading it from tensorflow hub.
-        """
-        module = hub.load("https://tfhub.dev/google/movenet/singlepose/thunder/4")
-        self.inputSize = 256
-        self.movenet = module.signatures['serving_default']
-            
-
-    def detect(self, image: np.ndarray) -> KeypointSet:
-        """
-        Detect the pose in the given image. The image has to have dimensions
-        (height, width, channels).
-
-        image - the image to analyze.
-        """
-        image = tf.expand_dims(image, axis=0)
-        image = tf.image.resize(image, (self.inputSize, self.inputSize))
-        image = tf.cast(image, dtype=np.int32)
-
-        output = self.movenet(image)["output_0"].numpy()[0, 0].tolist()
-
-        return SimpleKeypointSet(output, [])
-    
-    def __str__(self) -> str:
-        return "MoveNet (Thunder)"
-    
-
-class BlazePose(PoseModel):
+class BlazePose(IModel):
     """
     The BlazePose Model from MediaPipe in Full flavor.
     """
@@ -95,7 +24,7 @@ class BlazePose(PoseModel):
                      static_image_mode=False)
         self.inputSize = 256
     
-    def detect(self, image: np.ndarray) -> KeypointSet:
+    def detect(self, image: np.ndarray) -> IKeypointSet:
         """
         Detect the pose in the given image. The image has to have dimensions
         (height, width, channels).
@@ -118,7 +47,7 @@ class BlazePose(PoseModel):
     def __str__(self) -> str:
         return "BlazePose"
     
-    class KeypointSet(KeypointSet):
+    class KeypointSet(IKeypointSet):
         keypoints: list[list[float]]
 
         def __init__(self, output) -> None:
@@ -165,7 +94,7 @@ class BlazePose(PoseModel):
         def getLeftWrist(self) -> list[float]:
             return self.getKeypoints()[15]
         
-class BlazePoseHeavy(PoseModel):
+class BlazePoseHeavy(IModel):
     """
     New (?) version of the BlazePose Model from MediaPipe in Heavy flavour.
     """
@@ -179,7 +108,7 @@ class BlazePoseHeavy(PoseModel):
         self.detector = vision.PoseLandmarker.create_from_options(options)
         self.inputSize = 224
 
-    def detect(self, image: np.ndarray) -> KeypointSet:
+    def detect(self, image: np.ndarray) -> IKeypointSet:
         image = tf.image.resize(image, (self.inputSize, self.inputSize))
         image = tf.cast(image, dtype=np.uint8).numpy()
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
@@ -193,7 +122,7 @@ class BlazePoseHeavy(PoseModel):
 
         return result
     
-class BlazePoseLite(PoseModel):
+class BlazePoseLite(IModel):
     """
     New (?) version of the BlazePose Model from MediaPipe in Lite flavour.
     """
@@ -208,7 +137,7 @@ class BlazePoseLite(PoseModel):
         self.inputSize = 224
         self.timeline = 0
 
-    def detect(self, image: np.ndarray) -> KeypointSet:
+    def detect(self, image: np.ndarray) -> IKeypointSet:
         image = tf.image.resize(image, (self.inputSize, self.inputSize))
         image = tf.cast(image, dtype=np.uint8).numpy()
         image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image)
@@ -222,21 +151,5 @@ class BlazePoseLite(PoseModel):
             result = SimpleKeypointSet([], [])
 
         return result
-        
     
-class FeedThroughModel(PoseModel):
-    def detect(self, image: np.ndarray) -> KeypointSet:
-        """
-        Do nothing and return the input as the result
-        """
-        return SimpleKeypointSet([], [])
-    
-    def __str__(self) -> str:
-        return "None"
-
-
-REGISTRY.register(FeedThroughModel, "models.None")
 REGISTRY.register(BlazePose, "models.BlazePose")
-#REGISTRY.register(BlazePoseHeavy, "models.BlazePose (Heavy)")
-#REGISTRY.register(BlazePoseLite, "models.BlazePose (Lite)")
-#REGISTRY.register(MoveNetLightning, "models.MoveNet (Lightning)")

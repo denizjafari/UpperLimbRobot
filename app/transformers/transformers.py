@@ -21,7 +21,8 @@ from scipy import signal
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
-from models.models import BlazePose, PoseModel
+from models.mediapipe import BlazePose
+from app.models.IModel import IModel
 from app.resource_management.video.IVideoRecorder import IVideoRecorder
 from app.resource_management.video.IVideoSource import IVideoSource
 from app.resource_management.video.utils import npArrayToQImage, NoMoreFrames
@@ -229,7 +230,7 @@ class ModelRunner(ITransformerStage):
     """
     Runs a model on the image and adds the keypoints to the list.
     """
-    model: Optional[PoseModel]
+    model: Optional[IModel]
 
     def __init__(self,
                  previous: Optional[ITransformer] = None) -> None:
@@ -240,7 +241,7 @@ class ModelRunner(ITransformerStage):
 
         self.model = None
 
-    def setModel(self, model: PoseModel) -> None:
+    def setModel(self, model: IModel) -> None:
         """
         Set the model to bs used for detection.
         """

@@ -14,7 +14,7 @@ from events import Client
 from pose_estimation.pong_controllers import PongController
 from app.resource_management.registry import REGISTRY
 
-from pose_estimation.ui_utils import ConnectionWidget, LabeledQSlider, MetricSelector
+from app.ui.utils import ConnectionWidget, LabeledQSlider, MetricSelector
 from pose_estimation.games import PongClient, PongControllerWrapper, \
     PoseFeedbackTransformer, ReachClient, Snake, SnakeClient
 from widgets.transformer_widgets import TransformerWidget
