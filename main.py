@@ -16,7 +16,7 @@ from PySide6.QtCore import QThreadPool
 
 from pose_estimation.modular_pose_processor import ModularPoseProcessorWidget
 from pose_estimation.profiles import UserProfile, UserProfileSelector
-from pose_estimation.registry import GLOBAL_PROPS
+from app.resource_management.registry import GLOBAL_PROPS
 
 
 module_logger = logging.getLogger(__name__)

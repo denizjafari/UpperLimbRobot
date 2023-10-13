@@ -8,24 +8,24 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from io import TextIOBase
 import logging
 
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QLineEdit, \
     QPushButton, QSlider, QHBoxLayout, QColorDialog, QComboBox
-from PySide6.QtCore import Slot, Signal, Qt, QThreadPool, QRunnable, QObject
+from PySide6.QtCore import Slot, Qt
 from PySide6.QtGui import QColor
 
-from pose_estimation.registry import GLOBAL_PROPS, REGISTRY
+from app.resource_management.registry import GLOBAL_PROPS, REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
 from app.resource_management.video.CVVideoFileSource import CVVideoFileSource
 from app.resource_management.video.QVideoSource import QVideoSource
 
-from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, \
-    CsvExporter, CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, \
-        MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \
-            RecorderTransformer, Scaler, SkeletonDrawer, SlidingAverageTransformer, \
+from app.transformers.transformers import BackgroundRemover, ButterworthTransformer, \
+    CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, \
+        MetricTransformer, MinMaxTransformer, ModelRunner, \
+            Scaler, SkeletonDrawer, SlidingAverageTransformer, \
                 VideoSourceTransformer
+from app.transformers.Pipeline import Pipeline
 from pose_estimation.ui_utils import CameraSelector, FileSelector, \
     LabeledQSlider, MetricSelector, ModelSelector
 from widgets.exporter_widgets import ExporterWidget

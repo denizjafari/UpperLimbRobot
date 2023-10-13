@@ -16,7 +16,7 @@ from PySide6.QtCore import Signal, Slot, QPoint
 from events import Client
 
 from models.models import PoseModel
-from pose_estimation.registry import REGISTRY
+from app.resource_management.registry import REGISTRY
 
 
 # The frame dimensions and rate for which a suitable format is selected.

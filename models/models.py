@@ -18,7 +18,7 @@ VisionRunningMode = mp.tasks.vision.RunningMode
 
 from pose_estimation.Models import KeypointSet, PoseModel, SimpleKeypointSet
 
-from pose_estimation.registry import REGISTRY    
+from app.resource_management.registry import REGISTRY    
 
 class MoveNetLightning(PoseModel):
     """

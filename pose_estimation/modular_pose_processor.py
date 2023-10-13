@@ -17,10 +17,13 @@ from PySide6.QtCore import Slot, Signal, QRunnable, QObject, QThreadPool, Qt
 from PySide6.QtGui import QPixmap, QImage, QCloseEvent
 
 from pose_estimation.metric_widgets import GridMetricWidgetGroup, MetricWidgetGroup
-from pose_estimation.registry import REGISTRY
+from app.resource_management.registry import REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
-from pose_estimation.transforms import FrameData, FrameDataProvider, Pipeline, \
-    QImageProvider, Scaler, Transformer, TransformerHead
+from app.transformers.utils import FrameData
+from app.transformers.Pipeline import Pipeline
+from app.transformers.ITransformer import ITransformer
+from app.transformers.transformers import FrameDataProvider, QImageProvider, Scaler
+from app.transformers.TransformerHead import TransformerHead
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
@@ -173,7 +176,7 @@ class FrameProcessor(QRunnable, QObject):
     Thread runnable that runs one transform.
     """
 
-    def __init__(self, transformer: Transformer, dryRun: bool = False) -> None:
+    def __init__(self, transformer: ITransformer, dryRun: bool = False) -> None:
         """
         Initialize the frame processor to use some source and transformer.
         """

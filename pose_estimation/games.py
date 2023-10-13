@@ -15,10 +15,13 @@ import cv2
 from PySide6.QtCore import QObject, Signal
 from app.resource_management.audio.QSound import QSound
 from pose_estimation.pong_controllers import PongController
-from pose_estimation.registry import REGISTRY
+from app.resource_management.registry import REGISTRY
 
 from game_hosts.snake import SnakeGame
-from pose_estimation.transforms import FrameData, Transformer, TransformerStage
+from app.transformers.transformers import FrameDataProvider
+from app.transformers.utils import FrameData
+from app.transformers.ITransformer import ITransformer
+from app.transformers.ITransformerStage import ITransformerStage
 from events import Client, Event
 
 module_logger = logging.getLogger(__name__)
@@ -146,7 +149,7 @@ class MetricsListProvider(QObject):
                         self.availableMetricsUpdated.emit(self._availableMetrics)
                         break
 
-class PoseFeedbackTransformer(TransformerStage):
+class PoseFeedbackTransformer(ITransformerStage):
     """
     Adds feedback on compensation to the image. Measures the angle between a
     straight line connecting the two shoulder joints and the horizontal axis.
@@ -165,11 +168,11 @@ class PoseFeedbackTransformer(TransformerStage):
 
     def __init__(self,
                  keypointSetIndex: int = 0,
-                 previous: Optional[Transformer] = None) -> None:
+                 previous: Optional[ITransformer] = None) -> None:
         """
         Initialize it.
         """
-        TransformerStage.__init__(self, True, previous)
+        ITransformerStage.__init__(self, True, previous)
 
         self.keypointSetIndex = keypointSetIndex
         self.elevAngleLimit = 10
@@ -239,7 +242,7 @@ class PoseFeedbackTransformer(TransformerStage):
         return "Feedback"
 
 
-class Snake(TransformerStage, QObject):
+class Snake(ITransformerStage, QObject):
     """
     The snake game. The snake is controlled by the user's body. A right chicken
     wing turns the snake to the right, a left chicken wing turns the snake to
@@ -249,8 +252,8 @@ class Snake(TransformerStage, QObject):
     rightChickenWing = Signal()
     timeIntervalChanged = Signal(int)
 
-    def __init__(self, previous: Optional[Transformer] = None) -> None:
-        TransformerStage.__init__(self, True, previous)
+    def __init__(self, previous: Optional[ITransformer] = None) -> None:
+        ITransformerStage.__init__(self, True, previous)
         QObject.__init__(self)
 
         self.leftChickenWingDetector = LeftChickenWingDetector()
@@ -282,15 +285,15 @@ class Snake(TransformerStage, QObject):
 
         self.next(frameData)
 
-class SnakeClient(TransformerStage, QObject):
+class SnakeClient(ITransformerStage, QObject):
     """
     The snake game. The snake is controlled by the user's body. A right chicken
     wing turns the snake to the right, a left chicken wing turns the snake to
     left.
     """
 
-    def __init__(self, previous: Optional[Transformer] = None) -> None:
-        TransformerStage.__init__(self, True, previous)
+    def __init__(self, previous: Optional[ITransformer] = None) -> None:
+        ITransformerStage.__init__(self, True, previous)
         QObject.__init__(self)
 
         self.leftChickenWingDetector = LeftChickenWingDetector()
@@ -322,7 +325,7 @@ class SnakeClient(TransformerStage, QObject):
         self.next(frameData)
 
 
-class PongClient(TransformerStage, QObject):
+class PongClient(ITransformerStage, QObject):
     """
     The pong game.
     The height of the hand will determine the height of the left paddle.
@@ -332,11 +335,11 @@ class PongClient(TransformerStage, QObject):
     followMetrics: str
     availableMetricsUpdated = Signal(object)
 
-    def __init__(self, previous: Optional[Transformer] = None) -> None:
+    def __init__(self, previous: Optional[ITransformer] = None) -> None:
         """
         Initialize the pong client.
         """
-        TransformerStage.__init__(self, True, previous)
+        ITransformerStage.__init__(self, True, previous)
         QObject.__init__(self)
         self.events = Queue()
 
@@ -489,7 +492,7 @@ class PongClient(TransformerStage, QObject):
         self.next(frameData)
 
 
-class PongControllerWrapper(TransformerStage):
+class PongControllerWrapper(ITransformerStage):
     """
     Wrapper for the pong controller. The pong controller is used to adapt the game
     to the capabilities of the user.
@@ -498,7 +501,7 @@ class PongControllerWrapper(TransformerStage):
         """
         Initialize the wrapper.
         """
-        TransformerStage.__init__(self, True)
+        ITransformerStage.__init__(self, True)
         self.controller = None
 
     def setController(self, controller: PongController) -> None:
@@ -519,7 +522,7 @@ class PongControllerWrapper(TransformerStage):
         self.next(frameData)
 
 
-class ReachClient(TransformerStage, QObject):
+class ReachClient(ITransformerStage, QObject):
     availableMetricsUpdated = Signal(object)
     client: Optional[Client]
 
@@ -527,7 +530,7 @@ class ReachClient(TransformerStage, QObject):
         """
         Initialize the client.
         """
-        TransformerStage.__init__(self, True)
+        ITransformerStage.__init__(self, True)
         QObject.__init__(self)
 
         self.xAxisMapper = GestureMapper()

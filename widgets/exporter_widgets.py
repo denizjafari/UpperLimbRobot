@@ -10,9 +10,10 @@ import io
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
 from PySide6.QtCore import Signal
 
-from pose_estimation.registry import REGISTRY
-from pose_estimation.transforms import CsvExporter, MetricsExporter, PongDataExporter, \
-    RecorderTransformer, Transformer
+from app.resource_management.registry import REGISTRY
+from app.transformers.transformers import RecorderTransformer
+from app.transformers.exporters import CsvExporter, PongDataExporter, MetricsExporter
+from app.transformers.ITransformer import ITransformer
 from pose_estimation.ui_utils import FileSelector
 from app.resource_management.video.CVVideoRecorder import CVVideoRecorder
 
@@ -57,7 +58,7 @@ class ExporterWidget(QWidget):
         """
         pass
 
-    def transformer(self) -> Transformer:
+    def transformer(self) -> ITransformer:
         """
         Return the transformer for the exporter.
         """

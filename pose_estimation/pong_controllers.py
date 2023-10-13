@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget, QFormLayout
 from PySide6.QtCore import Qt
 
 from events import Event, Client
-from pose_estimation.registry import REGISTRY
+from app.resource_management.registry import REGISTRY
 from pose_estimation.ui_utils import LabeledQSlider
 
 module_logger = logging.getLogger(__name__)

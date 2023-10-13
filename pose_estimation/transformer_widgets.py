@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QGroupBox, QCheckBox, QPushButton, QHBoxLayout, \
     QVBoxLayout, QLabel, QWidget
 from PySide6.QtCore import Signal
 
-from pose_estimation.transforms import Transformer
+from app.transformers.ITransformer import ITransformer
 
 class TransformerWidget(QGroupBox):
     """
@@ -20,7 +20,7 @@ class TransformerWidget(QGroupBox):
 
     titleLabel: QLabel
     vLayout: QVBoxLayout
-    transformer: Transformer
+    transformer: ITransformer
 
     def __init__(self,
                  title: str="Transformer",

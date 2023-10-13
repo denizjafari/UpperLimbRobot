@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QSlider, QPushButton, QHBoxLayout
 from PySide6.QtCore import Qt
 from events import Client
 from pose_estimation.pong_controllers import PongController
-from pose_estimation.registry import REGISTRY
+from app.resource_management.registry import REGISTRY
 
 from pose_estimation.ui_utils import ConnectionWidget, LabeledQSlider, MetricSelector
 from pose_estimation.games import PongClient, PongControllerWrapper, \
