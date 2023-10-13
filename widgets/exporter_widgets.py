@@ -14,7 +14,7 @@ from pose_estimation.registry import REGISTRY
 from pose_estimation.transforms import CsvExporter, MetricsExporter, PongDataExporter, \
     RecorderTransformer, Transformer
 from pose_estimation.ui_utils import FileSelector
-from pose_estimation.video import CVVideoRecorder
+from app.resource_management.video.CVVideoRecorder import CVVideoRecorder
 
 
 class ExporterWidget(QWidget):

@@ -18,7 +18,9 @@ from PySide6.QtGui import QColor
 
 from pose_estimation.registry import GLOBAL_PROPS, REGISTRY
 from pose_estimation.transformer_widgets import TransformerWidget
-from pose_estimation.video import CVVideoFileSource, QVideoSource
+from app.resource_management.video.CVVideoFileSource import CVVideoFileSource
+from app.resource_management.video.QVideoSource import QVideoSource
+
 from pose_estimation.transforms import BackgroundRemover, ButterworthTransformer, \
     CsvExporter, CsvImporter, DerivativeTransformer, ImageMirror, LandmarkDrawer, \
         MetricTransformer, MinMaxTransformer, ModelRunner, Pipeline, \

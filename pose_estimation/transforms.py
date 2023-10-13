@@ -26,8 +26,9 @@ from PySide6.QtGui import QImage
 
 from pose_estimation.metric_widgets import MetricWidget
 from models.models import BlazePose, KeypointSet, PoseModel
-from pose_estimation.video import NoMoreFrames, VideoRecorder, VideoSource, \
-    npArrayToQImage
+from app.resource_management.video.IVideoRecorder import IVideoRecorder
+from app.resource_management.video.IVideoSource import IVideoSource
+from app.resource_management.video.utils import npArrayToQImage, NoMoreFrames
 
 module_logger = logging.getLogger(__name__)
 module_logger.setLevel(logging.DEBUG)
@@ -879,7 +880,7 @@ class RecorderTransformer(TransformerStage):
     """
     Records the image.
     """
-    recorder: Optional[VideoRecorder]
+    recorder: Optional[IVideoRecorder]
     frameRate: int
     width: int
     height: int
@@ -895,7 +896,7 @@ class RecorderTransformer(TransformerStage):
         self.height = 0
         self.frameRate = 20
 
-    def setVideoRecorder(self, recorder: VideoRecorder):
+    def setVideoRecorder(self, recorder: IVideoRecorder):
         """
         Set the video recorder with which frames should be recorded.
         """
@@ -950,7 +951,7 @@ class VideoSourceTransformer(TransformerStage, QObject):
     Grabs the next frame from the video source and puts it in the pipeline.
     """
     streamEnded = Signal()
-    videoSource: Optional[VideoSource]
+    videoSource: Optional[IVideoSource]
 
     def __init__(self,
                  previous: Optional[Transformer] = None) -> None:
@@ -962,7 +963,7 @@ class VideoSourceTransformer(TransformerStage, QObject):
 
         self.videoSource = None
     
-    def setVideoSource(self, videoSource: VideoSource) -> None:
+    def setVideoSource(self, videoSource: IVideoSource) -> None:
         """
         Set the source of the video.
         """

@@ -13,7 +13,7 @@ import logging
 import cv2
 
 from PySide6.QtCore import QObject, Signal
-from pose_estimation.audio import QSound
+from app.resource_management.audio.QSound import QSound
 from pose_estimation.pong_controllers import PongController
 from pose_estimation.registry import REGISTRY
 
